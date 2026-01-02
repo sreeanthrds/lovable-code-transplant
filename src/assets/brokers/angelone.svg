@@ -1,0 +1,6 @@
+<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <!-- Angel One - Triangular pyramid with green and orange -->
+  <polygon points="24,4 40,40 8,40" fill="#00C853"/>
+  <polygon points="24,16 32,32 16,32" fill="#FF9800"/>
+  <polygon points="24,24 28,32 20,32" fill="#4CAF50"/>
+</svg>

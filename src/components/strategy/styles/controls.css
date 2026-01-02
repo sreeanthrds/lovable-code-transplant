@@ -1,0 +1,79 @@
+
+/* Controls styling - Transparent glass morphism design */
+.react-flow__controls {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  background: hsl(var(--background) / 0.3) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid hsl(var(--border) / 0.3) !important;
+}
+
+.react-flow__controls-button {
+  background: hsl(var(--background) / 0.5) !important;
+  border: none !important;
+  border-bottom: 1px solid hsl(var(--border) / 0.2) !important;
+  fill: hsl(var(--muted-foreground)) !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.react-flow__controls-button:hover {
+  background: hsl(var(--primary) / 0.2) !important;
+  fill: hsl(var(--primary)) !important;
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+
+.react-flow__controls-button svg {
+  max-width: 16px !important;
+  max-height: 16px !important;
+}
+
+/* Minimap styling */
+.react-flow__minimap {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+  background: hsl(var(--background) / 0.3) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid hsl(var(--border) / 0.3) !important;
+}
+
+.react-flow__minimap-mask {
+  fill: hsl(var(--primary) / 0.1) !important;
+  stroke: hsl(var(--primary)) !important;
+  stroke-width: 1px !important;
+}
+
+.react-flow__minimap-node {
+  stroke-width: 1px !important;
+}
+
+/* Dark mode adjustments */
+.dark .react-flow__node {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark .react-flow__controls {
+  background: hsl(var(--background) / 0.4) !important;
+  border-color: hsl(var(--border) / 0.3) !important;
+}
+
+.dark .react-flow__controls-button {
+  background: hsl(var(--background) / 0.5) !important;
+  fill: hsl(var(--muted-foreground)) !important;
+}
+
+.dark .react-flow__controls-button:hover {
+  background: hsl(var(--primary) / 0.25) !important;
+  fill: hsl(var(--primary)) !important;
+}
+
+.dark .react-flow__minimap {
+  background: hsl(var(--background) / 0.4) !important;
+}

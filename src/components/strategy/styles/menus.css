@@ -1,0 +1,97 @@
+
+/* Ensure dropdown content is visible */
+.react-flow__node .dropdown-content {
+  z-index: 9999;
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(16px) saturate(80%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(72, 187, 178, 0.2);
+}
+
+/* Force all Radix Select dropdowns to have frosted glass style */
+[data-radix-select-content] {
+  background: rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(16px) saturate(80%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(80%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(72, 187, 178, 0.2) !important;
+}
+
+/* Force Radix Select viewport to be transparent */
+[data-radix-select-viewport] {
+  background: transparent !important;
+}
+
+/* Ensure dropdown menu items are visible and interactive */
+.react-flow__node .dropdown-menu-item {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.react-flow__node .dropdown-menu-item:hover {
+  background-color: var(--accent);
+}
+
+/* Override z-index for dropdown menus to ensure they appear above nodes */
+.react-flow__node .react-flow__node-dropdown {
+  z-index: 9999 !important;
+}
+
+/* Fix for dropdown portals to be visible */
+[data-radix-popper-content-wrapper] {
+  z-index: 9999 !important;
+}
+
+/* Make tooltips visible and not truncated */
+[data-radix-tooltip-content] {
+  z-index: 99999 !important;
+  max-width: 300px !important;
+  overflow: visible !important;
+}
+
+/* Fix tooltip visibility in dropdowns */
+.select-content [data-radix-tooltip-content] {
+  z-index: 999999 !important;
+}
+
+/* Adjust dropdown width for node connect controls */
+.react-flow__node [data-radix-popper-content-wrapper] {
+  width: auto !important;
+  pointer-events: all !important;
+}
+
+/* Fix for CommandItem in mobile view */
+@media (max-width: 768px) {
+  [cmdk-item] {
+    min-height: 48px !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none !important;
+  }
+  
+  [cmdk-list] {
+    max-height: 50vh !important;
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto !important;
+  }
+  
+  /* Force proper rendering of popover contents */
+  .command-item-mobile {
+    display: flex !important;
+    align-items: center !important;
+  }
+  
+  /* Ensure command components are properly rendered on iOS */
+  [cmdk-root], [cmdk-input], [cmdk-item], [cmdk-list] {
+    -webkit-appearance: none !important;
+  }
+  
+  /* Force visibility of popovers */
+  .popover-content-visible {
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+}

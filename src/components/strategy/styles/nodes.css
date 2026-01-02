@@ -1,0 +1,200 @@
+/* Fully Transparent Nodes */
+.react-flow__node {
+  border-radius: 22px;
+  background: transparent;
+  backdrop-filter: blur(4px);
+  min-width: 150px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 1);
+  transition: all 0.3s ease-out;
+  cursor: grab;
+  user-select: none;
+  z-index: var(--z-index, 0);
+}
+
+.react-flow__node.dragging {
+  cursor: grabbing !important;
+  background: transparent;
+  z-index: 10 !important;
+  transform: translateY(-8px) scale(1.03);
+}
+
+.react-flow__node.selected {
+  box-shadow: 
+    0 0 0 3px hsl(var(--primary)),
+    0 0 20px hsl(var(--primary) / 0.6),
+    0 8px 30px rgba(0, 0, 0, 0.5) !important;
+  z-index: 1000 !important;
+}
+
+/* Selection styling for wrapper groups */
+.group.selected > div:first-child {
+  box-shadow: 
+    0 0 0 3px hsl(var(--primary)),
+    0 0 20px hsl(var(--primary) / 0.6) !important;
+  border-radius: 8px;
+}
+
+/* Ensure text stays bright when selected */
+.react-flow__node.selected * {
+  opacity: 1 !important;
+}
+
+/* Transparent nodes with accent colors */
+.react-flow__node-startNode {
+  background: transparent;
+  font-weight: 700;
+}
+
+/* Text color for start node */
+.react-flow__node-startNode .node-label,
+.react-flow__node-startNode .node-icon {
+  color: rgb(45, 212, 191) !important; /* Bright teal */
+}
+
+.react-flow__node-entrySignalNode,
+.react-flow__node-entryNode {
+  background: transparent;
+  font-weight: 700;
+}
+
+/* Text color for entry nodes */
+.react-flow__node-entryNode .node-label,
+.react-flow__node-entryNode .node-icon,
+.react-flow__node-entrySignalNode .node-label,
+.react-flow__node-entrySignalNode .node-icon {
+  color: rgb(34, 197, 94) !important; /* Bright green */
+}
+
+.react-flow__node-signalNode,
+.react-flow__node-actionNode {
+  background: transparent;
+}
+
+/* Text color for signal/action nodes */
+.react-flow__node-signalNode .node-label,
+.react-flow__node-signalNode .node-icon,
+.react-flow__node-actionNode .node-label,
+.react-flow__node-actionNode .node-icon {
+  color: rgb(96, 165, 250) !important; /* Bright blue */
+}
+
+.react-flow__node-exitSignalNode,
+.react-flow__node-exitNode {
+  background: transparent;
+}
+
+/* Text color for exit nodes */
+.react-flow__node-exitNode .node-label,
+.react-flow__node-exitNode .node-icon,
+.react-flow__node-exitSignalNode .node-label,
+.react-flow__node-exitSignalNode .node-icon {
+  color: rgb(251, 191, 36) !important; /* Bright amber */
+}
+
+.react-flow__node-squareOffNode {
+  background: transparent;
+  font-weight: 700;
+}
+
+/* Text color for square-off nodes */
+.react-flow__node-squareOffNode .node-label,
+.react-flow__node-squareOffNode .node-icon {
+  color: rgb(251, 146, 60) !important; /* Bright orange */
+}
+
+.react-flow__node-alertNode {
+  background: transparent;
+}
+
+/* Text color for alert nodes */
+.react-flow__node-alertNode .node-label,
+.react-flow__node-alertNode .node-icon {
+  color: rgb(168, 85, 247) !important; /* Bright purple */
+}
+
+.react-flow__node-endNode,
+.react-flow__node-forceEndNode {
+  background: transparent;
+  font-weight: 700;
+}
+
+/* Text color for end nodes */
+.react-flow__node-endNode .node-label,
+.react-flow__node-endNode .node-icon,
+.react-flow__node-forceEndNode .node-label,
+.react-flow__node-forceEndNode .node-icon {
+  color: rgb(248, 113, 113) !important; /* Bright red */
+}
+
+.react-flow__node-retryNode {
+  background: transparent;
+}
+
+/* Text color for retry nodes */
+.react-flow__node-retryNode .node-label,
+.react-flow__node-retryNode .node-icon {
+  color: rgb(244, 114, 182) !important; /* Bright pink */
+}
+
+/* Group div handling for dragging state */
+.group {
+  cursor: grab;
+}
+
+.group.dragging {
+  cursor: grabbing !important;
+  z-index: 10;
+}
+
+.group.selected .react-flow__node {
+  box-shadow: 
+    0 0 0 3px hsl(var(--primary)),
+    0 0 20px hsl(var(--primary) / 0.6) !important;
+}
+
+.group.dragging .react-flow__node {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+/* Fix for pointer events */
+.react-flow__pane {
+  cursor: default;
+}
+
+.react-flow__node .draggable {
+  cursor: grab;
+}
+
+.react-flow__node.dragging .draggable {
+  cursor: grabbing;
+}
+
+/* Ensure that the grabbing cursor appears during drag operations */
+.react-flow--dragging .react-flow__node {
+  cursor: grabbing !important;
+}
+
+/* Node Controls */
+.node-controls {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  z-index: 10; 
+}
+
+/* Group hover for elements inside nodes */
+.group:hover .opacity-0 {
+  opacity: 1;
+}
+
+/* Node Connect Controls */
+.group .dropdown-trigger {
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.group:hover .dropdown-trigger {
+  opacity: 1;
+}

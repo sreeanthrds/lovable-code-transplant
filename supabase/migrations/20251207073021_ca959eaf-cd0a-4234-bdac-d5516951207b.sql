@@ -1,0 +1,2 @@
+-- Add unique constraint on user_id for api_configurations to allow upserts
+ALTER TABLE public.api_configurations ADD CONSTRAINT api_configurations_user_id_config_name_key UNIQUE (user_id, config_name);

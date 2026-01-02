@@ -1,0 +1,68 @@
+/* Live Node Animations - ONLY for LiveStrategyCanvas read-only viewer */
+
+/* Active node - animated border */
+@keyframes live-active-border {
+  0%, 100% {
+    border-color: hsl(var(--success));
+    box-shadow: 0 0 0 2px hsl(var(--success) / 0.3), 0 0 20px hsl(var(--success) / 0.2);
+  }
+  50% {
+    border-color: hsl(var(--success) / 0.6);
+    box-shadow: 0 0 0 4px hsl(var(--success) / 0.15), 0 0 30px hsl(var(--success) / 0.3);
+  }
+}
+
+@keyframes live-pending-border {
+  0%, 100% {
+    border-color: hsl(var(--warning));
+    box-shadow: 0 0 0 2px hsl(var(--warning) / 0.2);
+  }
+  50% {
+    border-color: hsl(var(--warning) / 0.7);
+    box-shadow: 0 0 0 3px hsl(var(--warning) / 0.15);
+  }
+}
+
+/* Active node wrapper styling */
+.live-node-active {
+  position: relative;
+  border-radius: 12px;
+  border: 2px solid hsl(var(--success));
+  animation: live-active-border 2s ease-in-out infinite;
+}
+
+.live-node-active::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 14px;
+  border: 2px solid transparent;
+  background: linear-gradient(90deg, hsl(var(--success)), hsl(var(--success) / 0.3), hsl(var(--success))) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: live-active-border 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Pending node wrapper styling */
+.live-node-pending {
+  position: relative;
+  border-radius: 12px;
+  border: 2px solid hsl(var(--warning));
+  animation: live-pending-border 3s ease-in-out infinite;
+}
+
+/* Completed node styling */
+.live-node-completed {
+  border-radius: 12px;
+  border: 2px solid hsl(var(--primary) / 0.5);
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
+}
+
+/* Error node styling */
+.live-node-error {
+  border-radius: 12px;
+  border: 2px solid hsl(var(--destructive));
+  box-shadow: 0 0 0 2px hsl(var(--destructive) / 0.2);
+}

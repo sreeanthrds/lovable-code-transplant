@@ -1,0 +1,73 @@
+
+/* Entry condition styling */
+.entry-condition-builder .react-flow__node {
+  border-color: #4f46e5; /* Indigo color for entry conditions */
+}
+
+/* Exit condition styling */
+.exit-condition-builder .react-flow__node {
+  border-color: #ef4444; /* Red color for exit conditions */
+}
+
+/* Condition builder grid layout */
+.expression-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0.5rem;
+  align-items: start;
+  min-width: fit-content;
+  width: 100%;
+}
+
+/* Indentation for nested condition groups */
+.indent-level-1 {
+  margin-left: 1rem;
+  padding-left: 1rem;
+  border-left: 1px dashed var(--border);
+}
+
+.indent-level-2 {
+  margin-left: 1rem;
+  padding-left: 1rem;
+  border-left: 1px dashed var(--border);
+}
+
+.indent-level-3 {
+  margin-left: 1rem;
+  padding-left: 1rem;
+  border-left: 1px dashed var(--border);
+}
+
+/* Condition group styling - frosted glass effect */
+.condition-group {
+  background: rgba(255, 255, 255, 0.005);
+  border-radius: 1.5rem;
+  padding: 1rem;
+  position: relative;
+  min-width: fit-content;
+  border: 2px solid rgba(72, 187, 178, 0.2);
+  backdrop-filter: blur(4px) saturate(150%);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.8),
+    0 4px 16px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(72, 187, 178, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Entry vs Exit color indicators */
+.entry-condition-builder .condition-group {
+  border-left: 3px solid hsl(var(--primary) / 0.5);
+}
+
+.exit-condition-builder .condition-group {
+  border-left: 3px solid hsl(var(--destructive) / 0.5);
+}
+
+/* Condition preview styles */
+.condition-preview {
+  font-family: monospace;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

@@ -1,0 +1,74 @@
+
+/* Base styling for resize handles */
+.strategy-flow-container [data-panel-resize-handle-id] {
+  touch-action: none;
+  user-select: none;
+  width: 4px !important;
+  background-color: hsl(var(--border));
+  transition: background-color 0.2s ease;
+}
+
+/* Make sure the react-flow pane doesn't interfere with dragging */
+.strategy-flow-container .react-flow__pane {
+  z-index: auto;
+}
+
+/* Style for the handle to make it more visible */
+.strategy-flow-container [data-panel-resize-handle-id] div {
+  width: 4px !important;
+  background-color: hsl(var(--border));
+}
+
+/* Improve grabbing behavior */
+.strategy-flow-container [data-panel-resize-handle-id]:hover {
+  cursor: col-resize;
+  background-color: hsl(var(--primary));
+}
+
+.strategy-flow-container [data-panel-resize-handle-id]:hover div {
+  background-color: hsl(var(--primary));
+}
+
+/* Active state when dragging */
+.strategy-flow-container [data-panel-resize-handle-id]:active {
+  background-color: hsl(var(--primary));
+}
+
+/* Handle with grip icon styling */
+.strategy-flow-container [data-panel-resize-handle-id] div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  position: relative;
+}
+
+/* Mobile-specific styling */
+@media (max-width: 768px) {
+  .strategy-flow-container [data-panel-resize-handle-id] {
+    width: 12px !important;
+    background-color: hsl(var(--border));
+  }
+  
+  .strategy-flow-container [data-panel-resize-handle-id] div {
+    width: 12px !important;
+    height: 60px;
+    border-radius: 6px;
+    background-color: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    margin: auto;
+  }
+  
+  .strategy-flow-container [data-panel-resize-handle-id]:hover div {
+    background-color: hsl(var(--accent));
+  }
+}
+
+/* Dark mode adjustments */
+.dark .strategy-flow-container [data-panel-resize-handle-id] {
+  background-color: hsl(var(--border));
+}
+
+.dark .strategy-flow-container [data-panel-resize-handle-id]:hover {
+  background-color: hsl(var(--primary));
+}

@@ -1,0 +1,139 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useBacktestData } from '@/hooks/useBacktestData';
+import type { ExecutionNode, TradesDaily, DiagnosticsExport } from '@/types/backtest';
+import SummaryDashboard from './SummaryDashboard';
+import TradesTable from './TradesTable';
+import NodeDetailModal from './NodeDetailModal';
+
+interface BacktestReportProps {
+  externalTradesData?: TradesDaily;
+  externalDiagnosticsData?: DiagnosticsExport;
+}
+
+const BacktestReport: React.FC<BacktestReportProps> = ({ 
+  externalTradesData, 
+  externalDiagnosticsData 
+}) => {
+  const hasExternalData = !!(externalTradesData && externalDiagnosticsData);
+  
+  const { 
+    tradesData: hookTradesData, 
+    isLoading, 
+    error, 
+    getFlowNodes: hookGetFlowNodes, 
+    allNodes: hookAllNodes,
+    setExternalData 
+  } = useBacktestData({ autoLoad: !hasExternalData });
+  
+  const [selectedNode, setSelectedNode] = useState<ExecutionNode | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Set external data when provided
+  useEffect(() => {
+    if (externalTradesData && externalDiagnosticsData) {
+      setExternalData(externalTradesData, externalDiagnosticsData);
+    }
+  }, [externalTradesData, externalDiagnosticsData, setExternalData]);
+
+  // Use external data if provided, otherwise use hook data
+  const tradesData = externalTradesData || hookTradesData;
+  const allNodes = externalDiagnosticsData?.events_history || hookAllNodes;
+  
+  const getFlowNodes = (executionIds: string[]): ExecutionNode[] => {
+    if (externalDiagnosticsData?.events_history) {
+      const availableKeys = Object.keys(externalDiagnosticsData.events_history);
+      const resolved = executionIds
+        .map(id => externalDiagnosticsData.events_history[id])
+        .filter((node): node is ExecutionNode => node !== undefined);
+      
+      // Debug: Log mismatch details
+      if (executionIds.length > 0 && resolved.length === 0) {
+        console.log('🔴 Flow ID mismatch detected:', {
+          requestedIds: executionIds.slice(0, 3),
+          availableKeySamples: availableKeys.slice(0, 5),
+          totalAvailableKeys: availableKeys.length,
+          requestedCount: executionIds.length,
+          resolvedCount: resolved.length
+        });
+      }
+      
+      return resolved;
+    }
+    return hookGetFlowNodes(executionIds);
+  };
+
+  const handleNodeClick = (node: ExecutionNode) => {
+    setSelectedNode(node);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedNode(null);
+  };
+
+  if (isLoading && !hasExternalData) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">Loading backtest data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !hasExternalData) {
+    return (
+      <Alert variant="destructive" className="max-w-lg mx-auto mt-8">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>
+          {error}. Please make sure the sample data files are available.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (!tradesData) {
+    return (
+      <Alert className="max-w-lg mx-auto mt-8">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>No Data</AlertTitle>
+        <AlertDescription>
+          No backtest data available. Run a backtest first.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  return (
+    <div className="space-y-6 p-6">
+      {/* Summary Dashboard */}
+      <SummaryDashboard 
+        summary={tradesData.summary} 
+        date={tradesData.date} 
+      />
+
+      {/* Trades Table with Flow Diagrams */}
+      <TradesTable 
+        trades={tradesData.trades}
+        getFlowNodes={getFlowNodes}
+        onNodeClick={handleNodeClick}
+      />
+
+      {/* Node Detail Modal */}
+      <NodeDetailModal
+        node={selectedNode}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        allNodes={allNodes}
+      />
+    </div>
+  );
+};
+
+export default BacktestReport;

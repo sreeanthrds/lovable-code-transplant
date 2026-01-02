@@ -1,0 +1,176 @@
+
+/* Mobile fixes for dropdowns and selectors */
+@media (max-width: 768px) {
+  /* Increase touch target size for mobile */
+  [cmdk-item] {
+    padding: 12px !important;
+    margin: 2px 0 !important;
+    min-height: 48px !important; /* Even larger touch target size */
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  /* Fix mobile selection issues */
+  [data-mobile-selectable="true"] {
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none !important;
+    user-select: none !important;
+  }
+
+  /* Ensure popover content has background and proper z-index */
+  [data-radix-popper-content-wrapper] {
+    z-index: 9999 !important;
+    background-color: var(--background) !important;
+    position: fixed !important;
+    width: auto !important;
+    max-width: 95vw !important;
+    touch-action: manipulation !important;
+    pointer-events: auto !important;
+  }
+
+  /* Better scrolling for mobile dropdowns */
+  .max-h-\[40vh\], .max-h-\[50vh\] {
+    -webkit-overflow-scrolling: touch;
+    overflow-scrolling: touch;
+    max-height: 50vh !important; /* Slightly larger on mobile */
+  }
+  
+  /* Fix touch detection on CommandItem elements */
+  [cmdk-item] {
+    cursor: pointer !important;
+    user-select: none !important;
+    -webkit-touch-callout: none !important;
+    touch-action: manipulation !important;
+  }
+  
+  /* Ensure backdrops work properly */
+  [data-state="open"] > [data-radix-popper-content-wrapper] {
+    position: fixed !important;
+  }
+  
+  /* Fix command group rendering on mobile */
+  [cmdk-group] {
+    overflow: visible !important;
+  }
+  
+  [cmdk-group-heading] {
+    padding: 8px 12px !important;
+    font-weight: 600 !important;
+  }
+  
+  /* Fix for lists in command dialogs */
+  [cmdk-list] {
+    padding: 8px !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Fix for symbol selector specific issues */
+  .symbol-selector-popover {
+    z-index: 9999 !important;
+    position: fixed !important; /* Change to fixed to prevent click-through */
+    background-color: var(--background) !important;
+    width: auto !important;
+    max-width: 95vw !important;
+    touch-action: manipulation !important;
+    pointer-events: auto !important;
+  }
+  
+  /* Prevent click-through issues on selectors */
+  .symbol-selector-command {
+    pointer-events: auto !important;
+    touch-action: auto !important;
+    background-color: var(--background) !important;
+    z-index: 9999 !important;
+  }
+  
+  /* Fix dialog sizing on small screens */
+  [role="dialog"] {
+    max-height: 90vh !important;
+    max-width: 95vw !important;
+    width: auto !important;
+  }
+  
+  /* Ensure scrollbars work properly in dialogs */
+  .dialog-scroll-area {
+    max-height: calc(90vh - 120px) !important;
+    overflow-y: auto !important;
+  }
+
+  /* Fix mobile body scrolling - don't prevent it */
+  body {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Fix for Clerk authentication modals on mobile */
+  [data-radix-dialog-overlay] {
+    position: fixed !important;
+    z-index: 10000 !important;
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    top: 0 !important;
+    left: 0 !important;
+    pointer-events: auto !important;
+    touch-action: none !important;
+  }
+
+  [data-radix-dialog-content] {
+    position: fixed !important;
+    z-index: 10001 !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    width: auto !important;
+    overflow-y: auto !important;
+    pointer-events: auto !important;
+    touch-action: auto !important;
+  }
+
+  /* Clerk component specific fixes */
+  .cl-rootBox {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .cl-card {
+    max-width: none !important;
+    width: 100% !important;
+  }
+}
+
+/* Fix for dropdown portal overlays - applied to all viewports */
+[data-radix-popper-content-wrapper] {
+  background-color: var(--background) !important;
+  z-index: 9999 !important;
+  pointer-events: auto !important; /* Ensure clicks work */
+}
+
+/* Special class to ensure symbol selector popover has a proper background */
+.symbol-selector-popover {
+  background-color: var(--background) !important;
+  z-index: 9999 !important;
+  touch-action: manipulation !important;
+}
+
+/* Fix for dropdown icon duplication in symbol selector input */
+.symbol-selector-input-wrapper .search-icon {
+  display: none !important;
+}
+
+/* Ensure symbol selector popover content is visible */
+.symbol-selector-command {
+  pointer-events: auto !important;
+  touch-action: auto !important;
+}
+
+/* Fix for CommandItems to be clickable */
+[cmdk-item][data-mobile-selectable="true"] {
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-touch-callout: none !important;
+  user-select: none !important;
+}

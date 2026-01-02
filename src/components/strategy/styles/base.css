@@ -1,0 +1,157 @@
+/* Smooth overlapping diamond pattern canvas */
+.strategy-flow-container {
+  height: 100%;
+  width: 100%;
+  background: 
+    /* Smooth diamond pattern with overlapping stripes */
+    repeating-linear-gradient(
+      45deg,
+      rgba(26, 26, 26, 0.85) 0px,
+      rgba(26, 26, 26, 0.85) 40px,
+      transparent 40px,
+      transparent 80px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(42, 42, 42, 0.75) 0px,
+      rgba(42, 42, 42, 0.75) 40px,
+      transparent 40px,
+      transparent 80px
+    ),
+    repeating-linear-gradient(
+      45deg,
+      transparent 0px,
+      transparent 40px,
+      rgba(10, 10, 10, 0.9) 40px,
+      rgba(10, 10, 10, 0.9) 80px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent 0px,
+      transparent 40px,
+      rgba(31, 31, 31, 0.85) 40px,
+      rgba(31, 31, 31, 0.85) 80px
+    ),
+    #0a0a0a;
+  background-attachment: fixed;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Subtle ambient glow - no diagonal bars */
+.strategy-flow-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    /* Center spotlight effect only */
+    radial-gradient(ellipse 60% 50% at 50% 30%, 
+      rgba(72, 187, 178, 0.12) 0%, 
+      rgba(50, 80, 110, 0.08) 50%,
+      rgba(0, 0, 0, 0.15) 100%
+  );
+  pointer-events: none;
+  animation: underwaterShimmer 20s ease-in-out infinite;
+}
+
+@keyframes underwaterShimmer {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0.8; }
+}
+
+/* Node panel shares canvas background */
+.node-panel-background {
+  position: relative;
+  background: 
+    /* Smooth diamond pattern with overlapping stripes */
+    repeating-linear-gradient(
+      45deg,
+      rgba(26, 26, 26, 0.85) 0px,
+      rgba(26, 26, 26, 0.85) 40px,
+      transparent 40px,
+      transparent 80px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(42, 42, 42, 0.75) 0px,
+      rgba(42, 42, 42, 0.75) 40px,
+      transparent 40px,
+      transparent 80px
+    ),
+    repeating-linear-gradient(
+      45deg,
+      transparent 0px,
+      transparent 40px,
+      rgba(10, 10, 10, 0.9) 40px,
+      rgba(10, 10, 10, 0.9) 80px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent 0px,
+      transparent 40px,
+      rgba(31, 31, 31, 0.85) 40px,
+      rgba(31, 31, 31, 0.85) 80px
+    ),
+    #0a0a0a;
+  background-attachment: fixed;
+}
+
+.node-panel-background::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    /* Center spotlight effect only */
+    radial-gradient(ellipse 60% 50% at 50% 30%, 
+      rgba(72, 187, 178, 0.12) 0%, 
+      rgba(50, 80, 110, 0.08) 50%,
+      rgba(0, 0, 0, 0.15) 100%
+    );
+  pointer-events: none;
+  animation: underwaterShimmer 20s ease-in-out infinite;
+}
+
+/* Only apply overflow hidden to strategy flow pages, not the entire site */
+.strategy-flow-page body,
+.strategy-flow-page html,
+.strategy-flow-page #root {
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Default scrolling for non-strategy pages */
+body, html, #root {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Custom scrollbar for the sidebars */
+.strategy-flow-container ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.strategy-flow-container ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.strategy-flow-container ::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+
+.strategy-flow-container ::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.5);
+}

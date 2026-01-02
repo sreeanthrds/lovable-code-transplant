@@ -1,0 +1,110 @@
+
+/* Handle styling */
+.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+.react-flow__handle-top {
+  top: -4px;
+}
+
+.react-flow__handle-bottom {
+  bottom: -4px;
+}
+
+/* Soft glowing connector lines */
+.react-flow__edge-path {
+  stroke-width: 2;
+  stroke: rgba(65, 170, 165, 0.7);
+  filter: drop-shadow(0 0 4px rgba(65, 170, 165, 0.3));
+  transition: all 0.3s ease-out;
+}
+
+/* Edge Controls */
+.edge-controls {
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: all;
+  position: absolute;
+}
+
+.react-flow__edge:hover .edge-controls {
+  opacity: 1;
+}
+
+/* Style for the delete button to make it more visible */
+.edge-delete-button {
+  background-color: #ef4444;
+  color: white;
+  height: 24px !important;
+  width: 24px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 12px;
+  box-shadow: 0 0 0 2px white;
+  padding: 0;
+  cursor: pointer;
+  z-index: 1000;
+  opacity: 1 !important;
+  transition: transform 0.2s;
+}
+
+.edge-delete-button:hover {
+  background-color: #dc2626;
+  transform: scale(1.1);
+}
+
+/* Add a visible background to edge buttons */
+.react-flow__edge .edge-controls {
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  padding: 2px;
+  margin-top: -12px;
+  margin-left: -12px;
+}
+
+/* Give edge buttons better visibility on dark backgrounds */
+.react-flow__edge:hover .edge-controls {
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.8));
+}
+
+/* Soft glowing edges */
+.solid-edge-path {
+  stroke-width: 2;
+  stroke: rgba(65, 170, 165, 0.7);
+  filter: drop-shadow(0 0 4px rgba(65, 170, 165, 0.3));
+  transition: all 0.3s ease-out;
+}
+
+.button-edge-path {
+  stroke-width: 2;
+  stroke: rgba(65, 170, 165, 0.7);
+  filter: drop-shadow(0 0 4px rgba(65, 170, 165, 0.3));
+  transition: all 0.3s ease-out;
+}
+
+.fixed-edge-path {
+  stroke-width: 2;
+  stroke: rgba(65, 170, 165, 0.7);
+  filter: drop-shadow(0 0 4px rgba(65, 170, 165, 0.3));
+  transition: all 0.3s ease-out;
+}
+
+/* Soft Edge Hover */
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 2.5 !important;
+  stroke: rgba(65, 170, 165, 0.9);
+  filter: drop-shadow(0 0 6px rgba(65, 170, 165, 0.5));
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 2.5 !important;
+  stroke: rgba(65, 170, 165, 0.9);
+  filter: drop-shadow(0 0 6px rgba(65, 170, 165, 0.5));
+}
+

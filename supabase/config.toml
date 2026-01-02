@@ -1,0 +1,22 @@
+project_id = "qhyjwljbmdcnpgaebecj"
+
+[functions.test-clerk-jwt]
+verify_jwt = false
+
+[functions.update-api-config]
+verify_jwt = false
+
+[functions.backtest-proxy]
+verify_jwt = false
+
+[functions.angel-one-auth]
+verify_jwt = false
+
+[functions.angel-one-oauth-callback]
+verify_jwt = false
+
+[functions.angel-one-oauth-init]
+verify_jwt = false
+
+[functions.sync-clerk-users]
+verify_jwt = false

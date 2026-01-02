@@ -1,0 +1,43 @@
+/* Subtle glow for selected nodes */
+.react-flow__node.selected {
+  box-shadow: 
+    0 0 8px rgba(72, 187, 178, 0.4),
+    0 0 16px rgba(72, 187, 178, 0.2) !important;
+  z-index: 1000;
+}
+
+.react-flow__node.selected:hover {
+  box-shadow: 
+    0 0 10px rgba(72, 187, 178, 0.5),
+    0 0 20px rgba(72, 187, 178, 0.25) !important;
+}
+
+/* Consistent selection styling */
+.react-flow__node-startNode.selected {
+  box-shadow: 
+    0 0 8px rgba(72, 187, 178, 0.4),
+    0 0 16px rgba(72, 187, 178, 0.2) !important;
+}
+
+/* Subtle handle glow */
+.react-flow__node.selected .react-flow__handle {
+  border: 2px solid rgba(72, 187, 178, 0.6) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 0 6px rgba(72, 187, 178, 0.4);
+}
+
+/* Error node styling - orphaned nodes and multiple start nodes */
+.react-flow__node.error-node {
+  border: 2px solid rgba(239, 68, 68, 0.8) !important;
+  box-shadow: 
+    0 0 0 3px rgba(239, 68, 68, 0.3),
+    0 8px 30px rgba(0, 0, 0, 0.5) !important;
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+
+.react-flow__node.error-node:hover {
+  border-color: rgba(239, 68, 68, 0.9) !important;
+  box-shadow: 
+    0 0 0 3px rgba(239, 68, 68, 0.4),
+    0 12px 40px rgba(0, 0, 0, 0.6) !important;
+}
