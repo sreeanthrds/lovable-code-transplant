@@ -5,10 +5,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CreditCard, Users, ExternalLink } from 'lucide-react';
+import { Users, ExternalLink, Wallet } from 'lucide-react';
 import { useClerkUser } from '@/hooks/useClerkUser';
 import UserLoginDetails from '@/components/auth/UserLoginDetails';
 import UserProfilesManager from '@/components/admin/UserProfilesManager';
+import { BillingDashboard } from '@/components/billing';
 
 const Account = () => {
   const { user, isLoading } = useClerkUser();
@@ -59,7 +60,10 @@ const Account = () => {
               <TabsList className="grid grid-cols-5 mb-8">
                 <TabsTrigger value="profile">Profile</TabsTrigger>
                 <TabsTrigger value="security">Security</TabsTrigger>
-                <TabsTrigger value="billing">Billing</TabsTrigger>
+                <TabsTrigger value="billing" className="gap-2">
+                  <Wallet className="w-4 h-4" />
+                  Billing
+                </TabsTrigger>
                 <TabsTrigger value="login-info">Login Info</TabsTrigger>
                 <TabsTrigger value="admin">
                   <Users className="w-4 h-4 mr-2" />
@@ -142,42 +146,7 @@ const Account = () => {
               </TabsContent>
               
               <TabsContent value="billing">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Billing Information</CardTitle>
-                    <CardDescription>
-                      Manage your subscription and payment methods
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-col gap-6">
-                      <div className="p-4 border rounded-lg bg-muted/50">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="p-2 bg-primary/10 rounded">
-                              <CreditCard className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <h3 className="font-medium">Current Plan</h3>
-                              <p className="text-sm text-muted-foreground">Free Plan</p>
-                            </div>
-                          </div>
-                          <Button disabled>Upgrade Soon</Button>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h3 className="font-medium mb-2">Payment Methods</h3>
-                        <p className="text-sm text-muted-foreground">No payment methods configured yet.</p>
-                      </div>
-                      
-                      <div>
-                        <h3 className="font-medium mb-2">Billing History</h3>
-                        <p className="text-sm text-muted-foreground">No billing history available.</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <BillingDashboard />
               </TabsContent>
               
               <TabsContent value="login-info">
