@@ -231,12 +231,15 @@ export const initiatePayment = async (
         color: '#6366f1',
       },
       handler: async (response: any) => {
-        console.log('[PaymentService] Payment success:', response);
+        console.log('[PaymentService] Payment success callback received:', response);
+        console.log('[PaymentService] razorpay_order_id:', response.razorpay_order_id);
+        console.log('[PaymentService] razorpay_payment_id:', response.razorpay_payment_id);
         stopPolling();
         paymentCompleted = true;
         
-        // Verify payment
+        // Verify payment and record to payment_history
         try {
+          console.log('[PaymentService] Calling razorpay-verify-payment edge function...');
           const { data: verifyData, error: verifyError } = await tradelayoutClient.functions.invoke('razorpay-verify-payment', {
             body: {
               razorpay_order_id: response.razorpay_order_id,
@@ -249,12 +252,23 @@ export const initiatePayment = async (
             },
           });
 
-          if (verifyError || !verifyData?.success) {
+          console.log('[PaymentService] Verify response:', verifyData);
+          console.log('[PaymentService] Verify error:', verifyError);
+
+          if (verifyError) {
+            console.error('[PaymentService] Function invoke error:', verifyError);
+            throw new Error(verifyError.message || 'Payment verification failed');
+          }
+          
+          if (!verifyData?.success) {
+            console.error('[PaymentService] Verification failed:', verifyData?.error);
             throw new Error(verifyData?.error || 'Payment verification failed');
           }
 
+          console.log('[PaymentService] Payment verified and recorded successfully');
           onSuccess();
         } catch (err: any) {
+          console.error('[PaymentService] Verification error:', err);
           onError(err.message || 'Payment verification failed');
         }
       },
