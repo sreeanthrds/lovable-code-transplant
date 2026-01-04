@@ -171,7 +171,9 @@ export const initiatePayment = async (
       },
       modal: {
         ondismiss: () => {
-          console.log('[PaymentService] Payment cancelled');
+          console.log('[PaymentService] Payment modal dismissed');
+          // For UPI payments, the modal might close before confirmation
+          // The webhook will handle the actual payment confirmation
         },
       },
     };
@@ -179,7 +181,15 @@ export const initiatePayment = async (
     const razorpay = new window.Razorpay(options);
     razorpay.on('payment.failed', (response: any) => {
       console.error('[PaymentService] Payment failed:', response.error);
-      onError(response.error.description || 'Payment failed');
+      // Don't show error for UPI payments that might still be processing
+      const reason = response.error?.reason;
+      if (reason === 'payment_risk_check_failed' || reason === 'payment_cancelled') {
+        // For UPI payments, the actual status comes via webhook
+        console.log('[PaymentService] UPI payment may still be processing via webhook');
+        onError('Payment is being processed. If you completed the payment, your plan will be updated shortly.');
+      } else {
+        onError(response.error.description || 'Payment failed');
+      }
     });
     razorpay.open();
 
