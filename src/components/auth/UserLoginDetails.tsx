@@ -159,10 +159,10 @@ const UserLoginDetails: React.FC = () => {
 
   if (loading) {
     return (
-      <Card>
+      <Card className="glass-card border-border/50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <LogIn className="w-5 h-5" />
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <LogIn className="w-5 h-5 text-primary" />
             Loading Profile...
           </CardTitle>
         </CardHeader>
@@ -177,27 +177,30 @@ const UserLoginDetails: React.FC = () => {
     <div className="space-y-4">
       {/* Debug Information */}
       {user && (
-        <Card className="border-yellow-200 bg-yellow-50">
+        <Card className="glass-card border-warning/30 bg-warning/5">
           <CardHeader>
-            <CardTitle className="text-sm">Debug Information</CardTitle>
+            <CardTitle className="text-sm text-warning flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-warning animate-pulse" />
+              Debug Information
+            </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs space-y-2">
-            <div><strong>User ID:</strong> {user.id}</div>
-            <div><strong>Email:</strong> {user.emailAddresses[0]?.emailAddress}</div>
-            <div><strong>First Name:</strong> {user.firstName || 'Not provided'}</div>
-            <div><strong>Last Name:</strong> {user.lastName || 'Not provided'}</div>
-            <div><strong>Profile Found:</strong> {profile ? 'Yes' : 'No'}</div>
-            {profile && <div><strong>Profile ID:</strong> {profile.id}</div>}
+          <CardContent className="text-xs space-y-2 text-muted-foreground">
+            <div><strong className="text-foreground">User ID:</strong> {user.id}</div>
+            <div><strong className="text-foreground">Email:</strong> {user.emailAddresses[0]?.emailAddress}</div>
+            <div><strong className="text-foreground">First Name:</strong> {user.firstName || 'Not provided'}</div>
+            <div><strong className="text-foreground">Last Name:</strong> {user.lastName || 'Not provided'}</div>
+            <div><strong className="text-foreground">Profile Found:</strong> {profile ? 'Yes' : 'No'}</div>
+            {profile && <div><strong className="text-foreground">Profile ID:</strong> {profile.id}</div>}
           </CardContent>
         </Card>
       )}
 
       {/* Profile Information Card */}
-      <Card>
+      <Card className="glass-card border-border/50 hover:border-primary/30 transition-colors">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <User className="w-5 h-5" />
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <User className="w-5 h-5 text-primary" />
               Profile Information
             </CardTitle>
             <div className="flex gap-2">
@@ -218,6 +221,7 @@ const UserLoginDetails: React.FC = () => {
                   variant="outline" 
                   size="sm"
                   onClick={() => isEditing ? setIsEditing(false) : setIsEditing(true)}
+                  className="border-border/50 hover:border-primary/50"
                 >
                   {isEditing ? 'Cancel' : 'Edit'}
                 </Button>
@@ -229,7 +233,7 @@ const UserLoginDetails: React.FC = () => {
           {!profile ? (
             <div className="text-center py-8">
               <User className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">No Profile Found</h3>
+              <h3 className="text-lg font-medium mb-2 text-foreground">No Profile Found</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Your profile should be created automatically. If it wasn't, you can create it manually.
               </p>
@@ -238,32 +242,35 @@ const UserLoginDetails: React.FC = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="first_name">First Name</Label>
+                  <Label htmlFor="first_name" className="text-foreground">First Name</Label>
                   <Input
                     id="first_name"
                     value={formData.first_name}
                     onChange={(e) => setFormData(prev => ({ ...prev, first_name: e.target.value }))}
                     placeholder="Enter first name"
+                    className="bg-background/50 border-border/50 focus:border-primary"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="last_name">Last Name</Label>
+                  <Label htmlFor="last_name" className="text-foreground">Last Name</Label>
                   <Input
                     id="last_name"
                     value={formData.last_name}
                     onChange={(e) => setFormData(prev => ({ ...prev, last_name: e.target.value }))}
                     placeholder="Enter last name"
+                    className="bg-background/50 border-border/50 focus:border-primary"
                   />
                 </div>
               </div>
               <div>
-                <Label htmlFor="phone_number">Phone Number</Label>
+                <Label htmlFor="phone_number" className="text-foreground">Phone Number</Label>
                 <Input
                   id="phone_number"
                   value={formData.phone_number}
                   onChange={(e) => setFormData(prev => ({ ...prev, phone_number: e.target.value }))}
                   placeholder="Enter phone number"
                   type="tel"
+                  className="bg-background/50 border-border/50 focus:border-primary"
                 />
               </div>
               <Button onClick={handleSave} disabled={saving} className="w-full">
@@ -274,23 +281,23 @@ const UserLoginDetails: React.FC = () => {
           ) : (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <User className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Name:</span>
-                <span className="text-sm">
+                <User className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">Name:</span>
+                <span className="text-sm text-muted-foreground">
                   {profile?.first_name || profile?.last_name 
                     ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
                     : 'Not provided'}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Email:</span>
-                <span className="text-sm">{profile?.email || user?.emailAddresses[0]?.emailAddress || 'Not available'}</span>
+                <Mail className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">Email:</span>
+                <span className="text-sm text-muted-foreground">{profile?.email || user?.emailAddresses[0]?.emailAddress || 'Not available'}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Phone:</span>
-                <span className="text-sm">{profile?.phone_number || 'Not provided'}</span>
+                <Phone className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">Phone:</span>
+                <span className="text-sm text-muted-foreground">{profile?.phone_number || 'Not provided'}</span>
               </div>
             </div>
           )}
@@ -298,28 +305,31 @@ const UserLoginDetails: React.FC = () => {
       </Card>
 
       {/* Login Information Card */}
-      <Card>
+      <Card className="glass-card border-border/50 hover:border-primary/30 transition-colors">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <LogIn className="w-5 h-5" />
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <LogIn className="w-5 h-5 text-primary" />
             Login Information
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Current Session Status */}
           <div>
-            <h4 className="text-sm font-medium mb-2">Current Session</h4>
-            <Badge variant="default">Active Session</Badge>
+            <h4 className="text-sm font-medium mb-2 text-foreground">Current Session</h4>
+            <Badge className="bg-success/20 text-success border-success/30">
+              <span className="w-2 h-2 rounded-full bg-success mr-2 animate-pulse" />
+              Active Session
+            </Badge>
           </div>
 
           {/* Account Creation */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Member Since</span>
+              <Calendar className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">Member Since</span>
             </div>
             <div className="pl-6">
-              <p className="text-sm">{getTimeAgo(profile?.created_at)}</p>
+              <p className="text-sm text-foreground">{getTimeAgo(profile?.created_at)}</p>
               <p className="text-xs text-muted-foreground">
                 {formatDate(profile?.created_at)}
               </p>

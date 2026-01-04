@@ -2,12 +2,13 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu } from 'lucide-react';
+import { Menu, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { UserButton, SignedIn, SignedOut } from '@clerk/clerk-react';
 import Logo from './logo';
 import DesktopNav from './desktop-nav';
 import MobileNav from './mobile-nav';
+import { PlanBadge } from '@/components/billing/PlanBadge';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -71,6 +72,9 @@ const Navbar = () => {
               </Button>
             </Link>
             <SignedIn>
+              <Link to="/app/account?tab=billing" className="hover:opacity-80 transition-opacity">
+                <PlanBadge plan="FREE" />
+              </Link>
               <UserButton />
             </SignedIn>
             <SignedOut>
