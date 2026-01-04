@@ -15,7 +15,7 @@ import { Shield, Users, Key, AlertTriangle, Settings, Database, Wallet } from 'l
 import AppLayout from '@/layouts/AppLayout';
 import JsonToTlsTab from '@/components/admin/decryption/JsonToTlsTab';
 import JwtTestPanel from '@/components/admin/JwtTestPanel';
-import { BillingDashboard } from '@/components/billing';
+import AdminBillingDashboard from '@/components/admin/AdminBillingDashboard';
 
 const Admin = () => {
   const { user } = useClerkUser();
@@ -176,7 +176,7 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="billing" className="space-y-6">
-            <BillingDashboard />
+            <AdminBillingDashboard />
           </TabsContent>
 
           <TabsContent value="system" className="space-y-6">
