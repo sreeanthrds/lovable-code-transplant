@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useClerkUser } from '@/hooks/useClerkUser';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu } from 'lucide-react';
+import { Menu, Home } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import logoImage from '@/assets/TL-logo-v4.png';
 import UserMenu from '@/components/ui/UserMenu';
@@ -181,6 +181,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 <span className="font-semibold text-xl text-white/95">TradeLayout</span>
               </Link>
               <nav className="flex items-center gap-6">
+                <Link to="/" className={`relative flex items-center gap-2 text-sm font-medium transition-all text-white/75 hover:text-primary`}>
+                  <Home className="h-4 w-4" />
+                  <span>Home</span>
+                </Link>
                 <Link to="/app/dashboard" className={`relative flex items-center gap-2 text-sm font-medium transition-all ${location.pathname === '/app/dashboard' 
                   ? 'text-primary' 
                   : 'text-white/75 hover:text-primary'
