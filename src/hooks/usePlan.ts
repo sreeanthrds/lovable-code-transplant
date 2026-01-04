@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { tradelayoutClient } from '@/lib/supabase/tradelayout-client';
 import { useUser } from '@clerk/clerk-react';
 
 interface PlanData {
@@ -38,8 +38,8 @@ export const usePlan = () => {
     
     console.log('🔍 usePlan: Fetching plan from Supabase for user:', user.id);
     try {
-      // Use raw query since user_plans may not be in generated types yet
-      const { data, error } = await supabase
+      // Use TradeLayout client for user_plans table
+      const { data, error } = await tradelayoutClient
         .from('user_plans' as any)
         .select('plan, status, expires_at')
         .eq('user_id', user.id)
