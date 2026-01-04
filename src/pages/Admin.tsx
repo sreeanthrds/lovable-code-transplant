@@ -6,16 +6,16 @@ import EncryptionAccessManager from '@/components/strategy/utils/import-export/E
 import UserManagementForm from '@/components/admin/UserManagementForm';
 import RoleManager from '@/components/admin/RoleManager';
 import StrategyDecryption from '@/components/admin/StrategyDecryption';
-import StrategyMigration from '@/pages/admin/StrategyMigration';
 import ApiConfigManager from '@/components/admin/ApiConfigManager';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Users, Key, AlertTriangle, Settings, Database, RefreshCw, KeyRound } from 'lucide-react';
+import { Shield, Users, Key, AlertTriangle, Settings, Database, Wallet } from 'lucide-react';
 import AppLayout from '@/layouts/AppLayout';
 import JsonToTlsTab from '@/components/admin/decryption/JsonToTlsTab';
 import JwtTestPanel from '@/components/admin/JwtTestPanel';
+import { BillingDashboard } from '@/components/billing';
 
 const Admin = () => {
   const { user } = useClerkUser();
@@ -88,7 +88,7 @@ const Admin = () => {
             <TabsTrigger value="encryption">Encryption</TabsTrigger>
             <TabsTrigger value="decryption">Decryption</TabsTrigger>
             <TabsTrigger value="json-import">JSON Import</TabsTrigger>
-            <TabsTrigger value="migration">Migration</TabsTrigger>
+            <TabsTrigger value="billing">Billing</TabsTrigger>
             <TabsTrigger value="system">System</TabsTrigger>
           </TabsList>
 
@@ -175,8 +175,8 @@ const Admin = () => {
             <JsonToTlsTab />
           </TabsContent>
 
-          <TabsContent value="migration" className="space-y-6">
-            <StrategyMigration />
+          <TabsContent value="billing" className="space-y-6">
+            <BillingDashboard />
           </TabsContent>
 
           <TabsContent value="system" className="space-y-6">

@@ -5,12 +5,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, ExternalLink, Wallet, Shield, Key, Bell, Smartphone } from 'lucide-react';
+import { Users, ExternalLink, Shield, Key, Bell, Smartphone } from 'lucide-react';
 import { useClerkUser } from '@/hooks/useClerkUser';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import UserLoginDetails from '@/components/auth/UserLoginDetails';
 import UserProfilesManager from '@/components/admin/UserProfilesManager';
-import { BillingDashboard } from '@/components/billing';
 import AppLayout from '@/layouts/AppLayout';
 import { useSearchParams } from 'react-router-dom';
 import { Switch } from '@/components/ui/switch';
@@ -37,8 +36,7 @@ const Account = () => {
   const email = user?.emailAddresses[0]?.emailAddress || '';
   const firstName = user?.firstName || '';
   const lastName = user?.lastName || '';
-  
-  const tabCount = isAdmin ? 5 : 4;
+  const tabCount = isAdmin ? 4 : 3;
   
   return (
     <AppLayout>
@@ -72,10 +70,6 @@ const Account = () => {
                 <TabsList className={`grid grid-cols-${tabCount} mb-8 bg-white/5`}>
                   <TabsTrigger value="profile" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">Profile</TabsTrigger>
                   <TabsTrigger value="security" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">Security</TabsTrigger>
-                  <TabsTrigger value="billing" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
-                    <Wallet className="w-4 h-4" />
-                    Billing
-                  </TabsTrigger>
                   <TabsTrigger value="login-info" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">Login Info</TabsTrigger>
                   {isAdmin && (
                     <TabsTrigger value="admin" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
@@ -265,10 +259,6 @@ const Account = () => {
                     </CardContent>
                   </Card>
                 </div>
-              </TabsContent>
-              
-              <TabsContent value="billing">
-                <BillingDashboard />
               </TabsContent>
               
               <TabsContent value="login-info">
