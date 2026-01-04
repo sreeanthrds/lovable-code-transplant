@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Play, Sparkles } from 'lucide-react';
+import { ArrowRight, Play, Sparkles, Loader2 } from 'lucide-react';
 import { useAppAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
 import AuthModal from '../auth/AuthModal';
+import { initiatePayment } from '@/lib/services/payment-service';
+import { toast } from '@/hooks/use-toast';
 
 const HeroSection = () => {
   const { isAuthenticated } = useAppAuth();
+  const { user } = useUser();
   const navigate = useNavigate();
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; mode: 'signin' | 'signup' }>({
     isOpen: false,
     mode: 'signin'
   });
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const handleGetStarted = () => {
     if (isAuthenticated) {
@@ -21,11 +26,53 @@ const HeroSection = () => {
     }
   };
 
-  const handleLaunchOffer = () => {
-    if (isAuthenticated) {
-      navigate('/app/strategies');
-    } else {
+  const handleLaunchOffer = async () => {
+    if (!isAuthenticated) {
       setAuthModal({ isOpen: true, mode: 'signup' });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "Please sign in to continue",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsProcessingPayment(true);
+    
+    try {
+      await initiatePayment(
+        user.id,
+        user.emailAddresses[0]?.emailAddress || '',
+        user.fullName || user.firstName || 'User',
+        'LAUNCH',
+        'monthly',
+        () => {
+          toast({
+            title: "Payment Successful!",
+            description: "Welcome to TradeLayout! Your launch offer has been activated.",
+          });
+          navigate('/app/strategies');
+        },
+        (error) => {
+          toast({
+            title: "Payment Failed",
+            description: error,
+            variant: "destructive"
+          });
+        }
+      );
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to initiate payment",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -95,9 +142,17 @@ const HeroSection = () => {
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleLaunchOffer}
-                  className="btn-accent-glow inline-flex items-center justify-center"
+                  disabled={isProcessingPayment}
+                  className="btn-accent-glow inline-flex items-center justify-center disabled:opacity-50"
                 >
-                  <span className="font-bold">₹500 Launch Offer</span>
+                  {isProcessingPayment ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <span className="font-bold">Processing...</span>
+                    </>
+                  ) : (
+                    <span className="font-bold">₹500 Launch Offer</span>
+                  )}
                 </motion.button>
 
                 <motion.button

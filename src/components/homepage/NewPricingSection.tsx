@@ -1,14 +1,85 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Sparkles } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Check, Sparkles, Loader2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAppAuth } from '@/contexts/AuthContext';
+import { useUser } from '@clerk/clerk-react';
+import { initiatePayment } from '@/lib/services/payment-service';
+import { toast } from '@/hooks/use-toast';
+import { PlanType, BillingCycle } from '@/types/billing';
+import AuthModal from '../auth/AuthModal';
 
 const NewPricingSection = () => {
   const [showYearly, setShowYearly] = useState(false);
+  const { isAuthenticated } = useAppAuth();
+  const { user } = useUser();
+  const navigate = useNavigate();
+  const [processingPlan, setProcessingPlan] = useState<string | null>(null);
+  const [authModal, setAuthModal] = useState<{ isOpen: boolean; mode: 'signin' | 'signup' }>({
+    isOpen: false,
+    mode: 'signin'
+  });
+
+  const handlePayment = async (planType: PlanType, billingCycle: BillingCycle) => {
+    if (!isAuthenticated) {
+      setAuthModal({ isOpen: true, mode: 'signup' });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "Please sign in to continue",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Free plan - just navigate
+    if (planType === 'FREE') {
+      navigate('/app/strategies');
+      return;
+    }
+
+    setProcessingPlan(`${planType}-${billingCycle}`);
+    
+    try {
+      await initiatePayment(
+        user.id,
+        user.emailAddresses[0]?.emailAddress || '',
+        user.fullName || user.firstName || 'User',
+        planType,
+        billingCycle,
+        () => {
+          toast({
+            title: "Payment Successful!",
+            description: `Your ${planType} plan has been activated.`,
+          });
+          navigate('/app/strategies');
+        },
+        (error) => {
+          toast({
+            title: "Payment Failed",
+            description: error,
+            variant: "destructive"
+          });
+        }
+      );
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to initiate payment",
+        variant: "destructive"
+      });
+    } finally {
+      setProcessingPlan(null);
+    }
+  };
 
   const plans = [
     {
       name: 'FREE',
+      planType: 'FREE' as PlanType,
       price: '₹0',
       period: '/month',
       description: 'Get started with the basics',
@@ -19,11 +90,11 @@ const NewPricingSection = () => {
         'Community support'
       ],
       cta: 'Start Free',
-      ctaLink: '/app/strategies',
       highlighted: false,
     },
     {
       name: 'LAUNCH OFFER',
+      planType: 'LAUNCH' as PlanType,
       price: '₹500',
       period: 'for 2 months',
       badge: 'Early Adopter Access',
@@ -36,11 +107,11 @@ const NewPricingSection = () => {
       ],
       note: 'Your ₹500 adjusts when you upgrade to Pro',
       cta: 'Claim Offer',
-      ctaLink: '/app/strategies',
       highlighted: true,
     },
     {
       name: 'PRO',
+      planType: 'PRO' as PlanType,
       isPro: true,
     },
   ];
@@ -58,7 +129,6 @@ const NewPricingSection = () => {
       'API access'
     ],
     cta: 'Get Pro Monthly',
-    ctaLink: '/app/strategies',
   };
 
   const proYearly = {
@@ -74,7 +144,6 @@ const NewPricingSection = () => {
       'API access'
     ],
     cta: 'Get Pro Yearly',
-    ctaLink: '/app/strategies',
   };
 
   const currentPro = showYearly ? proYearly : proMonthly;
@@ -172,12 +241,20 @@ const NewPricingSection = () => {
                     ))}
                   </ul>
 
-                  <Link
-                    to={currentPro.ctaLink}
-                    className="block w-full text-center py-3 rounded-xl font-medium transition-all btn-ghost"
+                  <button
+                    onClick={() => handlePayment('PRO', showYearly ? 'yearly' : 'monthly')}
+                    disabled={processingPlan === `PRO-${showYearly ? 'yearly' : 'monthly'}`}
+                    className="block w-full text-center py-3 rounded-xl font-medium transition-all btn-ghost disabled:opacity-50"
                   >
-                    {currentPro.cta}
-                  </Link>
+                    {processingPlan === `PRO-${showYearly ? 'yearly' : 'monthly'}` ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Processing...
+                      </span>
+                    ) : (
+                      currentPro.cta
+                    )}
+                  </button>
                 </>
               ) : (
                 <>
@@ -203,20 +280,35 @@ const NewPricingSection = () => {
                     <p className="text-xs text-muted-foreground text-center mb-4 italic">{plan.note}</p>
                   )}
 
-                  <Link
-                    to={plan.ctaLink!}
-                    className={`block w-full text-center py-3 rounded-xl font-medium transition-all ${
+                  <button
+                    onClick={() => handlePayment(plan.planType, 'monthly')}
+                    disabled={processingPlan === `${plan.planType}-monthly`}
+                    className={`block w-full text-center py-3 rounded-xl font-medium transition-all disabled:opacity-50 ${
                       plan.highlighted ? 'btn-accent-glow' : 'btn-ghost'
                     }`}
                   >
-                    {plan.cta}
-                  </Link>
+                    {processingPlan === `${plan.planType}-monthly` ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Processing...
+                      </span>
+                    ) : (
+                      plan.cta
+                    )}
+                  </button>
                 </>
               )}
             </motion.div>
           ))}
         </div>
       </div>
+
+      <AuthModal 
+        isOpen={authModal.isOpen}
+        onClose={() => setAuthModal({ isOpen: false, mode: 'signin' })}
+        mode={authModal.mode}
+        onModeSwitch={(mode) => setAuthModal({ isOpen: true, mode })}
+      />
     </section>
   );
 };
