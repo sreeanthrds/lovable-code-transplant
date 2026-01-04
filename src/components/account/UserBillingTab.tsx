@@ -53,6 +53,7 @@ const UserBillingTab: React.FC = () => {
             description: `You've been upgraded to ${PLAN_CONFIGS[planType].name}!`,
           });
           loadPlan();
+          setUpgrading(false);
         },
         (error) => {
           toast({
@@ -60,9 +61,18 @@ const UserBillingTab: React.FC = () => {
             description: error,
             variant: 'destructive',
           });
+          setUpgrading(false);
+        },
+        () => {
+          // onPending callback - show processing toast
+          toast({
+            title: 'Payment Processing...',
+            description: 'Please wait while we confirm your payment. This may take a moment for UPI/QR payments.',
+          });
         }
       );
-    } finally {
+    } catch (error) {
+      console.error('Payment error:', error);
       setUpgrading(false);
     }
   };

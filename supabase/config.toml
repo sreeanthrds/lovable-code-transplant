@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.razorpay-verify-payment]
 verify_jwt = false
+
+[functions.razorpay-check-status]
+verify_jwt = false

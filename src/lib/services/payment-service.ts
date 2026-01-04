@@ -102,6 +102,46 @@ export const createPaymentOrder = async (
   }
 };
 
+// Check payment status by polling the order
+const checkPaymentStatus = async (
+  orderId: string,
+  userId: string,
+  planType: PlanType,
+  billingCycle: BillingCycle,
+  amount: number,
+  onSuccess: () => void,
+  onPending: () => void
+): Promise<boolean> => {
+  try {
+    const { data, error } = await tradelayoutClient.functions.invoke('razorpay-check-status', {
+      body: {
+        order_id: orderId,
+        user_id: userId,
+        plan_type: planType,
+        billing_cycle: billingCycle,
+        amount,
+      },
+    });
+
+    if (error) {
+      console.error('[PaymentService] Status check error:', error);
+      return false;
+    }
+
+    if (data?.status === 'paid' || data?.status === 'captured') {
+      onSuccess();
+      return true;
+    } else if (data?.status === 'created' || data?.status === 'attempted') {
+      onPending();
+      return false;
+    }
+    return false;
+  } catch (err) {
+    console.error('[PaymentService] Status check failed:', err);
+    return false;
+  }
+};
+
 // Initiate payment
 export const initiatePayment = async (
   userId: string,
@@ -110,7 +150,8 @@ export const initiatePayment = async (
   planType: PlanType,
   billingCycle: BillingCycle,
   onSuccess: () => void,
-  onError: (error: string) => void
+  onError: (error: string) => void,
+  onPending?: () => void
 ): Promise<void> => {
   try {
     // Load Razorpay script
@@ -127,6 +168,52 @@ export const initiatePayment = async (
 
     const planConfig = PLAN_CONFIGS[planType];
     const amount = billingCycle === 'yearly' ? planConfig.price_yearly : planConfig.price_monthly;
+    const orderId = orderResult.order_id!;
+
+    let paymentCompleted = false;
+    let pollingInterval: NodeJS.Timeout | null = null;
+
+    const stopPolling = () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+    };
+
+    const startPolling = () => {
+      if (pollingInterval) return;
+      
+      let pollCount = 0;
+      const maxPolls = 30; // Poll for 2.5 minutes max (30 * 5 seconds)
+      
+      pollingInterval = setInterval(async () => {
+        pollCount++;
+        console.log(`[PaymentService] Polling payment status (${pollCount}/${maxPolls})...`);
+        
+        const completed = await checkPaymentStatus(
+          orderId,
+          userId,
+          planType,
+          billingCycle,
+          amount,
+          () => {
+            paymentCompleted = true;
+            stopPolling();
+            onSuccess();
+          },
+          () => {
+            onPending?.();
+          }
+        );
+
+        if (completed || pollCount >= maxPolls) {
+          stopPolling();
+          if (!completed && pollCount >= maxPolls) {
+            console.log('[PaymentService] Payment polling timed out');
+          }
+        }
+      }, 5000); // Poll every 5 seconds
+    };
 
     // Open Razorpay checkout
     const options = {
@@ -135,7 +222,7 @@ export const initiatePayment = async (
       currency: 'INR',
       name: 'TradeLayout',
       description: `${planConfig.name} Plan - ${billingCycle === 'yearly' ? 'Annual' : 'Monthly'}`,
-      order_id: orderResult.order_id,
+      order_id: orderId,
       prefill: {
         name: userName,
         email: userEmail,
@@ -145,6 +232,8 @@ export const initiatePayment = async (
       },
       handler: async (response: any) => {
         console.log('[PaymentService] Payment success:', response);
+        stopPolling();
+        paymentCompleted = true;
         
         // Verify payment
         try {
@@ -171,9 +260,12 @@ export const initiatePayment = async (
       },
       modal: {
         ondismiss: () => {
-          console.log('[PaymentService] Payment modal dismissed');
-          // For UPI payments, the modal might close before confirmation
-          // The webhook will handle the actual payment confirmation
+          console.log('[PaymentService] Payment modal dismissed - starting status polling');
+          // For UPI/QR payments, start polling to check if payment completed
+          if (!paymentCompleted) {
+            startPolling();
+            onPending?.();
+          }
         },
       },
     };
@@ -181,12 +273,13 @@ export const initiatePayment = async (
     const razorpay = new window.Razorpay(options);
     razorpay.on('payment.failed', (response: any) => {
       console.error('[PaymentService] Payment failed:', response.error);
-      // Don't show error for UPI payments that might still be processing
+      stopPolling();
+      
       const reason = response.error?.reason;
-      if (reason === 'payment_risk_check_failed' || reason === 'payment_cancelled') {
-        // For UPI payments, the actual status comes via webhook
-        console.log('[PaymentService] UPI payment may still be processing via webhook');
-        onError('Payment is being processed. If you completed the payment, your plan will be updated shortly.');
+      // For UPI payments that might still be processing via webhook
+      if (reason === 'payment_risk_check_failed') {
+        startPolling();
+        onPending?.();
       } else {
         onError(response.error.description || 'Payment failed');
       }
