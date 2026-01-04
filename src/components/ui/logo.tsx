@@ -20,10 +20,10 @@ const Logo: React.FC<LogoProps> = ({ onClick, asChild = false }) => {
         className="w-8 h-8 scale-y-[0.7]"
       />
       <div className="flex flex-col leading-tight">
-        <span className="text-xl md:text-2xl font-serif font-bold text-green-600 dark:text-green-400">
+        <span className="text-xl md:text-2xl font-serif font-bold text-foreground">
           TradeLayout
         </span>
-        <span className="text-[10px] md:text-xs text-foreground/70">
+        <span className="text-[10px] md:text-xs text-muted-foreground">
           By Unificater - The Language of Visual Trading
         </span>
       </div>
