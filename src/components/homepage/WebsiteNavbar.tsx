@@ -106,10 +106,12 @@ const WebsiteNavbar = () => {
                   <>
                     <Link
                       to="/app/strategies"
-                      className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                      className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Go to App
-                      Dashboard
+                      <span className="px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-muted text-muted-foreground rounded">
+                        App
+                      </span>
                     </Link>
                     <UserButton 
                       afterSignOutUrl="/"
