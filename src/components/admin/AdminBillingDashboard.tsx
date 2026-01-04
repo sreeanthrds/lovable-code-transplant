@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { adminService, UserWithPlan } from '@/lib/supabase/services/admin-service';
+import { getAllPaymentHistory, PaymentHistory } from '@/lib/services/payment-service';
 import UserPlanEditor from './UserPlanEditor';
 import { UserPlan, PLAN_CONFIGS, PlanType, PlanStatusType } from '@/types/billing';
 import { format } from 'date-fns';
@@ -24,9 +25,11 @@ const AdminBillingDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<UserWithPlan[]>([]);
   const [plans, setPlans] = useState<UserPlan[]>([]);
+  const [payments, setPayments] = useState<PaymentHistory[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [planFilter, setPlanFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState('users');
   
   // Plan Editor
   const [planEditorOpen, setPlanEditorOpen] = useState(false);
@@ -36,12 +39,14 @@ const AdminBillingDashboard: React.FC = () => {
     if (!adminUser?.id) return;
     setLoading(true);
     try {
-      const [usersData, plansData] = await Promise.all([
+      const [usersData, plansData, paymentsData] = await Promise.all([
         adminService.getAllUsersWithPlans(adminUser.id),
-        adminService.getAllUserPlans()
+        adminService.getAllUserPlans(),
+        getAllPaymentHistory()
       ]);
       setUsers(usersData);
       setPlans(plansData);
+      setPayments(paymentsData);
     } catch (error) {
       console.error('Failed to load billing data:', error);
       toast({
@@ -59,6 +64,7 @@ const AdminBillingDashboard: React.FC = () => {
   }, [adminUser?.id]);
 
   // Stats calculations
+  const capturedPayments = payments.filter(p => p.status === 'captured');
   const stats = {
     totalUsers: users.length,
     activeSubscriptions: plans.filter(p => p.status === 'active' && p.plan !== 'FREE').length,
@@ -72,7 +78,10 @@ const AdminBillingDashboard: React.FC = () => {
       const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
       return expires <= monthEnd && expires >= now;
     }).length,
-    totalRevenue: plans.reduce((sum, p) => sum + (p.amount_paid || 0), 0),
+    totalRevenue: capturedPayments.reduce((sum, p) => sum + (p.amount || 0), 0),
+    totalPayments: payments.length,
+    successfulPayments: capturedPayments.length,
+    failedPayments: payments.filter(p => p.status === 'failed').length,
   };
 
   // Filtered users
@@ -241,55 +250,63 @@ const AdminBillingDashboard: React.FC = () => {
         </Card>
       </div>
 
-      {/* Filters & Actions */}
-      <Card>
-        <CardContent className="pt-4">
-          <div className="flex flex-wrap gap-4 items-center justify-between">
-            <div className="flex gap-4 flex-wrap items-center">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search users..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
-                />
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="users">User Plans</TabsTrigger>
+          <TabsTrigger value="payments">Payment History ({payments.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="users" className="space-y-4">
+          {/* Filters & Actions */}
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex flex-wrap gap-4 items-center justify-between">
+                <div className="flex gap-4 flex-wrap items-center">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search users..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 w-64"
+                    />
+                  </div>
+                  <Select value={planFilter} onValueChange={setPlanFilter}>
+                    <SelectTrigger className="w-32">
+                      <Filter className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Plans</SelectItem>
+                      <SelectItem value="FREE">Free</SelectItem>
+                      <SelectItem value="LAUNCH">Launch</SelectItem>
+                      <SelectItem value="PRO">Pro</SelectItem>
+                      <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="trial">Trial</SelectItem>
+                      <SelectItem value="expired">Expired</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={exportData}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Export CSV
+                  </Button>
+                </div>
               </div>
-              <Select value={planFilter} onValueChange={setPlanFilter}>
-                <SelectTrigger className="w-32">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="Plan" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Plans</SelectItem>
-                  <SelectItem value="FREE">Free</SelectItem>
-                  <SelectItem value="LAUNCH">Launch</SelectItem>
-                  <SelectItem value="PRO">Pro</SelectItem>
-                  <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="trial">Trial</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={exportData}>
-                <Download className="w-4 h-4 mr-2" />
-                Export CSV
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
 
       {/* Users Table */}
       <Card>
@@ -402,6 +419,102 @@ const AdminBillingDashboard: React.FC = () => {
           </Table>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="payments" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>All Payments</CardTitle>
+              <CardDescription>Transaction history across all users</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>User</TableHead>
+                    <TableHead>Plan</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Payment ID</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No payments recorded yet
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    payments.map((payment) => {
+                      const paymentUser = users.find(u => u.id === payment.user_id);
+                      return (
+                        <TableRow key={payment.id}>
+                          <TableCell>
+                            {format(new Date(payment.created_at), 'MMM dd, yyyy HH:mm')}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{paymentUser?.email || payment.user_id}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {paymentUser?.first_name} {paymentUser?.last_name}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {payment.plan_type && (
+                              <Badge variant={getPlanBadgeVariant(payment.plan_type as PlanType)}>
+                                {PLAN_CONFIGS[payment.plan_type as PlanType]?.name || payment.plan_type}
+                              </Badge>
+                            )}
+                            {payment.billing_cycle && (
+                              <span className="text-xs text-muted-foreground ml-2 capitalize">
+                                {payment.billing_cycle}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            ₹{payment.amount?.toLocaleString()}
+                            {payment.refund_amount && (
+                              <span className="text-xs text-yellow-500 ml-2">
+                                (-₹{payment.refund_amount})
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {payment.status === 'captured' ? (
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                              ) : payment.status === 'failed' ? (
+                                <XCircle className="w-4 h-4 text-red-500" />
+                              ) : (
+                                <Clock className="w-4 h-4 text-muted-foreground" />
+                              )}
+                              <Badge variant={
+                                payment.status === 'captured' ? 'default' :
+                                payment.status === 'failed' ? 'destructive' :
+                                payment.status === 'refunded' ? 'secondary' : 'outline'
+                              }>
+                                {payment.status}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <code className="text-xs bg-muted px-2 py-1 rounded">
+                              {payment.payment_id?.slice(0, 16)}...
+                            </code>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Plan Editor Dialog */}
       {selectedUser && (
