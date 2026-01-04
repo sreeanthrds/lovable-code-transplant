@@ -377,7 +377,7 @@ const AdminBillingDashboard: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div>BT: {plan?.backtests_used || 0}/{planConfig?.backtests_limit === -1 ? '∞' : planConfig?.backtests_limit || 5}</div>
+                          <div>BT: {plan?.backtests_used || 0}/{planConfig?.backtests_monthly_limit === -1 ? '∞' : planConfig?.backtests_monthly_limit || 5}</div>
                           <div className="text-muted-foreground">LE: {plan?.live_executions_used || 0}/{planConfig?.live_executions_limit === -1 ? '∞' : planConfig?.live_executions_limit || 0}</div>
                         </div>
                       </TableCell>

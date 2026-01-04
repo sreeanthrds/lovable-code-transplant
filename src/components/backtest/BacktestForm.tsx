@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarIcon, TrendingUp, Lock } from 'lucide-react';
+import { Calendar as CalendarIcon, TrendingUp, Lock, AlertTriangle, Infinity, ArrowUpRight } from 'lucide-react';
 import { useClerkUser } from '@/hooks/useClerkUser';
 import { useToast } from '@/hooks/use-toast';
+import { useQuota } from '@/hooks/useQuota';
 import { strategyService } from '@/lib/supabase/services/strategy-service';
 import { cn } from '@/lib/utils';
 interface BacktestConfig {
@@ -68,8 +69,10 @@ const loadSavedConfig = (): BacktestConfig => {
 
 const BacktestForm: React.FC<BacktestFormProps> = ({ onSubmit, isLoading = false }) => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { userId, isAuthenticated } = useClerkUser();
   const { toast } = useToast();
+  const { quotaInfo, loading: quotaLoading, canRunBacktest, consumeBacktest, refreshQuota } = useQuota();
   
   // Get strategy ID from URL params if launched from strategy card
   const preSelectedStrategyId = searchParams.get('strategyId');
@@ -77,6 +80,8 @@ const BacktestForm: React.FC<BacktestFormProps> = ({ onSubmit, isLoading = false
   
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [loadingStrategies, setLoadingStrategies] = useState(false);
+  const [quotaExhausted, setQuotaExhausted] = useState(false);
+  const [quotaMessage, setQuotaMessage] = useState<string | null>(null);
   
   // Load saved config, but URL param takes precedence for strategyId
   const [config, setConfig] = useState<BacktestConfig>(() => {
@@ -86,6 +91,22 @@ const BacktestForm: React.FC<BacktestFormProps> = ({ onSubmit, isLoading = false
       strategyId: preSelectedStrategyId || saved.strategyId,
     };
   });
+
+  // Check quota on mount and when quota info changes
+  useEffect(() => {
+    if (!quotaLoading && quotaInfo) {
+      const remaining = quotaInfo.backtests.remaining;
+      if (remaining === 0) {
+        setQuotaExhausted(true);
+        setQuotaMessage(quotaInfo.plan === 'FREE' 
+          ? 'Upgrade your plan for more backtests.' 
+          : 'Purchase add-ons for additional backtests.');
+      } else {
+        setQuotaExhausted(false);
+        setQuotaMessage(null);
+      }
+    }
+  }, [quotaInfo, quotaLoading]);
 
   // Load strategies for dropdown (only if not strategy-specific)
   useEffect(() => {
@@ -196,7 +217,7 @@ const BacktestForm: React.FC<BacktestFormProps> = ({ onSubmit, isLoading = false
     return true;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!config.strategyId) {
@@ -212,6 +233,21 @@ const BacktestForm: React.FC<BacktestFormProps> = ({ onSubmit, isLoading = false
     if (config.strategyId !== TEST_STRATEGY_ID && !validateDates()) {
       return;
     }
+
+    // Check quota before proceeding (skip for test strategy)
+    if (config.strategyId !== TEST_STRATEGY_ID) {
+      const quotaCheck = await canRunBacktest();
+      if (!quotaCheck.allowed) {
+        toast({
+          title: "Quota Exceeded",
+          description: quotaCheck.reason,
+          variant: "destructive",
+        });
+        setQuotaExhausted(true);
+        setQuotaMessage(quotaCheck.reason || 'Quota exhausted');
+        return;
+      }
+    }
     
     // Save config to localStorage for next time
     try {
@@ -220,7 +256,14 @@ const BacktestForm: React.FC<BacktestFormProps> = ({ onSubmit, isLoading = false
       console.error('Error saving backtest config:', e);
     }
     
+    // Call onSubmit and consume quota on success
     onSubmit(config);
+    
+    // Consume quota after submission (skip for test strategy)
+    if (config.strategyId !== TEST_STRATEGY_ID) {
+      await consumeBacktest();
+      await refreshQuota();
+    }
   };
 
   const updateConfig = (field: keyof BacktestConfig, value: any) => {
@@ -346,15 +389,63 @@ const BacktestForm: React.FC<BacktestFormProps> = ({ onSubmit, isLoading = false
         </CardContent>
       </Card>
 
-      {/* Submit Button */}
-      <div className="md:col-span-2">
+      {/* Quota Info & Submit Button */}
+      <div className="md:col-span-2 space-y-3">
+        {/* Remaining Quota Display */}
+        {!quotaLoading && (
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Remaining Backtests:</span>
+              {quotaInfo.backtests.remaining === -1 ? (
+                <Badge variant="secondary" className="gap-1">
+                  <Infinity className="w-3 h-3" />
+                  Unlimited
+                </Badge>
+              ) : (
+                <Badge variant={quotaInfo.backtests.remaining > 5 ? 'default' : quotaInfo.backtests.remaining > 0 ? 'secondary' : 'destructive'}>
+                  {quotaInfo.backtests.remaining}
+                </Badge>
+              )}
+              {quotaInfo.backtests.addonRemaining > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  +{quotaInfo.backtests.addonRemaining} add-ons
+                </Badge>
+              )}
+            </div>
+            <span className="text-xs text-muted-foreground capitalize">
+              {quotaInfo.planName} Plan
+            </span>
+          </div>
+        )}
+
+        {/* Quota Warning */}
+        {quotaExhausted && (
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+            <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-destructive">Backtest Quota Exhausted</p>
+              <p className="text-xs text-muted-foreground">{quotaMessage}</p>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="shrink-0"
+              onClick={() => navigate(quotaInfo.plan === 'FREE' ? '/pricing' : '/app/account?tab=payments')}
+            >
+              {quotaInfo.plan === 'FREE' ? 'Upgrade' : 'Buy Add-ons'}
+              <ArrowUpRight className="w-3 h-3 ml-1" />
+            </Button>
+          </div>
+        )}
+
+        {/* Submit Button */}
         <Button 
           type="submit" 
           className="w-full" 
           size="lg"
-          disabled={isLoading || !config.strategyId}
+          disabled={isLoading || !config.strategyId || (quotaExhausted && config.strategyId !== TEST_STRATEGY_ID)}
         >
-          {isLoading ? 'Running Backtest...' : 'Start Backtest'}
+          {isLoading ? 'Running Backtest...' : quotaExhausted && config.strategyId !== TEST_STRATEGY_ID ? 'Quota Exhausted' : 'Start Backtest'}
         </Button>
       </div>
     </form>
