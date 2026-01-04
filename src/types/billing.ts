@@ -74,8 +74,8 @@ export const PLAN_CONFIGS: Record<PlanType, {
     backtests_limit: 25,
     live_executions_limit: 10,
     paper_trading_limit: 5,
-    price_monthly: 499,
-    price_yearly: 4990,
+    price_monthly: 1, // TEST: ₹1 for testing
+    price_yearly: 1,  // TEST: ₹1 for testing
     color: 'default',
   },
   PRO: {
@@ -83,8 +83,8 @@ export const PLAN_CONFIGS: Record<PlanType, {
     backtests_limit: 100,
     live_executions_limit: 50,
     paper_trading_limit: 10,
-    price_monthly: 2999,
-    price_yearly: 29990,
+    price_monthly: 1, // TEST: ₹1 for testing
+    price_yearly: 1,  // TEST: ₹1 for testing
     color: 'default',
   },
   ENTERPRISE: {
@@ -92,8 +92,8 @@ export const PLAN_CONFIGS: Record<PlanType, {
     backtests_limit: -1, // unlimited
     live_executions_limit: -1,
     paper_trading_limit: -1,
-    price_monthly: 9999,
-    price_yearly: 99990,
+    price_monthly: 1, // TEST: ₹1 for testing
+    price_yearly: 1,  // TEST: ₹1 for testing
     color: 'destructive',
   },
   CUSTOM: {
