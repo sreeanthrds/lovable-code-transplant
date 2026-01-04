@@ -8,11 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { UserPlus, Edit, Trash2, Shield, User, Crown, Search, RefreshCw, Download, Menu, Activity, Clock } from 'lucide-react';
+import { UserPlus, Edit, Trash2, Shield, User, Crown, Search, RefreshCw, Download, Menu, Activity, Clock, Wallet } from 'lucide-react';
 import { tradelayoutClient as supabase } from '@/lib/supabase/tradelayout-client';
 import { useToast } from '@/hooks/use-toast';
 import { adminService } from '@/lib/supabase/services/admin-service';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import UserPlanEditor from './UserPlanEditor';
+import { UserPlan, PLAN_CONFIGS, PlanType } from '@/types/billing';
 
 interface UserProfile {
   id: string;
@@ -45,6 +47,7 @@ const UserManagementForm: React.FC = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [userActivities, setUserActivities] = useState<UserActivity[]>([]);
+  const [userPlans, setUserPlans] = useState<UserPlan[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
@@ -54,6 +57,8 @@ const UserManagementForm: React.FC = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [activitiesDialogOpen, setActivitiesDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [planEditorOpen, setPlanEditorOpen] = useState(false);
+  const [planEditorUser, setPlanEditorUser] = useState<UserProfile | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -91,9 +96,14 @@ const UserManagementForm: React.FC = () => {
 
       if (activitiesError) throw activitiesError;
 
+      // Load user plans
+      const plans = await adminService.getAllUserPlans();
+      console.log('[UserManagement] Loaded plans:', plans.length);
+
       setUsers(profiles || []);
       setUserRoles(roles || []);
       setUserActivities(activities || []);
+      setUserPlans(plans || []);
     } catch (error) {
       console.error('[UserManagement] Error loading data:', error);
       toast({
@@ -284,6 +294,24 @@ const UserManagementForm: React.FC = () => {
     setActivitiesDialogOpen(true);
   };
 
+  const getUserPlan = (userId: string): UserPlan | undefined => {
+    return userPlans.find(plan => plan.user_id === userId);
+  };
+
+  const getPlanBadgeVariant = (plan?: PlanType) => {
+    switch (plan) {
+      case 'ENTERPRISE': return 'destructive';
+      case 'PRO': return 'default';
+      case 'LAUNCH': return 'secondary';
+      default: return 'outline';
+    }
+  };
+
+  const openPlanEditor = (userProfile: UserProfile) => {
+    setPlanEditorUser(userProfile);
+    setPlanEditorOpen(true);
+  };
+
   const filteredUsers = users.filter(user =>
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -345,38 +373,52 @@ const UserManagementForm: React.FC = () => {
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Contact</TableHead>
+                  <TableHead>Plan</TableHead>
                   <TableHead>Roles</TableHead>
                   <TableHead>Joined</TableHead>
                   <TableHead>Last Active</TableHead>
-                  <TableHead className="w-32">Actions</TableHead>
+                  <TableHead className="w-40">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No users found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredUsers.map((user) => {
-                    const roles = getUserRoles(user.id);
+                  filteredUsers.map((userItem) => {
+                    const roles = getUserRoles(userItem.id);
+                    const plan = getUserPlan(userItem.id);
                     return (
-                      <TableRow key={user.id}>
+                      <TableRow key={userItem.id}>
                         <TableCell>
                           <div>
                             <div className="font-medium">
-                              {user.first_name || user.last_name 
-                                ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
+                              {userItem.first_name || userItem.last_name 
+                                ? `${userItem.first_name || ''} ${userItem.last_name || ''}`.trim()
                                 : 'No name'
                               }
                             </div>
-                            <div className="text-sm text-muted-foreground">{user.email}</div>
+                            <div className="text-sm text-muted-foreground">{userItem.email}</div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {user.phone_number || 'No phone'}
+                            {userItem.phone_number || 'No phone'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <Badge variant={getPlanBadgeVariant(plan?.plan)}>
+                              {plan ? PLAN_CONFIGS[plan.plan]?.name || plan.plan : 'Free'}
+                            </Badge>
+                            {plan?.status && plan.status !== 'active' && (
+                              <Badge variant="outline" className="text-xs">
+                                {plan.status}
+                              </Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -400,30 +442,38 @@ const UserManagementForm: React.FC = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {new Date(user.created_at).toLocaleDateString()}
+                          {new Date(userItem.created_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-sm">{getLastActiveDate(user.id)}</span>
+                            <span className="text-sm">{getLastActiveDate(userItem.id)}</span>
                           </div>
                         </TableCell>
                          <TableCell>
-                           <div className="flex gap-2">
+                           <div className="flex gap-1">
                              <Button
                                variant="ghost"
                                size="sm"
-                               onClick={() => openUserActivities(user.id)}
+                               onClick={() => openPlanEditor(userItem)}
+                               title="Manage plan & billing"
+                             >
+                               <Wallet className="w-4 h-4" />
+                             </Button>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => openUserActivities(userItem.id)}
                                title="View user activities"
                              >
                                <Menu className="w-4 h-4" />
                              </Button>
-                             <Dialog open={editDialogOpen && editingUser?.id === user.id} onOpenChange={setEditDialogOpen}>
+                             <Dialog open={editDialogOpen && editingUser?.id === userItem.id} onOpenChange={setEditDialogOpen}>
                                <DialogTrigger asChild>
                                  <Button
                                    variant="ghost"
                                    size="sm"
-                                   onClick={() => setEditingUser(user)}
+                                   onClick={() => setEditingUser(userItem)}
                                  >
                                    <Edit className="w-4 h-4" />
                                  </Button>
@@ -489,7 +539,7 @@ const UserManagementForm: React.FC = () => {
                                         <SelectItem value="admin">Admin</SelectItem>
                                       </SelectContent>
                                     </Select>
-                                    <Button onClick={() => grantRole(user.id, newRole)}>
+                                    <Button onClick={() => grantRole(userItem.id, newRole)}>
                                       Grant Role
                                     </Button>
                                   </div>
@@ -531,7 +581,7 @@ const UserManagementForm: React.FC = () => {
                                  <AlertDialogFooter>
                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
                                    <AlertDialogAction
-                                     onClick={() => deleteUser(user.id)}
+                                     onClick={() => deleteUser(userItem.id)}
                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                    >
                                      Delete User
@@ -604,6 +654,22 @@ const UserManagementForm: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* User Plan Editor Dialog */}
+      {planEditorUser && (
+        <UserPlanEditor
+          isOpen={planEditorOpen}
+          onClose={() => {
+            setPlanEditorOpen(false);
+            setPlanEditorUser(null);
+          }}
+          userId={planEditorUser.id}
+          userEmail={planEditorUser.email}
+          userName={`${planEditorUser.first_name || ''} ${planEditorUser.last_name || ''}`.trim()}
+          currentPlan={getUserPlan(planEditorUser.id)}
+          onPlanUpdated={loadData}
+        />
+      )}
     </div>
   );
 };
