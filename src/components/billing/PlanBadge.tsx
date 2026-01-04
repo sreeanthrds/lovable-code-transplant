@@ -8,6 +8,8 @@ interface PlanBadgeProps {
 export const PlanBadge: React.FC<PlanBadgeProps> = ({ plan, expiresAt }) => {
   const getPlanStyles = (plan: string) => {
     switch (plan.toUpperCase()) {
+      case 'LAUNCH':
+        return 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white border-blue-600';
       case 'PRO':
         return 'bg-gradient-to-r from-green-500 to-emerald-600 text-white border-green-600';
       case 'ENTERPRISE':
@@ -19,10 +21,12 @@ export const PlanBadge: React.FC<PlanBadgeProps> = ({ plan, expiresAt }) => {
 
   const getPlanIcon = (plan: string) => {
     switch (plan.toUpperCase()) {
+      case 'LAUNCH':
+        return '🚀';
       case 'PRO':
         return '⭐';
       case 'ENTERPRISE':
-        return '🚀';
+        return '👑';
       default:
         return '🆓';
     }
