@@ -5,11 +5,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, ExternalLink, Shield, Key, Bell, Smartphone } from 'lucide-react';
+import { Users, ExternalLink, Shield, Key, Bell, Smartphone, Wallet, CreditCard, BarChart3 } from 'lucide-react';
 import { useClerkUser } from '@/hooks/useClerkUser';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import UserLoginDetails from '@/components/auth/UserLoginDetails';
 import UserProfilesManager from '@/components/admin/UserProfilesManager';
+import UserBillingTab from '@/components/account/UserBillingTab';
+import UserPaymentHistoryTab from '@/components/account/UserPaymentHistoryTab';
 import AppLayout from '@/layouts/AppLayout';
 import { useSearchParams } from 'react-router-dom';
 import { Switch } from '@/components/ui/switch';
@@ -36,7 +38,7 @@ const Account = () => {
   const email = user?.emailAddresses[0]?.emailAddress || '';
   const firstName = user?.firstName || '';
   const lastName = user?.lastName || '';
-  const tabCount = isAdmin ? 4 : 3;
+  const tabCount = isAdmin ? 6 : 5;
   
   return (
     <AppLayout>
@@ -67,8 +69,16 @@ const Account = () => {
             
             <div className="flex-1">
               <Tabs defaultValue={defaultTab}>
-                <TabsList className={`grid grid-cols-${tabCount} mb-8 bg-white/5`}>
+                <TabsList className="grid grid-cols-5 md:grid-cols-6 mb-8 bg-white/5">
                   <TabsTrigger value="profile" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">Profile</TabsTrigger>
+                  <TabsTrigger value="billing" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                    <Wallet className="w-4 h-4 mr-1 hidden md:inline" />
+                    Billing
+                  </TabsTrigger>
+                  <TabsTrigger value="payments" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                    <CreditCard className="w-4 h-4 mr-1 hidden md:inline" />
+                    Payments
+                  </TabsTrigger>
                   <TabsTrigger value="security" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">Security</TabsTrigger>
                   <TabsTrigger value="login-info" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">Login Info</TabsTrigger>
                   {isAdmin && (
@@ -123,6 +133,14 @@ const Account = () => {
                     </p>
                   </CardFooter>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="billing">
+                <UserBillingTab />
+              </TabsContent>
+
+              <TabsContent value="payments">
+                <UserPaymentHistoryTab />
               </TabsContent>
               
               <TabsContent value="security">
