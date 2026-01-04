@@ -48,10 +48,11 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Record payment
-    const { error: paymentError } = await supabase
+    // Record payment in payment_history
+    console.log('[RazorpayVerify] Recording payment to payment_history...');
+    const { data: paymentData, error: paymentError } = await supabase
       .from('payment_history')
-      .upsert({
+      .insert({
         user_id,
         payment_id: razorpay_payment_id,
         order_id: razorpay_order_id,
@@ -61,10 +62,16 @@ serve(async (req) => {
         plan_type,
         billing_cycle,
         payment_method: 'razorpay',
-      }, { onConflict: 'payment_id' });
+        created_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
 
     if (paymentError) {
-      console.error('[RazorpayVerify] Error recording payment:', paymentError);
+      console.error('[RazorpayVerify] Error recording payment:', JSON.stringify(paymentError));
+      // Don't throw - continue with plan update even if payment history fails
+    } else {
+      console.log('[RazorpayVerify] Payment recorded successfully:', paymentData?.id);
     }
 
     // Update order status
