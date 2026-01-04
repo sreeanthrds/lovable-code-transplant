@@ -1,4 +1,4 @@
-project_id = "qhyjwljbmdcnpgaebecj"
+project_id = "oonepfqgzpdssfzvokgk"
 
 [functions.test-clerk-jwt]
 verify_jwt = false

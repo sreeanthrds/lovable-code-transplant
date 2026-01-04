@@ -1,7 +1,7 @@
 // ============================================
 // PAYMENT SERVICE - Razorpay Integration
+// Uses TradeLayout Supabase (oonepfqgzpdssfzvokgk)
 // ============================================
-import { supabase } from '@/integrations/supabase/client';
 import { tradelayoutClient } from '@/lib/supabase/tradelayout-client';
 import { PlanType, BillingCycle, PLAN_CONFIGS } from '@/types/billing';
 
@@ -70,7 +70,7 @@ export const createPaymentOrder = async (
 
     console.log(`[PaymentService] Creating order for ${planType} ${billingCycle}: ₹${amount}`);
 
-    const { data, error } = await supabase.functions.invoke('razorpay-create-order', {
+    const { data, error } = await tradelayoutClient.functions.invoke('razorpay-create-order', {
       body: {
         amount,
         currency: 'INR',
@@ -148,7 +148,7 @@ export const initiatePayment = async (
         
         // Verify payment
         try {
-          const { data: verifyData, error: verifyError } = await supabase.functions.invoke('razorpay-verify-payment', {
+          const { data: verifyData, error: verifyError } = await tradelayoutClient.functions.invoke('razorpay-verify-payment', {
             body: {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
