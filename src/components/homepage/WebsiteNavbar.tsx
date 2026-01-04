@@ -3,9 +3,10 @@ import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { useAppAuth } from '@/contexts/AuthContext';
-import { UserButton } from '@clerk/clerk-react';
 import AuthModal from '../auth/AuthModal';
 import logoImage from '@/assets/TL-logo-v4.png';
+import UserMenu from '@/components/ui/UserMenu';
+import NavPlanBadge from '@/components/ui/NavPlanBadge';
 
 const navItems = [
   { label: 'Features', href: '#features', isScroll: true },
@@ -104,20 +105,14 @@ const WebsiteNavbar = () => {
               <div className="hidden lg:flex items-center gap-4">
                 {isAuthenticated ? (
                   <>
+                    <NavPlanBadge />
                     <Link
                       to="/app/strategies"
                       className="px-3 py-1.5 text-sm font-medium rounded-md bg-muted text-foreground hover:bg-muted/80 transition-colors"
                     >
                       Go to App
                     </Link>
-                    <UserButton 
-                      afterSignOutUrl="/"
-                      appearance={{
-                        elements: {
-                          avatarBox: "w-9 h-9",
-                        }
-                      }}
-                    />
+                    <UserMenu showPlanBadge={false} />
                   </>
                 ) : (
                   <>
@@ -185,21 +180,17 @@ const WebsiteNavbar = () => {
                 <div className="pt-4 border-t border-border/30 space-y-3">
                   {isAuthenticated ? (
                     <div className="flex items-center justify-between">
-                      <Link
-                        to="/app/strategies"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        Go to App
-                      </Link>
-                      <UserButton 
-                        afterSignOutUrl="/"
-                        appearance={{
-                          elements: {
-                            avatarBox: "w-9 h-9",
-                          }
-                        }}
-                      />
+                      <div className="flex items-center gap-3">
+                        <NavPlanBadge />
+                        <Link
+                          to="/app/strategies"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          Go to App
+                        </Link>
+                      </div>
+                      <UserMenu showPlanBadge={false} />
                     </div>
                   ) : (
                     <>

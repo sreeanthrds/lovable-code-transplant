@@ -1,14 +1,14 @@
-
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { useClerkUser } from '@/hooks/useClerkUser';
-import { UserButton } from '@clerk/clerk-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import logoImage from '@/assets/TL-logo-v4.png';
+import UserMenu from '@/components/ui/UserMenu';
+import NavPlanBadge from '@/components/ui/NavPlanBadge';
 
 
 interface AppLayoutProps {
@@ -157,7 +157,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                   
                    {/* Mobile User Section */}
                    <div className="p-6 border-t border-border">
-                     <UserButton />
+                     <div className="flex items-center justify-between">
+                       <NavPlanBadge />
+                       <UserMenu />
+                     </div>
                    </div>
                 </div>
               </SheetContent>
@@ -228,8 +231,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               </nav>
             </div>
             
-            <div className="flex items-center gap-4">
-              <UserButton />
+            <div className="flex items-center gap-3">
+              <NavPlanBadge />
+              <UserMenu />
             </div>
           </div>
         </div>
