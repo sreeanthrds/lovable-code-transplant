@@ -1,140 +1,152 @@
+// ============================================
+// BILLING HOOK - Uses TradeLayout Supabase
+// Fetches plan, usage, and payment data
+// ============================================
 import { useState, useEffect, useCallback } from 'react';
-import type { BillingSummary, PaymentRecord, PlanInfo, UsageQuotas, AddOns } from '@/types/billing';
+import { useUser } from '@clerk/clerk-react';
+import { tradelayoutClient } from '@/lib/supabase/tradelayout-client';
+import { getUserPaymentHistory } from '@/lib/services/payment-service';
+import type { BillingSummary, PaymentRecord, PlanInfo, UsageQuotas, AddOns, PlanType } from '@/types/billing';
+import { PLAN_CONFIGS } from '@/types/billing';
 
-const API_BASE = 'http://localhost:8000/api/v1/billing';
-
-// Mock data for development when backend is unavailable
-const mockPlanInfo: PlanInfo = {
-  plan: 'PRO',
-  plan_code: 'PRO_MONTHLY',
-  expires: Date.now() / 1000 + 30 * 24 * 60 * 60,
-  expires_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-  renews_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-  status: 'active'
-};
-
-const mockUsage: UsageQuotas = {
-  backtests: {
-    daily_used: 1,
-    daily_limit: 2,
-    monthly_used: 78,
-    monthly_limit: 100,
-    addons_remaining: 30,
-    resets_in_days: 12
-  },
-  live_executions: {
-    monthly_used: 40,
-    monthly_limit: 50,
-    addons_remaining: 15,
-    resets_in_days: 12
-  },
-  paper_trading: {
-    daily_used: 1,
-    daily_limit: 2,
-    resets_at: '12:00 AM'
-  }
-};
-
-const mockAddOns: AddOns = {
-  backtests: 30,
-  live_executions: 15,
-  referral_bonus: {
-    backtests: 10
-  }
-};
-
-const mockPayments: PaymentRecord[] = [
-  {
-    payment_id: 'pay_NxGr1234567890',
-    order_id: 'order_NxGr0987654321',
-    amount: 299900,
-    status: 'captured',
-    date: '2025-01-01',
-    description: 'PRO Monthly Subscription'
-  },
-  {
-    payment_id: 'pay_NxGr1234567891',
-    order_id: 'order_NxGr0987654322',
-    amount: 50000,
-    status: 'captured',
-    date: '2024-12-15',
-    description: 'Add-on Pack'
-  }
-];
+interface UserPlanRow {
+  plan: PlanType;
+  status: string;
+  billing_cycle: string;
+  expires_at: string | null;
+  started_at: string | null;
+  backtests_used: number;
+  live_executions_used: number;
+  paper_trading_used: number;
+  addon_backtests: number;
+  addon_live_executions: number;
+}
 
 export const useBilling = () => {
+  const { user } = useUser();
   const [summary, setSummary] = useState<BillingSummary | null>(null);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchBillingData = useCallback(async () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     
     try {
-      // Try to fetch from real API first
-      const [planRes, summaryRes, paymentsRes] = await Promise.allSettled([
-        fetch(`${API_BASE}/plan`),
-        fetch(`${API_BASE}/summary`),
-        fetch(`${API_BASE}/payments`)
-      ]);
+      // Fetch user plan from Supabase
+      const { data: planData, error: planError } = await tradelayoutClient
+        .from('user_plans' as any)
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      let planData: PlanInfo = mockPlanInfo;
-      let usageData: UsageQuotas = mockUsage;
-      let addonsData: AddOns = mockAddOns;
-      let paymentsData: PaymentRecord[] = mockPayments;
-
-      // Parse plan data
-      if (planRes.status === 'fulfilled' && planRes.value.ok) {
-        const data = await planRes.value.json();
-        planData = {
-          plan: data.plan || 'FREE',
-          plan_code: data.plan_code || 'FREE',
-          expires: data.expires,
-          expires_date: data.expires_date,
-          renews_at: data.expires_date,
-          status: data.expires && data.expires * 1000 > Date.now() ? 'active' : 'expired'
-        };
+      if (planError) {
+        console.error('[useBilling] Plan fetch error:', planError);
       }
 
-      // Parse summary data (includes usage)
-      if (summaryRes.status === 'fulfilled' && summaryRes.value.ok) {
-        const data = await summaryRes.value.json();
-        if (data.usage) {
-          usageData = data.usage;
+      const planRow = planData as unknown as UserPlanRow | null;
+      const planType: PlanType = planRow?.plan || 'FREE';
+      const planConfig = PLAN_CONFIGS[planType];
+
+      // Build plan info
+      const planInfo: PlanInfo = {
+        plan: planType,
+        plan_code: `${planType}_${planRow?.billing_cycle?.toUpperCase() || 'FREE'}`,
+        expires: planRow?.expires_at ? new Date(planRow.expires_at).getTime() / 1000 : undefined,
+        expires_date: planRow?.expires_at ? new Date(planRow.expires_at).toISOString().split('T')[0] : undefined,
+        renews_at: planRow?.expires_at ? new Date(planRow.expires_at).toISOString().split('T')[0] : undefined,
+        status: planRow?.status === 'active' ? 'active' : 'expired'
+      };
+
+      // Calculate days until reset (assuming monthly reset from started_at)
+      const now = new Date();
+      const startedAt = planRow?.started_at ? new Date(planRow.started_at) : now;
+      const daysSinceStart = Math.floor((now.getTime() - startedAt.getTime()) / (1000 * 60 * 60 * 24));
+      const daysIntoMonth = daysSinceStart % 30;
+      const resetsInDays = 30 - daysIntoMonth;
+
+      // Build usage data
+      const usageData: UsageQuotas = {
+        backtests: {
+          daily_used: 0,
+          daily_limit: planConfig.backtests_limit === -1 ? 999 : Math.min(planConfig.backtests_limit, 5),
+          monthly_used: planRow?.backtests_used || 0,
+          monthly_limit: planConfig.backtests_limit === -1 ? 999 : planConfig.backtests_limit,
+          addons_remaining: planRow?.addon_backtests || 0,
+          resets_in_days: resetsInDays
+        },
+        live_executions: {
+          monthly_used: planRow?.live_executions_used || 0,
+          monthly_limit: planConfig.live_executions_limit === -1 ? 999 : planConfig.live_executions_limit,
+          addons_remaining: planRow?.addon_live_executions || 0,
+          resets_in_days: resetsInDays
+        },
+        paper_trading: {
+          daily_used: planRow?.paper_trading_used || 0,
+          daily_limit: planConfig.paper_trading_limit === -1 ? 999 : planConfig.paper_trading_limit,
+          resets_at: '12:00 AM'
         }
-        if (data.addons) {
-          addonsData = data.addons;
-        }
-      }
+      };
 
-      // Parse payments data
-      if (paymentsRes.status === 'fulfilled' && paymentsRes.value.ok) {
-        const data = await paymentsRes.value.json();
-        paymentsData = data.payments || [];
-      }
+      // Build add-ons data
+      const addonsData: AddOns = {
+        backtests: planRow?.addon_backtests || 0,
+        live_executions: planRow?.addon_live_executions || 0,
+        referral_bonus: {
+          backtests: 0
+        }
+      };
+
+      // Fetch payment history
+      const paymentHistory = await getUserPaymentHistory(user.id);
+      const formattedPayments: PaymentRecord[] = paymentHistory.map(p => ({
+        payment_id: p.payment_id,
+        order_id: p.order_id,
+        amount: p.amount,
+        status: p.status === 'pending' ? 'authorized' : p.status as PaymentRecord['status'],
+        date: new Date(p.created_at).toISOString().split('T')[0],
+        description: `${PLAN_CONFIGS[p.plan_type as PlanType]?.name || p.plan_type || 'Unknown'} ${p.billing_cycle === 'yearly' ? 'Annual' : 'Monthly'} Subscription`
+      }));
 
       setSummary({
-        plan: planData,
+        plan: planInfo,
         usage: usageData,
         addons: addonsData
       });
-      setPayments(paymentsData);
+      setPayments(formattedPayments);
+
     } catch (err) {
-      console.error('Billing fetch error:', err);
-      // Fallback to mock data on error
+      console.error('[useBilling] Fetch error:', err);
+      setError('Failed to load billing data');
+      
+      // Set default FREE plan on error
       setSummary({
-        plan: mockPlanInfo,
-        usage: mockUsage,
-        addons: mockAddOns
+        plan: {
+          plan: 'FREE',
+          plan_code: 'FREE',
+          status: 'active'
+        },
+        usage: {
+          backtests: { daily_used: 0, daily_limit: 2, monthly_used: 0, monthly_limit: 5, addons_remaining: 0, resets_in_days: 30 },
+          live_executions: { monthly_used: 0, monthly_limit: 0, addons_remaining: 0, resets_in_days: 30 },
+          paper_trading: { daily_used: 0, daily_limit: 2, resets_at: '12:00 AM' }
+        },
+        addons: { backtests: 0, live_executions: 0, referral_bonus: { backtests: 0 } }
       });
-      setPayments(mockPayments);
-      setError('Using demo data - backend unavailable');
+      setPayments([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchBillingData();
