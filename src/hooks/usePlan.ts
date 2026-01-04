@@ -10,7 +10,7 @@ interface PlanData {
 }
 
 interface UserPlanRow {
-  plan_type: string;
+  plan: string;
   status: string;
   expires_at: string | null;
 }
@@ -41,7 +41,7 @@ export const usePlan = () => {
       // Use raw query since user_plans may not be in generated types yet
       const { data, error } = await supabase
         .from('user_plans' as any)
-        .select('plan_type, status, expires_at')
+        .select('plan, status, expires_at')
         .eq('user_id', user.id)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
@@ -59,8 +59,8 @@ export const usePlan = () => {
         console.log('🔍 usePlan: Plan data received:', planRow);
         const expiresDate = planRow.expires_at ? new Date(planRow.expires_at).toLocaleDateString() : null;
         setPlanData({
-          plan: planRow.plan_type || 'FREE',
-          plan_code: planRow.plan_type || 'FREE',
+          plan: planRow.plan || 'FREE',
+          plan_code: planRow.plan || 'FREE',
           expires: planRow.expires_at ? new Date(planRow.expires_at).getTime() / 1000 : null,
           expires_date: expiresDate
         });
