@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, ChevronDown } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { useAppAuth } from '@/contexts/AuthContext';
+import { UserButton } from '@clerk/clerk-react';
 import AuthModal from '../auth/AuthModal';
 import logoImage from '@/assets/TL-logo-v4.png';
 
@@ -101,20 +102,41 @@ const WebsiteNavbar = () => {
 
               {/* Desktop CTAs */}
               <div className="hidden lg:flex items-center gap-4">
-                <button
-                  onClick={handleSignIn}
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {isAuthenticated ? 'Dashboard' : 'Sign In'}
-                </button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleGetStarted}
-                  className="px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                >
-                  {isAuthenticated ? 'Go to App' : 'Start Free'}
-                </motion.button>
+                {isAuthenticated ? (
+                  <>
+                    <Link
+                      to="/app/strategies"
+                      className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Dashboard
+                    </Link>
+                    <UserButton 
+                      afterSignOutUrl="/"
+                      appearance={{
+                        elements: {
+                          avatarBox: "w-9 h-9",
+                        }
+                      }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleSignIn}
+                      className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Sign In
+                    </button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleGetStarted}
+                      className="px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                    >
+                      Start Free
+                    </motion.button>
+                  </>
+                )}
               </div>
 
               {/* Mobile menu button */}
@@ -161,24 +183,46 @@ const WebsiteNavbar = () => {
                   )
                 ))}
                 <div className="pt-4 border-t border-border/30 space-y-3">
-                  <button
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      handleSignIn();
-                    }}
-                    className="block w-full text-left text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {isAuthenticated ? 'Dashboard' : 'Sign In'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      handleGetStarted();
-                    }}
-                    className="w-full px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                  >
-                    {isAuthenticated ? 'Go to App' : 'Start Free'}
-                  </button>
+                  {isAuthenticated ? (
+                    <div className="flex items-center justify-between">
+                      <Link
+                        to="/app/strategies"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Dashboard
+                      </Link>
+                      <UserButton 
+                        afterSignOutUrl="/"
+                        appearance={{
+                          elements: {
+                            avatarBox: "w-9 h-9",
+                          }
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          handleSignIn();
+                        }}
+                        className="block w-full text-left text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Sign In
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          handleGetStarted();
+                        }}
+                        className="w-full px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                      >
+                        Start Free
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </motion.div>
