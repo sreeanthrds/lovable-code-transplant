@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { Crown, Zap, Calendar, TrendingUp, ArrowUpRight, RefreshCw } from 'lucide-react';
+import { Crown, Zap, Calendar, TrendingUp, ArrowUpRight, RefreshCw, Wifi } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { usePaymentRealtime } from '@/hooks/usePaymentRealtime';
 import { adminService } from '@/lib/supabase/services/admin-service';
 import { initiatePayment } from '@/lib/services/payment-service';
 import { UserPlan, PlanType, BillingCycle, PLAN_CONFIGS } from '@/types/billing';
@@ -19,7 +20,7 @@ const UserBillingTab: React.FC = () => {
   const [userPlan, setUserPlan] = useState<UserPlan | null>(null);
   const [upgrading, setUpgrading] = useState(false);
 
-  const loadPlan = async () => {
+  const loadPlan = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
     try {
@@ -30,11 +31,17 @@ const UserBillingTab: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
+
+  // Setup realtime subscription for instant payment updates
+  usePaymentRealtime({
+    userId: user?.id,
+    onPlanUpdated: loadPlan,
+  });
 
   useEffect(() => {
     loadPlan();
-  }, [user?.id]);
+  }, [loadPlan]);
 
   const handleUpgrade = async (planType: PlanType, billingCycle: BillingCycle) => {
     if (!user) return;
@@ -96,6 +103,12 @@ const UserBillingTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Realtime Status Indicator */}
+      <div className="flex items-center gap-2 text-xs text-white/50">
+        <Wifi className="w-3 h-3 text-green-500" />
+        <span>Live updates enabled</span>
+      </div>
+
       {/* Current Plan */}
       <Card className="glass-card border-white/10">
         <CardHeader>
