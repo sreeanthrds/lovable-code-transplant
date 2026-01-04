@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
+import logoImage from '@/assets/TL-logo-v4.png';
 
 
 interface AppLayoutProps {
@@ -45,9 +46,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             <Link to="/" className="flex items-center space-x-3 group">
               <div className="relative">
                 <img 
-                  src="/lovable-uploads/771c5927-40d8-4bfb-b06c-7a4b061d694d.png"
+                  src={logoImage}
                   alt="TradeLayout Logo" 
-                  className="w-8 h-8 transition-transform group-hover:scale-110"
+                  className="w-8 h-8 scale-y-[0.7] transition-transform group-hover:scale-110"
                 />
               </div>
               <span className="font-semibold text-lg text-white/95">TradeLayout</span>
@@ -76,9 +77,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                   <div className="p-6 border-b border-border">
                     <Link to="/" onClick={closeSheet} className="flex items-center space-x-3">
                       <img 
-                        src="/lovable-uploads/771c5927-40d8-4bfb-b06c-7a4b061d694d.png"
+                        src={logoImage}
                         alt="TradeLayout Logo" 
-                        className="w-10 h-10"
+                        className="w-10 h-10 scale-y-[0.7]"
                       />
                       <span className="font-semibold text-xl text-white/95">TradeLayout</span>
                     </Link>
@@ -169,9 +170,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               <Link to="/" className="flex items-center space-x-3 group">
                 <div className="relative">
                   <img 
-                    src="/lovable-uploads/771c5927-40d8-4bfb-b06c-7a4b061d694d.png"
+                    src={logoImage}
                     alt="TradeLayout Logo" 
-                    className="w-10 h-10 transition-transform group-hover:scale-110"
+                    className="w-10 h-10 scale-y-[0.7] transition-transform group-hover:scale-110"
                   />
                 </div>
                 <span className="font-semibold text-xl text-white/95">TradeLayout</span>
