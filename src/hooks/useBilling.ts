@@ -78,9 +78,9 @@ export const useBilling = () => {
       const usageData: UsageQuotas = {
         backtests: {
           daily_used: 0,
-          daily_limit: planConfig.backtests_limit === -1 ? 999 : Math.min(planConfig.backtests_limit, 5),
+          daily_limit: planConfig.backtests_daily_limit === -1 ? 999 : planConfig.backtests_daily_limit,
           monthly_used: planRow?.backtests_used || 0,
-          monthly_limit: planConfig.backtests_limit === -1 ? 999 : planConfig.backtests_limit,
+          monthly_limit: planConfig.backtests_monthly_limit === -1 ? 999 : planConfig.backtests_monthly_limit,
           addons_remaining: planRow?.addon_backtests || 0,
           resets_in_days: resetsInDays
         },
@@ -92,7 +92,7 @@ export const useBilling = () => {
         },
         paper_trading: {
           daily_used: planRow?.paper_trading_used || 0,
-          daily_limit: planConfig.paper_trading_limit === -1 ? 999 : planConfig.paper_trading_limit,
+          daily_limit: planConfig.paper_trading_monthly_limit === -1 ? 999 : planConfig.paper_trading_monthly_limit,
           resets_at: '12:00 AM'
         }
       };

@@ -175,11 +175,11 @@ const UserBillingTab: React.FC = () => {
               <div className="flex justify-between mb-2">
                 <span className="text-sm text-white/80">Backtests</span>
                 <span className="text-sm text-white/60">
-                  {userPlan?.backtests_used || 0} / {planConfig.backtests_limit === -1 ? '∞' : planConfig.backtests_limit}
+                  {userPlan?.backtests_used || 0} / {planConfig.backtests_monthly_limit === -1 ? '∞' : planConfig.backtests_monthly_limit}
                 </span>
               </div>
               <Progress 
-                value={getUsagePercentage(userPlan?.backtests_used || 0, planConfig.backtests_limit)} 
+                value={getUsagePercentage(userPlan?.backtests_used || 0, planConfig.backtests_monthly_limit)} 
                 className="h-2"
               />
             </div>
@@ -199,11 +199,11 @@ const UserBillingTab: React.FC = () => {
               <div className="flex justify-between mb-2">
                 <span className="text-sm text-white/80">Paper Trading</span>
                 <span className="text-sm text-white/60">
-                  {userPlan?.paper_trading_used || 0} / {planConfig.paper_trading_limit === -1 ? '∞' : planConfig.paper_trading_limit}
+                  {userPlan?.paper_trading_used || 0} / {planConfig.paper_trading_monthly_limit === -1 ? '∞' : planConfig.paper_trading_monthly_limit}
                 </span>
               </div>
               <Progress 
-                value={getUsagePercentage(userPlan?.paper_trading_used || 0, planConfig.paper_trading_limit)} 
+                value={getUsagePercentage(userPlan?.paper_trading_used || 0, planConfig.paper_trading_monthly_limit)} 
                 className="h-2"
               />
             </div>
@@ -271,9 +271,9 @@ const UserBillingTab: React.FC = () => {
                       or ₹{config.price_yearly}/year (save 17%)
                     </p>
                     <ul className="text-sm text-white/70 space-y-1 mb-4">
-                      <li>• {config.backtests_limit === -1 ? 'Unlimited' : config.backtests_limit} backtests</li>
-                      <li>• {config.live_executions_limit === -1 ? 'Unlimited' : config.live_executions_limit} live executions</li>
-                      <li>• {config.paper_trading_limit === -1 ? 'Unlimited' : config.paper_trading_limit} paper trades</li>
+                      <li>• {config.backtests_monthly_limit === -1 ? 'Unlimited' : config.backtests_monthly_limit} backtests/mo</li>
+                      <li>• {config.live_executions_limit === -1 ? 'Unlimited' : config.live_executions_limit} live executions/mo</li>
+                      <li>• {config.paper_trading_monthly_limit === -1 ? 'Unlimited' : config.paper_trading_monthly_limit} paper trades</li>
                     </ul>
                     {!isCurrentPlan && !isDowngrade && (
                       <div className="flex gap-2">

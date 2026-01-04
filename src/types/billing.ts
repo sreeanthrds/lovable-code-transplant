@@ -6,6 +6,15 @@ export type PlanType = 'FREE' | 'LAUNCH' | 'PRO' | 'ENTERPRISE' | 'CUSTOM';
 export type PlanStatusType = 'active' | 'expired' | 'cancelled' | 'trial' | 'paused';
 export type BillingCycle = 'monthly' | 'yearly' | 'lifetime';
 
+// Plan hierarchy - higher number = higher tier (cannot downgrade while active)
+export const PLAN_HIERARCHY: Record<PlanType, number> = {
+  FREE: 0,
+  LAUNCH: 1,
+  PRO: 2,
+  ENTERPRISE: 3,
+  CUSTOM: 4,
+};
+
 export interface UserPlan {
   id: string;
   user_id: string;
@@ -23,17 +32,22 @@ export interface UserPlan {
   cancelled_at: string | null;
   trial_ends_at: string | null;
   
-  // Usage limits
+  // Usage limits (from plan config, can be overridden)
   backtests_limit: number | null;
   live_executions_limit: number | null;
   paper_trading_limit: number | null;
   
-  // Usage tracking
+  // Monthly usage tracking
   backtests_used: number;
   live_executions_used: number;
   paper_trading_used: number;
   
-  // Add-ons
+  // Daily usage tracking
+  backtests_used_today: number;
+  paper_trading_used_today: number;
+  usage_reset_date: string | null;
+  
+  // Add-ons (never expire)
   addon_backtests: number;
   addon_live_executions: number;
   
@@ -50,60 +64,107 @@ export interface UserPlan {
   updated_at: string;
 }
 
-// Plan configuration with default limits
-export const PLAN_CONFIGS: Record<PlanType, {
+// Plan configuration with limits
+// FREE: 2 backtests/day, 14/month, 2 paper trades/month
+// LAUNCH: Unlimited backtests & paper trades for 2 months (promo)
+// PRO: 100 backtests/month, 2 paper/day, 50 live/month
+export interface PlanConfig {
   name: string;
-  backtests_limit: number;
-  live_executions_limit: number;
-  paper_trading_limit: number;
+  backtests_daily_limit: number;    // -1 = unlimited
+  backtests_monthly_limit: number;  // -1 = unlimited
+  live_executions_limit: number;    // -1 = unlimited
+  paper_trading_daily_limit: number;  // -1 = unlimited
+  paper_trading_monthly_limit: number; // -1 = unlimited
   price_monthly: number;
   price_yearly: number;
+  duration_months?: number;  // For promo plans like LAUNCH
+  can_buy_addons: boolean;
   color: string;
-}> = {
+}
+
+export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
   FREE: {
     name: 'Free',
-    backtests_limit: 5,
+    backtests_daily_limit: 2,
+    backtests_monthly_limit: 14,
     live_executions_limit: 0,
-    paper_trading_limit: 2,
+    paper_trading_daily_limit: -1,
+    paper_trading_monthly_limit: 2,
     price_monthly: 0,
     price_yearly: 0,
+    can_buy_addons: false,
     color: 'secondary',
   },
   LAUNCH: {
     name: 'Launch',
-    backtests_limit: 25,
-    live_executions_limit: 10,
-    paper_trading_limit: 5,
-    price_monthly: 1, // TEST: ₹1 for testing
-    price_yearly: 1,  // TEST: ₹1 for testing
+    backtests_daily_limit: -1,      // unlimited
+    backtests_monthly_limit: -1,    // unlimited
+    live_executions_limit: 0,       // not available yet
+    paper_trading_daily_limit: -1,  // unlimited
+    paper_trading_monthly_limit: -1, // unlimited
+    price_monthly: 1,  // TEST price
+    price_yearly: 1,
+    duration_months: 2,  // 2 month promo
+    can_buy_addons: false,
     color: 'default',
   },
   PRO: {
     name: 'Pro',
-    backtests_limit: 100,
+    backtests_daily_limit: -1,     // no daily limit
+    backtests_monthly_limit: 100,
     live_executions_limit: 50,
-    paper_trading_limit: 10,
-    price_monthly: 1, // TEST: ₹1 for testing
-    price_yearly: 1,  // TEST: ₹1 for testing
+    paper_trading_daily_limit: 2,
+    paper_trading_monthly_limit: -1, // only daily limit
+    price_monthly: 499,  // actual price (test: 1)
+    price_yearly: 4999,
+    can_buy_addons: true,
     color: 'default',
   },
   ENTERPRISE: {
     name: 'Enterprise',
-    backtests_limit: -1, // unlimited
+    backtests_daily_limit: -1,
+    backtests_monthly_limit: -1,
     live_executions_limit: -1,
-    paper_trading_limit: -1,
-    price_monthly: 1, // TEST: ₹1 for testing
-    price_yearly: 1,  // TEST: ₹1 for testing
+    paper_trading_daily_limit: -1,
+    paper_trading_monthly_limit: -1,
+    price_monthly: 1999,
+    price_yearly: 19999,
+    can_buy_addons: true,
     color: 'destructive',
   },
   CUSTOM: {
     name: 'Custom',
-    backtests_limit: 0,
+    backtests_daily_limit: 0,
+    backtests_monthly_limit: 0,
     live_executions_limit: 0,
-    paper_trading_limit: 0,
+    paper_trading_daily_limit: 0,
+    paper_trading_monthly_limit: 0,
     price_monthly: 0,
     price_yearly: 0,
+    can_buy_addons: false,
     color: 'outline',
+  },
+};
+
+// Add-on packages (never expire, consumed after monthly quota)
+export const ADDON_PACKAGES = {
+  COMBO: {
+    name: 'Combo Pack',
+    backtests: 30,
+    live_executions: 15,
+    price: 199,
+  },
+  BACKTEST_ONLY: {
+    name: 'Backtest Pack',
+    backtests: 30,
+    live_executions: 0,
+    price: 99,
+  },
+  LIVE_ONLY: {
+    name: 'Live Trading Pack',
+    backtests: 0,
+    live_executions: 15,
+    price: 149,
   },
 };
 
