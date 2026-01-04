@@ -48,7 +48,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 <img 
                   src={logoImage}
                   alt="TradeLayout Logo" 
-                  className="w-8 h-8 scale-y-[0.7] transition-transform group-hover:scale-110"
+                  className="w-6 h-6 scale-y-[0.7] transition-transform group-hover:scale-110"
                 />
               </div>
               <span className="font-semibold text-lg text-white/95">TradeLayout</span>
@@ -79,7 +79,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                       <img 
                         src={logoImage}
                         alt="TradeLayout Logo" 
-                        className="w-10 h-10 scale-y-[0.7]"
+                        className="w-7 h-7 scale-y-[0.7]"
                       />
                       <span className="font-semibold text-xl text-white/95">TradeLayout</span>
                     </Link>
@@ -172,7 +172,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                   <img 
                     src={logoImage}
                     alt="TradeLayout Logo" 
-                    className="w-10 h-10 scale-y-[0.7] transition-transform group-hover:scale-110"
+                    className="w-7 h-7 scale-y-[0.7] transition-transform group-hover:scale-110"
                   />
                 </div>
                 <span className="font-semibold text-xl text-white/95">TradeLayout</span>
