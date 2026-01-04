@@ -2,6 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useWebsiteTheme } from '@/hooks/use-website-theme';
+import logoImage from '@/assets/TL-logo-v4.png';
 
 interface LogoProps {
   onClick?: () => void;
@@ -14,9 +15,9 @@ const Logo: React.FC<LogoProps> = ({ onClick, asChild = false }) => {
   const logoContent = (
     <>
       <img 
-        src="/lovable-uploads/771c5927-40d8-4bfb-b06c-7a4b061d694d.png"
+        src={logoImage}
         alt="TradeLayout Logo" 
-        className="w-8 h-8 md:w-10 md:h-10"
+        className="w-8 h-8 scale-y-[0.7]"
       />
       <div className="flex flex-col leading-tight">
         <span className="text-xl md:text-2xl font-serif font-bold text-green-600 dark:text-green-400">

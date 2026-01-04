@@ -108,6 +108,7 @@ const WebsiteNavbar = () => {
                       to="/app/strategies"
                       className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                     >
+                      Go to App
                       Dashboard
                     </Link>
                     <UserButton 
@@ -190,7 +191,7 @@ const WebsiteNavbar = () => {
                         onClick={() => setIsMobileMenuOpen(false)}
                         className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
                       >
-                        Dashboard
+                        Go to App
                       </Link>
                       <UserButton 
                         afterSignOutUrl="/"
