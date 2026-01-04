@@ -9,10 +9,12 @@ import Logo from './logo';
 import DesktopNav from './desktop-nav';
 import MobileNav from './mobile-nav';
 import { PlanBadge } from '@/components/billing/PlanBadge';
+import { usePlan } from '@/hooks/usePlan';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const closeSheet = () => setIsOpen(false);
+  const { planData, loading: planLoading } = usePlan();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/90 dark:bg-white/10 border-white/40 dark:border-white/20 shadow-sm backdrop-blur-xl">
@@ -73,7 +75,7 @@ const Navbar = () => {
             </Link>
             <SignedIn>
               <Link to="/app/account?tab=billing" className="hover:opacity-80 transition-opacity">
-                <PlanBadge plan="FREE" />
+                {!planLoading && <PlanBadge plan={planData.plan} expiresAt={planData.expires_date} />}
               </Link>
               <UserButton />
             </SignedIn>
