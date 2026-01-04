@@ -40,7 +40,7 @@ export const usePlan = () => {
     try {
       // Use raw query since user_plans may not be in generated types yet
       const { data, error } = await supabase
-        .from('user_plans' as any)
+        .from('user_subscriptions' as any)
         .select('plan, status, expires_at')
         .eq('user_id', user.id)
         .eq('status', 'active')
