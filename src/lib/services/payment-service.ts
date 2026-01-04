@@ -295,6 +295,8 @@ export const initiatePayment = async (
 // Get user payment history
 export const getUserPaymentHistory = async (userId: string): Promise<PaymentHistory[]> => {
   try {
+    console.log('[PaymentService] Fetching payment history for user:', userId);
+    
     const { data, error } = await (tradelayoutClient as any)
       .from('payment_history')
       .select('*')
@@ -306,6 +308,7 @@ export const getUserPaymentHistory = async (userId: string): Promise<PaymentHist
       return [];
     }
 
+    console.log('[PaymentService] Payment history fetched:', data?.length || 0, 'records');
     return data || [];
   } catch (error) {
     console.error('[PaymentService] Error:', error);
