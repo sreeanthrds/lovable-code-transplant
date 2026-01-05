@@ -427,28 +427,86 @@ const PitchDeck = () => {
               </p>
             </motion.div>
 
-            <div className="grid lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {/* Pricing Tiers */}
+            <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-12">
+              {/* Launch Offer */}
               <motion.div 
                 {...fadeInUp}
-                className="glass-card p-8 rounded-2xl"
+                className="glass-card p-6 rounded-2xl border-2 border-accent relative overflow-hidden"
               >
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <Zap className="w-6 h-6 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-bold text-foreground">Subscription Revenue</h3>
+                <div className="absolute top-3 right-3 px-3 py-1 bg-accent text-accent-foreground text-xs font-bold rounded-full">
+                  LAUNCH OFFER
                 </div>
-                <ul className="space-y-3">
+                <h3 className="text-2xl font-bold text-foreground mb-2">₹500</h3>
+                <p className="text-muted-foreground mb-4">for 2 months</p>
+                <ul className="space-y-2 text-sm">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />
+                    <span className="text-foreground/90">Unlimited backtests</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />
+                    <span className="text-foreground/90">Unlimited live trades</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />
+                    <span className="text-foreground/90">Full platform access</span>
+                  </li>
+                </ul>
+                <p className="mt-4 text-xs text-muted-foreground italic">Early adopter pricing (MVP phase)</p>
+              </motion.div>
+
+              {/* Pro Plan */}
+              <motion.div 
+                {...fadeInUp}
+                className="glass-card p-6 rounded-2xl border border-primary/30"
+              >
+                <div className="flex items-baseline gap-2 mb-2">
+                  <h3 className="text-2xl font-bold text-foreground">₹2,999</h3>
+                  <span className="text-muted-foreground">/month</span>
+                </div>
+                <p className="text-sm text-primary font-medium mb-4">or ₹29,999/year (2 months free)</p>
+                <ul className="space-y-2 text-sm">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-foreground/90">100 backtests/month</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-foreground/90">50 live trades/month</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-foreground/90">2 paper trading sessions/day</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-foreground/90">Add-ons available for more</span>
+                  </li>
+                </ul>
+                <p className="mt-4 text-xs text-muted-foreground italic">Post-MVP full version pricing</p>
+              </motion.div>
+            </div>
+
+            {/* Revenue Streams */}
+            <div className="grid lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+              <motion.div 
+                {...fadeInUp}
+                className="glass-card p-6 rounded-2xl"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Zap className="w-5 h-5 text-primary" />
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground">Subscriptions</h3>
+                </div>
+                <ul className="space-y-2 text-sm">
                   <li className="flex items-start gap-2">
-                    <ArrowRight className="w-4 h-4 text-primary mt-1 shrink-0" />
-                    <span className="text-muted-foreground">Pro Plan: ₹499/month for serious traders</span>
+                    <ArrowRight className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                    <span className="text-muted-foreground">Monthly & annual plans</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <ArrowRight className="w-4 h-4 text-primary mt-1 shrink-0" />
-                    <span className="text-muted-foreground">100 backtests + 50 live trades/month</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <ArrowRight className="w-4 h-4 text-primary mt-1 shrink-0" />
+                    <ArrowRight className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                     <span className="text-muted-foreground">Add-on packs for power users</span>
                   </li>
                 </ul>
@@ -456,26 +514,44 @@ const PitchDeck = () => {
 
               <motion.div 
                 {...fadeInUp}
-                className="glass-card p-8 rounded-2xl"
+                className="glass-card p-6 rounded-2xl"
               >
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                    <Store className="w-6 h-6 text-accent" />
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                    <Store className="w-5 h-5 text-accent" />
                   </div>
-                  <h3 className="text-xl font-bold text-foreground">Marketplace Revenue</h3>
+                  <h3 className="text-lg font-bold text-foreground">Marketplace</h3>
                 </div>
-                <ul className="space-y-3">
+                <ul className="space-y-2 text-sm">
                   <li className="flex items-start gap-2">
-                    <ArrowRight className="w-4 h-4 text-accent mt-1 shrink-0" />
-                    <span className="text-muted-foreground">Experts monetize strategies & indicators</span>
+                    <ArrowRight className="w-4 h-4 text-accent mt-0.5 shrink-0" />
+                    <span className="text-muted-foreground">Experts sell strategies & indicators</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <ArrowRight className="w-4 h-4 text-accent mt-1 shrink-0" />
-                    <span className="text-muted-foreground">Platform takes commission on sales</span>
+                    <ArrowRight className="w-4 h-4 text-accent mt-0.5 shrink-0" />
+                    <span className="text-muted-foreground">Platform commission on sales</span>
+                  </li>
+                </ul>
+              </motion.div>
+
+              <motion.div 
+                {...fadeInUp}
+                className="glass-card p-6 rounded-2xl"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-success" />
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground">Broker Partnerships</h3>
+                </div>
+                <ul className="space-y-2 text-sm">
+                  <li className="flex items-start gap-2">
+                    <ArrowRight className="w-4 h-4 text-success mt-0.5 shrink-0" />
+                    <span className="text-muted-foreground">Revenue share on brokerage</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <ArrowRight className="w-4 h-4 text-accent mt-1 shrink-0" />
-                    <span className="text-muted-foreground">Network effect: More experts → richer marketplace</span>
+                    <ArrowRight className="w-4 h-4 text-success mt-0.5 shrink-0" />
+                    <span className="text-muted-foreground">Zerodha, Upstox, Angel integrations</span>
                   </li>
                 </ul>
               </motion.div>
