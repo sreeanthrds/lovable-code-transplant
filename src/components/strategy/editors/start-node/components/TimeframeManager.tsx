@@ -90,10 +90,12 @@ const TimeframeManager: React.FC<TimeframeManagerProps> = ({
     }
     
     const { unit, number } = parseTimeframe(option.value);
+    const newId = createTimeframeId(option.value);
     const updatedTimeframes = timeframes.map(tf => 
       tf.id === id 
         ? { 
             ...tf,
+            id: newId, // Update ID to match new timeframe
             timeframe: option.value,
             unit,
             number
