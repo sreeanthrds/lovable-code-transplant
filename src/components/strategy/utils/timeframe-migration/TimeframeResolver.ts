@@ -32,7 +32,7 @@ export class TimeframeResolver {
       return timeframeId;
     }
     
-    // Handle tf_ prefixed IDs - try to find matching timeframe in cache
+    // Handle tf_ prefixed IDs (e.g., "tf_5m", "tf_1m_default", "tf_1")
     if (typeof timeframeId === 'string' && timeframeId.startsWith('tf_')) {
       // First try to find a matching entry in cache by ID
       for (const [cachedId, cachedTimeframe] of this.timeframeCache.entries()) {
@@ -41,14 +41,22 @@ export class TimeframeResolver {
         }
       }
       
-      // Extract the suffix and check if it's a valid display value (e.g., "tf_5m" -> "5m")
-      const extracted = timeframeId.replace('tf_', '');
+      // Remove tf_ prefix and any suffix like _default
+      let extracted = timeframeId.replace('tf_', '');
+      
+      // Handle patterns like "tf_1m_default" -> extract "1m"
+      const timeframeMatch = extracted.match(/^(\d+[mhd])/);
+      if (timeframeMatch) {
+        return timeframeMatch[1];
+      }
+      
+      // Check if it's a valid display value directly (e.g., "tf_5m" -> "5m")
       if (/^(\d+)([mhd])$/.test(extracted)) {
         return extracted;
       }
       
       // Try to find by matching the numeric part (e.g., "tf_1" matches timeframe with value 1)
-      const numericMatch = extracted.match(/^(\d+)$/);
+      const numericMatch = extracted.match(/^(\d+)/);
       if (numericMatch) {
         for (const cachedTimeframe of this.timeframeCache.values()) {
           if (String(cachedTimeframe.timeframe) === numericMatch[1]) {
