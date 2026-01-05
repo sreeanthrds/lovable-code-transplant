@@ -71,17 +71,20 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
         
       case 'indicator':
         // Get the display name from the start node's indicators data
-        let indicatorName = 'Unknown_Indicator';
+        let indicatorName = 'Indicator';
+        
+        // Use indicatorId as the primary key to look up the indicator
+        const indicatorKey = expression.indicatorId || expression.name;
         
         // Try to find the indicator in the nodeData
-        if (expression.name && nodeData) {
+        if (indicatorKey && nodeData) {
           let indicatorData = null;
           
           // Search in trading instrument config
           if (nodeData.tradingInstrumentConfig?.timeframes) {
             for (const timeframe of nodeData.tradingInstrumentConfig.timeframes) {
               if (timeframe.indicators && typeof timeframe.indicators === 'object') {
-                const foundIndicator = timeframe.indicators[expression.name];
+                const foundIndicator = timeframe.indicators[indicatorKey];
                 if (foundIndicator) {
                   indicatorData = foundIndicator;
                   break;
@@ -94,7 +97,7 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
           if (!indicatorData && nodeData.supportingInstrumentConfig?.timeframes) {
             for (const timeframe of nodeData.supportingInstrumentConfig.timeframes) {
               if (timeframe.indicators && typeof timeframe.indicators === 'object') {
-                const foundIndicator = timeframe.indicators[expression.name];
+                const foundIndicator = timeframe.indicators[indicatorKey];
                 if (foundIndicator) {
                   indicatorData = foundIndicator;
                   break;
@@ -104,10 +107,14 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
           }
           
           if (indicatorData) {
-            indicatorName = indicatorData.display_name || normalizeExpressionIdentifier(expression.name);
-          } else if (expression.name) {
-            indicatorName = normalizeExpressionIdentifier(expression.name);
+            // Use display_name or indicator_name from the indicator data
+            indicatorName = indicatorData.display_name || indicatorData.indicator_name || indicatorKey;
+          } else if (indicatorKey) {
+            // Fallback: extract indicator type from the key (e.g., "RSI_tf_1m_default" -> "RSI")
+            indicatorName = normalizeExpressionIdentifier(indicatorKey);
           }
+        } else if (indicatorKey) {
+          indicatorName = normalizeExpressionIdentifier(indicatorKey);
         }
         
         // Use the new formatting function with timeframe resolution
@@ -115,10 +122,13 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
           ? TimeframeResolver.getDisplayValue(expression.timeframeId)
           : expression.timeframe || '';
         
+        // Add parameter to display (e.g., RSI.value, MACD.signal)
+        const paramDisplay = expression.indicatorParam || expression.parameter;
+        
         return formatExpressionDisplayName(indicatorName, {
           instrumentType: expression.instrumentType,
           timeframe: indicatorTimeframeDisplay,
-          parameter: expression.parameter,
+          parameter: paramDisplay,
           offset: expression.offset
         });
         
