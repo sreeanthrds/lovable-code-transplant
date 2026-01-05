@@ -32,41 +32,24 @@ export class TimeframeResolver {
       return timeframeId;
     }
     
-    // Handle tf_ prefixed IDs (e.g., "tf_5m", "tf_1m_default", "tf_1")
+    // Handle tf_ prefixed IDs - search cache by ID (don't parse the ID, as it may not match the actual timeframe)
     if (typeof timeframeId === 'string' && timeframeId.startsWith('tf_')) {
-      // First try to find a matching entry in cache by ID
+      // Search for matching entry in cache by ID
       for (const [cachedId, cachedTimeframe] of this.timeframeCache.entries()) {
         if (cachedId === timeframeId) {
           return formatTimeframeDisplay(cachedTimeframe);
         }
       }
       
-      // Remove tf_ prefix and any suffix like _default
-      let extracted = timeframeId.replace('tf_', '');
-      
-      // Handle patterns like "tf_1m_default" -> extract "1m"
-      const timeframeMatch = extracted.match(/^(\d+[mhd])/);
-      if (timeframeMatch) {
-        return timeframeMatch[1];
-      }
-      
-      // Check if it's a valid display value directly (e.g., "tf_5m" -> "5m")
-      if (/^(\d+)([mhd])$/.test(extracted)) {
-        return extracted;
-      }
-      
-      // Try to find by matching the numeric part (e.g., "tf_1" matches timeframe with value 1)
-      const numericMatch = extracted.match(/^(\d+)/);
-      if (numericMatch) {
-        for (const cachedTimeframe of this.timeframeCache.values()) {
-          if (String(cachedTimeframe.timeframe) === numericMatch[1]) {
-            return formatTimeframeDisplay(cachedTimeframe);
-          }
+      // If not found in cache, try partial ID match (for IDs like "tf_1m_default" matching "tf_1m_default_xyz")
+      for (const [cachedId, cachedTimeframe] of this.timeframeCache.entries()) {
+        if (timeframeId.startsWith(cachedId) || cachedId.startsWith(timeframeId)) {
+          return formatTimeframeDisplay(cachedTimeframe);
         }
       }
     }
     
-    console.warn('⚠️ TimeframeResolver: No timeframe found for ID:', timeframeId, 'Cache size:', this.timeframeCache.size);
+    console.warn('⚠️ TimeframeResolver: No timeframe found for ID:', timeframeId, 'Cache entries:', Array.from(this.timeframeCache.keys()));
     return timeframeId || 'Unknown';
   }
   
