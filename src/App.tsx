@@ -25,6 +25,7 @@ import NotFound from "./pages/NotFound";
 import Demo from "./pages/Demo";
 import Blog from "./pages/Blog";
 import ColorPalette from "./pages/ColorPalette";
+import PitchDeck from "./pages/PitchDeck";
 import Dashboard from "./pages/Dashboard";
 import OptionChain from "./pages/OptionChain";
 import BrokerConnection from "./pages/BrokerConnection";
@@ -57,6 +58,7 @@ const App = () => {
               <Route path="/documentation" element={<Documentation />} />
               <Route path="/demo" element={<Demo />} />
               <Route path="/blog" element={<Blog />} />
+              <Route path="/pitch" element={<PitchDeck />} />
               <Route path="/color-palette" element={<ColorPalette />} />
               {/* OAuth callback routes */}
               <Route path="/auth/callback/:brokerId" element={<OAuthCallback />} />
