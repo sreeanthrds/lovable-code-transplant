@@ -72,6 +72,7 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
       case 'indicator':
         // Get the display name from the start node's indicators data
         let indicatorName = 'Indicator';
+        let indicatorTimeframeDisplay = '';
         
         // Use indicatorId as the primary key to look up the indicator
         const indicatorKey = expression.indicatorId || expression.name;
@@ -87,6 +88,8 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
                 const foundIndicator = timeframe.indicators[indicatorKey];
                 if (foundIndicator) {
                   indicatorData = foundIndicator;
+                  // Get the actual timeframe display value directly from the timeframe config
+                  indicatorTimeframeDisplay = timeframe.timeframe || '';
                   break;
                 }
               }
@@ -100,6 +103,8 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
                 const foundIndicator = timeframe.indicators[indicatorKey];
                 if (foundIndicator) {
                   indicatorData = foundIndicator;
+                  // Get the actual timeframe display value directly from the timeframe config
+                  indicatorTimeframeDisplay = timeframe.timeframe || '';
                   break;
                 }
               }
@@ -117,10 +122,12 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
           indicatorName = normalizeExpressionIdentifier(indicatorKey);
         }
         
-        // Use the new formatting function with timeframe resolution
-        const indicatorTimeframeDisplay = expression.timeframeId 
-          ? TimeframeResolver.getDisplayValue(expression.timeframeId)
-          : expression.timeframe || '';
+        // Fallback to TimeframeResolver if we didn't get the timeframe from nodeData
+        if (!indicatorTimeframeDisplay && expression.timeframeId) {
+          indicatorTimeframeDisplay = TimeframeResolver.getDisplayValue(expression.timeframeId);
+        } else if (!indicatorTimeframeDisplay) {
+          indicatorTimeframeDisplay = expression.timeframe || '';
+        }
         
         // Add parameter to display (e.g., RSI.value, MACD.signal)
         const paramDisplay = expression.indicatorParam || expression.parameter;
@@ -136,9 +143,26 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
         // Use exact field names from MarketDataSelector dropdown: Open, High, Low, Close, Volume
         const marketDataField = expression.field || 'Close';
         
-        const marketDataTimeframeDisplay = expression.timeframeId 
-          ? TimeframeResolver.getDisplayValue(expression.timeframeId)
-          : expression.timeframe || '';
+        // Try to get timeframe display from nodeData first
+        let marketDataTimeframeDisplay = '';
+        if (expression.timeframeId && nodeData) {
+          // Search in trading instrument config
+          const tradingTimeframes = nodeData.tradingInstrumentConfig?.timeframes || [];
+          const supportingTimeframes = nodeData.supportingInstrumentConfig?.timeframes || [];
+          const allTimeframes = [...tradingTimeframes, ...supportingTimeframes];
+          
+          const matchedTimeframe = allTimeframes.find((tf: any) => tf.id === expression.timeframeId);
+          if (matchedTimeframe) {
+            marketDataTimeframeDisplay = matchedTimeframe.timeframe || '';
+          }
+        }
+        
+        // Fallback to TimeframeResolver
+        if (!marketDataTimeframeDisplay && expression.timeframeId) {
+          marketDataTimeframeDisplay = TimeframeResolver.getDisplayValue(expression.timeframeId);
+        } else if (!marketDataTimeframeDisplay) {
+          marketDataTimeframeDisplay = expression.timeframe || '';
+        }
         
         return formatExpressionDisplayName(marketDataField, {
           instrumentType: expression.instrumentType,
