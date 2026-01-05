@@ -110,11 +110,11 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
   },
   PRO: {
     name: 'Pro',
-    backtests_daily_limit: -1,     // no daily limit
-    backtests_monthly_limit: 100,
-    live_executions_limit: 50,
-    paper_trading_daily_limit: 2,
-    paper_trading_monthly_limit: -1, // only daily limit
+    backtests_daily_limit: -1,        // no daily limit
+    backtests_monthly_limit: 100,     // 100 backtests per month
+    live_executions_limit: 50,        // 50 live trades per month
+    paper_trading_daily_limit: 2,     // 2 paper trades per day
+    paper_trading_monthly_limit: -1,  // no monthly limit (only daily)
     price_monthly: 499,  // actual price (test: 1)
     price_yearly: 4999,
     can_buy_addons: true,
