@@ -14,7 +14,7 @@ interface MultiLevelRadioGroupProps {
   onValueChange: (value: string) => void;
   availableInstruments: string[];
   availableTimeframes: string[];
-  availableIndicators: Array<{ id: string; displayName: string; timeframe: string; source: string }>;
+  availableIndicators: Array<{ id: string; displayName: string; timeframe: string; timeframeDisplay?: string; source: string }>;
 }
 
 const MultiLevelRadioGroup: React.FC<MultiLevelRadioGroupProps> = ({
@@ -98,13 +98,17 @@ const MultiLevelRadioGroup: React.FC<MultiLevelRadioGroupProps> = ({
     
     console.log('🕐 Raw timeframe IDs:', timeframeIds);
     
-    // Convert timeframe IDs to display values and sort
-    const displayTimeframes = timeframeIds.map(timeframeId => 
-      TimeframeResolver.getDisplayValue(timeframeId)
-    );
+    // Use timeframeDisplay directly if available, otherwise fall back to TimeframeResolver
+    const displayTimeframes = filteredIndicators.reduce((acc, indicator) => {
+      const display = indicator.timeframeDisplay || TimeframeResolver.getDisplayValue(indicator.timeframe);
+      if (!acc.includes(display)) {
+        acc.push(display);
+      }
+      return acc;
+    }, [] as string[]);
     
     console.log('📅 Final display timeframes:', displayTimeframes);
-    return Array.from(new Set(displayTimeframes)).sort();
+    return displayTimeframes.sort();
   };
 
   const getFilteredIndicators = () => {
@@ -112,10 +116,10 @@ const MultiLevelRadioGroup: React.FC<MultiLevelRadioGroupProps> = ({
       return [];
     }
     
-    return availableIndicators.filter(indicator => 
-      indicator.source === stepData.instrumentType && 
-      TimeframeResolver.getDisplayValue(indicator.timeframe) === stepData.timeframe
-    );
+    return availableIndicators.filter(indicator => {
+      const indicatorTimeframeDisplay = indicator.timeframeDisplay || TimeframeResolver.getDisplayValue(indicator.timeframe);
+      return indicator.source === stepData.instrumentType && indicatorTimeframeDisplay === stepData.timeframe;
+    });
   };
 
   // Get instrument type options
