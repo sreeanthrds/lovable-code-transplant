@@ -98,9 +98,17 @@ const BacktestForm: React.FC<BacktestFormProps> = ({ onSubmit, isLoading = false
       const remaining = quotaInfo.backtests.remaining;
       if (remaining === 0) {
         setQuotaExhausted(true);
-        setQuotaMessage(quotaInfo.plan === 'FREE' 
-          ? 'Upgrade your plan for more backtests.' 
-          : 'Purchase add-ons for additional backtests.');
+        // FREE always shows upgrade; paid plans show add-on if subscription active
+        if (quotaInfo.plan === 'FREE') {
+          setQuotaMessage('Upgrade your plan for more backtests.');
+        } else if (quotaInfo.isExpired) {
+          setQuotaMessage('Your subscription has expired. Please renew to continue.');
+        } else if (quotaInfo.canBuyAddons) {
+          setQuotaMessage('Purchase add-ons for additional backtests.');
+        } else {
+          // LAUNCH plan doesn't have add-ons, but should be unlimited anyway
+          setQuotaMessage('Contact support for additional quota.');
+        }
       } else {
         setQuotaExhausted(false);
         setQuotaMessage(null);
@@ -426,15 +434,28 @@ const BacktestForm: React.FC<BacktestFormProps> = ({ onSubmit, isLoading = false
               <p className="text-sm font-medium text-destructive">Backtest Quota Exhausted</p>
               <p className="text-xs text-muted-foreground">{quotaMessage}</p>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="shrink-0"
-              onClick={() => navigate(quotaInfo.plan === 'FREE' ? '/pricing' : '/app/account?tab=payments')}
-            >
-              {quotaInfo.plan === 'FREE' ? 'Upgrade' : 'Buy Add-ons'}
-              <ArrowUpRight className="w-3 h-3 ml-1" />
-            </Button>
+            {/* FREE or expired: show Upgrade; Active paid plan with addons: show Buy Add-ons */}
+            {quotaInfo.plan === 'FREE' || quotaInfo.isExpired ? (
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="shrink-0"
+                onClick={() => navigate('/pricing')}
+              >
+                Upgrade
+                <ArrowUpRight className="w-3 h-3 ml-1" />
+              </Button>
+            ) : quotaInfo.canBuyAddons && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="shrink-0"
+                onClick={() => navigate('/app/account?tab=payments')}
+              >
+                Buy Add-ons
+                <ArrowUpRight className="w-3 h-3 ml-1" />
+              </Button>
+            )}
           </div>
         )}
 
