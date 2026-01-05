@@ -32,15 +32,27 @@ const MultiLevelRadioGroup: React.FC<MultiLevelRadioGroupProps> = ({
   // Initialize from value
   useEffect(() => {
     console.log('🔄 MultiLevelRadioGroup: Initializing from value:', value);
+    console.log('🔄 Available indicators:', availableIndicators);
+    
     if (value && value.includes('.')) {
       const parts = value.split('.');
       if (parts.length === 3) {
         const [instrumentType, timeframeId, indicator] = parts;
         console.log('📋 Parsed parts:', { instrumentType, timeframeId, indicator });
         
-        // Convert timeframe ID to display value for UI consistency
-        const timeframeDisplay = TimeframeResolver.getDisplayValue(timeframeId);
-        console.log('🔄 Converted timeframe:', { timeframeId, timeframeDisplay });
+        // First try to get timeframe display from availableIndicators (most reliable)
+        const matchedIndicator = availableIndicators.find(ind => ind.id === indicator);
+        let timeframeDisplay = '';
+        
+        if (matchedIndicator) {
+          // Use the timeframeDisplay from the indicator data directly
+          timeframeDisplay = matchedIndicator.timeframeDisplay || TimeframeResolver.getDisplayValue(matchedIndicator.timeframe);
+          console.log('🔄 Got timeframe from matched indicator:', { matchedIndicator, timeframeDisplay });
+        } else {
+          // Fallback to TimeframeResolver
+          timeframeDisplay = TimeframeResolver.getDisplayValue(timeframeId);
+          console.log('🔄 Fallback timeframe from resolver:', { timeframeId, timeframeDisplay });
+        }
         
         const newStepData = { instrumentType, timeframe: timeframeDisplay, indicator };
         console.log('📊 Setting stepData:', newStepData);
@@ -50,7 +62,7 @@ const MultiLevelRadioGroup: React.FC<MultiLevelRadioGroupProps> = ({
       console.log('🔄 Clearing stepData');
       setStepData({});
     }
-  }, [value]);
+  }, [value, availableIndicators]);
 
   const handleInstrumentChange = (instrumentType: string) => {
     console.log('🔄 Instrument changed to:', instrumentType);
