@@ -89,6 +89,7 @@ export function useFlowState(isNew: boolean = false) {
     strategyStore,
     initialNodes,
     currentStrategyId,
+    onLoadComplete: handleLoadComplete, // Trigger auto-arrange after strategy loads
     enabled: !isNew // Disable for new strategy creation
   });
   
