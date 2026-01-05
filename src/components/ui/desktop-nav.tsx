@@ -74,6 +74,14 @@ const DesktopNav: React.FC = () => {
         >
           Blog
         </Link>
+        <Link 
+          to="/pitch" 
+          className={`text-sm font-medium transition-colors ${isActive('/pitch') 
+            ? 'text-green-600 dark:text-green-400' 
+            : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}`}
+        >
+          Pitch
+        </Link>
       </nav>
 
       {/* Auth section - positioned to the right */}
