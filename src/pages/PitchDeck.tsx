@@ -693,6 +693,18 @@ const PitchDeck = () => {
             </motion.div>
           </div>
         </section>
+
+      {/* Footer */}
+      <footer className="py-8 border-t border-border/50 bg-muted/30">
+        <div className="container mx-auto px-4 text-center">
+          <p className="text-muted-foreground text-sm">
+            Contact: <a href="mailto:hello@tradelayout.com" className="text-primary hover:underline">hello@tradelayout.com</a>
+          </p>
+          <p className="text-muted-foreground text-xs mt-2">
+            © {new Date().getFullYear()} TradeLayout. All rights reserved.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };
