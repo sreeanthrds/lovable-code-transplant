@@ -31,6 +31,14 @@ export class TimeframeResolver {
       return timeframeId;
     }
     
+    // Handle tf_ prefixed IDs - extract the timeframe value (e.g., "tf_5m" -> "5m")
+    if (typeof timeframeId === 'string' && timeframeId.startsWith('tf_')) {
+      const extracted = timeframeId.replace('tf_', '');
+      if (/^(\d+)([mhd])$/.test(extracted)) {
+        return extracted;
+      }
+    }
+    
     console.warn('⚠️ TimeframeResolver: No timeframe found for ID:', timeframeId, 'Cache size:', this.timeframeCache.size);
     return timeframeId || 'Unknown';
   }
