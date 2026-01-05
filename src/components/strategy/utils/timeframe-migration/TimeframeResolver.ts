@@ -21,6 +21,7 @@ export class TimeframeResolver {
    * Resolve a timeframe ID to its display value (e.g., "1m", "5m")
    */
   static getDisplayValue(timeframeId: string): string {
+    // First check cache for exact match
     const timeframe = this.timeframeCache.get(timeframeId);
     if (timeframe) {
       return formatTimeframeDisplay(timeframe);
@@ -31,11 +32,29 @@ export class TimeframeResolver {
       return timeframeId;
     }
     
-    // Handle tf_ prefixed IDs - extract the timeframe value (e.g., "tf_5m" -> "5m")
+    // Handle tf_ prefixed IDs - try to find matching timeframe in cache
     if (typeof timeframeId === 'string' && timeframeId.startsWith('tf_')) {
+      // First try to find a matching entry in cache by ID
+      for (const [cachedId, cachedTimeframe] of this.timeframeCache.entries()) {
+        if (cachedId === timeframeId) {
+          return formatTimeframeDisplay(cachedTimeframe);
+        }
+      }
+      
+      // Extract the suffix and check if it's a valid display value (e.g., "tf_5m" -> "5m")
       const extracted = timeframeId.replace('tf_', '');
       if (/^(\d+)([mhd])$/.test(extracted)) {
         return extracted;
+      }
+      
+      // Try to find by matching the numeric part (e.g., "tf_1" matches timeframe with value 1)
+      const numericMatch = extracted.match(/^(\d+)$/);
+      if (numericMatch) {
+        for (const cachedTimeframe of this.timeframeCache.values()) {
+          if (String(cachedTimeframe.timeframe) === numericMatch[1]) {
+            return formatTimeframeDisplay(cachedTimeframe);
+          }
+        }
       }
     }
     
