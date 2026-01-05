@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { 
   Workflow, 
   TrendingUp, 
@@ -19,8 +20,8 @@ import {
   Lightbulb,
   Rocket
 } from 'lucide-react';
-import WebsiteLayout from '@/layouts/WebsiteLayout';
 import productScreenshot from '@/assets/pitch/product-screenshot.jpg';
+import logoImage from '@/assets/TL-logo-v4.png';
 
 const fadeInUp = {
   initial: { opacity: 0, y: 30 },
@@ -31,8 +32,22 @@ const fadeInUp = {
 
 const PitchDeck = () => {
   return (
-    <WebsiteLayout>
-      <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
+      {/* Minimal Header with Logo Only */}
+      <header className="sticky top-0 z-50 w-full border-b bg-white/90 dark:bg-white/10 border-white/40 dark:border-white/20 shadow-sm backdrop-blur-xl">
+        <div className="container flex h-16 items-center px-4 max-w-7xl mx-auto">
+          <Link to="/" className="flex items-center space-x-2 transition-opacity hover:opacity-80">
+            <img 
+              src={logoImage}
+              alt="TradeLayout Logo" 
+              className="w-8 h-8 scale-y-[0.7]"
+            />
+            <span className="text-xl md:text-2xl font-serif font-bold text-foreground">
+              TradeLayout
+            </span>
+          </Link>
+        </div>
+      </header>
         {/* Hero Section */}
         <section className="relative py-20 lg:py-32 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
@@ -678,7 +693,7 @@ const PitchDeck = () => {
           </div>
         </section>
       </div>
-    </WebsiteLayout>
+    </div>
   );
 };
 
