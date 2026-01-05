@@ -356,61 +356,133 @@ const PitchDeck = () => {
         <section className="py-20 bg-muted/30">
           <div className="container mx-auto px-4">
             <motion.div {...fadeInUp} className="text-center mb-16">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+                <Shield className="w-4 h-4" />
+                Patent Applied • First of Its Kind
+              </div>
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Why <span className="gradient-text-primary">TradeLayout Wins</span>
+                Not a Tool. A <span className="gradient-text-primary">New Programming Language</span>
               </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                No such flexible platform exists worldwide. Competitors are too rigid, too limited, or code-heavy.
+              <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+                TradeLayout is the world's first visual programming language designed specifically for algorithmic trading. 
+                We've applied for patents on this revolutionary approach.
               </p>
             </motion.div>
 
+            {/* Competitor Breakdown */}
+            <div className="max-w-5xl mx-auto mb-16">
+              <motion.div {...fadeInUp} className="grid md:grid-cols-3 gap-6 mb-8">
+                {/* TradingView */}
+                <div className="glass-card p-6 rounded-2xl border-l-4 border-yellow-500">
+                  <h4 className="font-bold text-lg text-foreground mb-2">📊 TradingView</h4>
+                  <p className="text-sm text-muted-foreground mb-3">Great for analysis, but...</p>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                      <span className="text-foreground/80">No live trading execution</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                      <span className="text-foreground/80">Requires Pine Script (painful to learn)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                      <span className="text-foreground/80">Limited backtesting accuracy</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Other Platforms */}
+                <div className="glass-card p-6 rounded-2xl border-l-4 border-orange-500">
+                  <h4 className="font-bold text-lg text-foreground mb-2">🔧 Streak, Tradetron, etc.</h4>
+                  <p className="text-sm text-muted-foreground mb-3">Simple but severely limited...</p>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                      <span className="text-foreground/80">Rigid, pre-built templates only</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                      <span className="text-foreground/80">Very basic algorithms, tiny adjustments</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                      <span className="text-foreground/80">Poor accuracy in backtesting results</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* TradeLayout */}
+                <div className="glass-card p-6 rounded-2xl border-l-4 border-primary bg-primary/5">
+                  <h4 className="font-bold text-lg text-primary mb-2">🚀 TradeLayout</h4>
+                  <p className="text-sm text-muted-foreground mb-3">The complete solution...</p>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                      <span className="text-foreground/80">Visual programming - no coding needed</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                      <span className="text-foreground/80">Build ANY complexity with ease</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                      <span className="text-foreground/80">Tick-level accurate backtesting</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                      <span className="text-foreground/80">Live execution with broker APIs</span>
+                    </li>
+                  </ul>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Feature Comparison Table */}
             <div className="max-w-4xl mx-auto">
               <motion.div 
                 {...fadeInUp}
                 className="glass-card rounded-2xl overflow-hidden"
               >
-                <div className="grid grid-cols-3 bg-muted/50 p-4 font-semibold text-foreground">
-                  <div>Feature</div>
-                  <div className="text-center">Competitors</div>
+                <div className="grid grid-cols-4 bg-muted/50 p-4 font-semibold text-foreground text-sm">
+                  <div>Capability</div>
+                  <div className="text-center">TradingView</div>
+                  <div className="text-center">Others</div>
                   <div className="text-center text-primary">TradeLayout</div>
                 </div>
                 
                 {[
-                  { feature: 'Visual Programming', competitors: false, tradelayout: true },
-                  { feature: 'No Coding Required', competitors: false, tradelayout: true },
-                  { feature: 'Tick-Level Accuracy', competitors: false, tradelayout: true },
-                  { feature: 'Multi-Timeframe Support', competitors: 'Limited', tradelayout: true },
-                  { feature: 'Strategy Marketplace', competitors: false, tradelayout: true },
-                  { feature: 'Live Execution', competitors: true, tradelayout: true },
-                  { feature: 'Custom Indicators', competitors: 'Code Only', tradelayout: true },
+                  { feature: 'Complexity Level', tv: 'High (Pine)', others: 'Very Low', tl: 'Unlimited' },
+                  { feature: 'Learning Curve', tv: 'Steep', others: 'Easy', tl: 'Intuitive' },
+                  { feature: 'Custom Logic', tv: 'Code Only', others: '❌', tl: '✅ Visual' },
+                  { feature: 'Live Trading', tv: '❌', others: '✅ Limited', tl: '✅ Full' },
+                  { feature: 'Backtest Accuracy', tv: 'Low', others: 'Very Low', tl: 'Tick-Level' },
+                  { feature: 'Multi-Timeframe', tv: 'Limited', others: '❌', tl: '✅ Native' },
+                  { feature: 'Strategy Marketplace', tv: '❌', others: '❌', tl: '✅ Built-in' },
                 ].map((row, index) => (
                   <div 
                     key={row.feature} 
-                    className={`grid grid-cols-3 p-4 items-center ${index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
+                    className={`grid grid-cols-4 p-4 items-center text-sm ${index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
                   >
-                    <div className="text-foreground/90">{row.feature}</div>
-                    <div className="flex justify-center">
-                      {row.competitors === true ? (
-                        <CheckCircle2 className="w-5 h-5 text-muted-foreground" />
-                      ) : row.competitors === false ? (
-                        <XCircle className="w-5 h-5 text-destructive/70" />
-                      ) : (
-                        <span className="text-sm text-muted-foreground">{row.competitors}</span>
-                      )}
-                    </div>
-                    <div className="flex justify-center">
-                      <CheckCircle2 className="w-5 h-5 text-primary" />
-                    </div>
+                    <div className="text-foreground/90 font-medium">{row.feature}</div>
+                    <div className="text-center text-muted-foreground">{row.tv}</div>
+                    <div className="text-center text-muted-foreground">{row.others}</div>
+                    <div className="text-center text-primary font-medium">{row.tl}</div>
                   </div>
                 ))}
               </motion.div>
 
-              <motion.p 
+              <motion.div 
                 {...fadeInUp}
-                className="text-center mt-8 text-lg text-foreground/80 italic"
+                className="mt-10 text-center"
               >
-                "TradingView showed the market. TradeLayout lets traders <span className="text-primary font-semibold">control</span> it."
-              </motion.p>
+                <div className="inline-block glass-card px-8 py-4 rounded-2xl">
+                  <p className="text-lg text-foreground/80 italic">
+                    "TradingView showed the market. Other tools gave templates.<br/>
+                    <span className="text-primary font-bold text-xl">TradeLayout gives you the power to create anything.</span>"
+                  </p>
+                </div>
+              </motion.div>
             </div>
           </div>
         </section>
