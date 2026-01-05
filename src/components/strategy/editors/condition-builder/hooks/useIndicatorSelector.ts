@@ -44,12 +44,13 @@ export const useIndicatorSelector = ({ expression, updateExpression }: UseIndica
           if (timeframe.indicators && typeof timeframe.indicators === 'object') {
             console.log('📈 TI timeframe has indicators:', Object.keys(timeframe.indicators));
             Object.entries(timeframe.indicators).forEach(([id, data]: [string, any]) => {
-              console.log('📈 Adding TI indicator:', { id, data, timeframeId: timeframe.id });
+              console.log('📈 Adding TI indicator:', { id, data, timeframeId: timeframe.id, timeframeValue: timeframe.timeframe });
               allIndicators.set(id, {
                 id,
                 displayName: data?.display_name || id,
                 source: 'TI',
-                timeframe: timeframe.id
+                timeframe: timeframe.id,
+                timeframeDisplay: timeframe.timeframe // Store actual display value directly
               });
             });
           } else {
@@ -71,12 +72,13 @@ export const useIndicatorSelector = ({ expression, updateExpression }: UseIndica
           if (timeframe.indicators && typeof timeframe.indicators === 'object') {
             console.log('📈 SI timeframe has indicators:', Object.keys(timeframe.indicators));
             Object.entries(timeframe.indicators).forEach(([id, data]: [string, any]) => {
-              console.log('📈 Adding SI indicator:', { id, data, timeframeId: timeframe.id });
+              console.log('📈 Adding SI indicator:', { id, data, timeframeId: timeframe.id, timeframeValue: timeframe.timeframe });
               allIndicators.set(id, {
                 id,
                 displayName: data?.display_name || id,
                 source: 'SI',
-                timeframe: timeframe.id
+                timeframe: timeframe.id,
+                timeframeDisplay: timeframe.timeframe // Store actual display value directly
               });
             });
           } else {
