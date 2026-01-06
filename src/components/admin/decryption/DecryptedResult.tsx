@@ -185,11 +185,11 @@ export const DecryptedResult: React.FC<DecryptedResultProps> = ({ decryptedData,
       </CardHeader>
       <CardContent>
         {viewMode === 'formatted' && parsedData ? (
-          <div className="border rounded p-4 bg-background overflow-auto max-h-[600px]">
+          <div className="border rounded p-4 bg-card overflow-auto max-h-[600px]">
             <Suspense fallback={<div className="text-muted-foreground">Loading JSON viewer...</div>}>
               <ReactJson
                 src={parsedData}
-                theme={theme === 'dark' ? 'monokai' : 'rjv-default'}
+                theme={theme === 'dark' ? 'tomorrow' : 'rjv-default'}
                 displayDataTypes={false}
                 enableClipboard={true}
                 collapsed={2}
