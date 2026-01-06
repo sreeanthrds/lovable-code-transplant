@@ -50,6 +50,46 @@ const DEFAULT_QUOTA_INFO: QuotaInfo = {
   canBuyAddons: false,
 };
 
+// Retry configuration
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  baseDelayMs: 1000,
+  maxDelayMs: 10000,
+};
+
+// Utility function for exponential backoff retry
+const retryWithBackoff = async <T>(
+  fn: () => Promise<T>,
+  options: { maxRetries?: number; baseDelayMs?: number; maxDelayMs?: number } = {}
+): Promise<T> => {
+  const { maxRetries = RETRY_CONFIG.maxRetries, baseDelayMs = RETRY_CONFIG.baseDelayMs, maxDelayMs = RETRY_CONFIG.maxDelayMs } = options;
+  
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      
+      if (attempt === maxRetries) {
+        console.error(`[useQuota] All ${maxRetries + 1} attempts failed:`, lastError);
+        throw lastError;
+      }
+      
+      // Calculate delay with exponential backoff and jitter
+      const exponentialDelay = baseDelayMs * Math.pow(2, attempt);
+      const jitter = Math.random() * 0.3 * exponentialDelay; // 0-30% jitter
+      const delay = Math.min(exponentialDelay + jitter, maxDelayMs);
+      
+      console.log(`[useQuota] Attempt ${attempt + 1} failed, retrying in ${Math.round(delay)}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError;
+};
+
 export const useQuota = () => {
   const { userId } = useClerkUser();
   const [quotaInfo, setQuotaInfo] = useState<QuotaInfo>(DEFAULT_QUOTA_INFO);
@@ -295,69 +335,72 @@ export const useQuota = () => {
     };
   }, [quotaInfo, fetchQuotaInfo]);
 
-  // Consume backtest quota (call after successful execution)
+  // Consume backtest quota (call after successful execution) with retry
   const consumeBacktest = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
     try {
-      const { error } = await tradelayoutClient.functions.invoke('update-usage', {
-        body: { user_id: userId, action: 'backtest' },
-      });
+      await retryWithBackoff(async () => {
+        const { error } = await tradelayoutClient.functions.invoke('update-usage', {
+          body: { user_id: userId, action: 'backtest' },
+        });
 
-      if (error) {
-        console.error('[useQuota] Error consuming backtest:', error);
-        return false;
-      }
+        if (error) {
+          throw new Error(`Failed to consume backtest: ${error.message}`);
+        }
+      });
 
       // Refresh quota info
       await fetchQuotaInfo();
       return true;
     } catch (err) {
-      console.error('[useQuota] Error consuming backtest:', err);
+      console.error('[useQuota] Error consuming backtest after retries:', err);
       return false;
     }
   }, [userId, fetchQuotaInfo]);
 
-  // Consume live execution quota
+  // Consume live execution quota with retry
   const consumeLiveExecution = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
     try {
-      const { error } = await tradelayoutClient.functions.invoke('update-usage', {
-        body: { user_id: userId, action: 'live_execution' },
-      });
+      await retryWithBackoff(async () => {
+        const { error } = await tradelayoutClient.functions.invoke('update-usage', {
+          body: { user_id: userId, action: 'live_execution' },
+        });
 
-      if (error) {
-        console.error('[useQuota] Error consuming live execution:', error);
-        return false;
-      }
+        if (error) {
+          throw new Error(`Failed to consume live execution: ${error.message}`);
+        }
+      });
 
       await fetchQuotaInfo();
       return true;
     } catch (err) {
-      console.error('[useQuota] Error consuming live execution:', err);
+      console.error('[useQuota] Error consuming live execution after retries:', err);
       return false;
     }
   }, [userId, fetchQuotaInfo]);
 
-  // Consume paper trading quota
+  // Consume paper trading quota with retry
   const consumePaperTrade = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
     try {
-      const { error } = await tradelayoutClient.functions.invoke('update-usage', {
-        body: { user_id: userId, action: 'paper_trade' },
-      });
+      await retryWithBackoff(async () => {
+        const { error } = await tradelayoutClient.functions.invoke('update-usage', {
+          body: { user_id: userId, action: 'paper_trade' },
+        });
 
-      if (error) {
-        console.error('[useQuota] Error consuming paper trade:', error);
-        return false;
-      }
+        if (error) {
+          throw new Error(`Failed to consume paper trade: ${error.message}`);
+        }
+      });
 
       await fetchQuotaInfo();
       return true;
     } catch (err) {
-      console.error('[useQuota] Error consuming paper trade:', err);
+      console.error('[useQuota] Error consuming paper trade after retries:', err);
       return false;
     }
   }, [userId, fetchQuotaInfo]);
