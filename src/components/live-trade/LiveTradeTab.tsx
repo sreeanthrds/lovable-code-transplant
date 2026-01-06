@@ -53,9 +53,12 @@ const LiveTradeTab = () => {
         const data = await response.json();
         console.log('📊 Backend strategies:', data.strategies);
         
+        // Get fresh state from store to avoid stale closure
+        const currentStrategies = useLiveTradeStore.getState().liveStrategies;
+        
         // Sync backend strategies to store - add any missing ones
         data.strategies.forEach((s: any) => {
-          const existsInStore = liveStrategies.some(
+          const existsInStore = currentStrategies.some(
             ls => ls.strategyId === s.strategy_id || ls.id === s.strategy_id
           );
           
