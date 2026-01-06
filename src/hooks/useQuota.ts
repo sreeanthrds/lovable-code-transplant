@@ -339,6 +339,7 @@ export const useQuota = () => {
   const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
   // Consume backtest quota via direct database update
+  // NOTE: Only uses columns that exist in the database (backtests_used, not daily tracking)
   const consumeBacktest = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
@@ -353,18 +354,11 @@ export const useQuota = () => {
 
         if (fetchError) throw new Error(`Failed to fetch plan: ${fetchError.message}`);
 
-        const today = getTodayDateString();
         const currentPlan = plan as any;
 
-        // Reset daily counters if needed
-        const needsDailyReset = currentPlan?.usage_reset_date !== today;
-        const backtestsUsedToday = needsDailyReset ? 0 : (currentPlan?.backtests_used_today || 0);
-
-        // Update plan with incremented usage
+        // Update plan with incremented usage (only using existing columns)
         const updateData = {
           backtests_used: (currentPlan?.backtests_used || 0) + 1,
-          backtests_used_today: backtestsUsedToday + 1,
-          usage_reset_date: today,
           updated_at: new Date().toISOString(),
         };
 
@@ -383,7 +377,10 @@ export const useQuota = () => {
               user_id: userId,
               plan: 'FREE',
               status: 'active',
-              ...updateData,
+              backtests_used: 1,
+              live_executions_used: 0,
+              paper_trading_used: 0,
+              updated_at: new Date().toISOString(),
             });
 
           if (insertError) throw new Error(`Failed to create plan: ${insertError.message}`);
@@ -449,6 +446,7 @@ export const useQuota = () => {
   }, [userId, fetchQuotaInfo]);
 
   // Consume paper trading quota via direct database update
+  // NOTE: Only uses columns that exist in the database (paper_trading_used, not daily tracking)
   const consumePaperTrade = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
@@ -462,16 +460,10 @@ export const useQuota = () => {
 
         if (fetchError) throw new Error(`Failed to fetch plan: ${fetchError.message}`);
 
-        const today = getTodayDateString();
         const currentPlan = plan as any;
-
-        const needsDailyReset = currentPlan?.usage_reset_date !== today;
-        const paperTradingUsedToday = needsDailyReset ? 0 : (currentPlan?.paper_trading_used_today || 0);
 
         const updateData = {
           paper_trading_used: (currentPlan?.paper_trading_used || 0) + 1,
-          paper_trading_used_today: paperTradingUsedToday + 1,
-          usage_reset_date: today,
           updated_at: new Date().toISOString(),
         };
 
@@ -489,7 +481,10 @@ export const useQuota = () => {
               user_id: userId,
               plan: 'FREE',
               status: 'active',
-              ...updateData,
+              backtests_used: 0,
+              live_executions_used: 0,
+              paper_trading_used: 1,
+              updated_at: new Date().toISOString(),
             });
 
           if (insertError) throw new Error(`Failed to create plan: ${insertError.message}`);
