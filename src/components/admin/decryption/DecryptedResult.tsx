@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { useStrategyImport } from '@/hooks/strategy-management/useStrategyImport';
 import { v4 as uuidv4 } from 'uuid';
 
+// Lazy load react-json-view to avoid SSR issues
+const ReactJson = lazy(() => import('react-json-view'));
 interface DecryptedResultProps {
   decryptedData: string;
   sourceUserId?: string; // ID of the user who owns this strategy
@@ -183,10 +185,21 @@ export const DecryptedResult: React.FC<DecryptedResultProps> = ({ decryptedData,
       </CardHeader>
       <CardContent>
         {viewMode === 'formatted' && parsedData ? (
-          <div className="border rounded p-4 bg-background">
-            <pre className="font-mono text-sm overflow-auto">
-              {JSON.stringify(parsedData, null, 2)}
-            </pre>
+          <div className="border rounded p-4 bg-background overflow-auto max-h-[600px]">
+            <Suspense fallback={<div className="text-muted-foreground">Loading JSON viewer...</div>}>
+              <ReactJson
+                src={parsedData}
+                theme={theme === 'dark' ? 'monokai' : 'rjv-default'}
+                displayDataTypes={false}
+                enableClipboard={true}
+                collapsed={2}
+                style={{ 
+                  backgroundColor: 'transparent',
+                  fontFamily: 'ui-monospace, monospace',
+                  fontSize: '0.875rem'
+                }}
+              />
+            </Suspense>
           </div>
         ) : (
           <Textarea
