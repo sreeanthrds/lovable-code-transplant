@@ -197,6 +197,30 @@ export const LiveStrategiesGridV2 = () => {
     return () => window.removeEventListener('session_completed', handleSessionComplete);
   }, [liveStrategies, tradingStatus, updateStrategyStatus, setTradingStatus, disconnectPolling]);
 
+  // Handle strategy removal (cascade delete from multi_strategy_queue table)
+  const handleRemoveStrategy = useCallback(async (strategyId: string) => {
+    if (!userId) return;
+
+    try {
+      // Delete from multi_strategy_queue table using queue_id
+      const client = await getAuthenticatedTradelayoutClient();
+      const { error } = await (client as any)
+        .from('multi_strategy_queue')
+        .delete()
+        .eq('queue_id', strategyId);
+
+      if (error) throw error;
+
+      // Remove from store
+      removeFromLiveTrading(strategyId);
+      
+      toast.success('Strategy removed successfully');
+    } catch (error) {
+      console.error('Failed to remove strategy:', error);
+      toast.error('Failed to remove strategy');
+    }
+  }, [userId, removeFromLiveTrading]);
+
   // Helper to get existing combinations excluding a specific strategy
   const getExistingCombinations = (excludeStrategyId: string) => {
     return liveStrategies
@@ -1047,7 +1071,7 @@ export const LiveStrategiesGridV2 = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {liveStrategies.map(strategy => {
               const connectionId = strategyConnections[strategy.id];
-              const isQueued = queuedStrategyIds.has(strategy.strategyId);
+              const isQueued = strategy.status === 'active'; // Based on is_active column
               const scale = strategyScales[strategy.id] || 1;
               
               // Extract tick data for card display - use backtest data or live SSE data
@@ -1104,7 +1128,7 @@ export const LiveStrategiesGridV2 = () => {
                   onQueueToggle={handleQueueToggle}
                   onScaleChange={(id, newScale) => setStrategyScales(prev => ({ ...prev, [id]: newScale }))}
                   onViewTrades={setSelectedStrategyForTrades}
-                  onRemove={removeFromLiveTrading}
+                  onRemove={handleRemoveStrategy}
                 />
               );
             })}
