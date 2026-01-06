@@ -23,7 +23,7 @@ export const parseTimeframe = (timeframe: string): { unit: string; number: numbe
 };
 
 export const createTimeframeId = (timeframe: string): string => {
-  return `tf_${timeframe}`;
+  return timeframe;
 };
 
 export const formatTimeframeDisplay = (timeframeConfig: TimeframeConfig): string => {

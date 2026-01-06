@@ -169,7 +169,7 @@ export const rsiReversalNodes: Node[] = [
         symbol: "NIFTY",
         timeframes: [
           {
-            id: "tf_1m",
+            id: "1m",
             unit: "minutes",
             number: 1,
             timeframe: "1m",

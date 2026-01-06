@@ -57,7 +57,7 @@ const InstrumentManager: React.FC<InstrumentManagerProps> = ({
     if (config.timeframes.length === 0) {
       updates.timeframes = [{ 
         timeframe: '1m', 
-        id: 'tf_1m', // Use consistent format with createTimeframeId
+        id: '1m',
         indicators: {},
         unit: 'minutes',
         number: 1
