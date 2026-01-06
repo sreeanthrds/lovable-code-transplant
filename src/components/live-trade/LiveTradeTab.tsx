@@ -8,10 +8,9 @@ import { LiveSimulationDashboard } from './simulation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const LiveTradeTab = () => {
-  const [backendStrategies, setBackendStrategies] = useState<LiveStrategy[]>([]);
   const [isLoadingStrategies, setIsLoadingStrategies] = useState(true);
   const [selectedStrategyForTrades, setSelectedStrategyForTrades] = useState<string | null>(null);
-  const { removeFromLiveTrading, liveStrategies } = useLiveTradeStore();
+  const { removeFromLiveTrading, liveStrategies, addToLiveTrading } = useLiveTradeStore();
   const { isAuthenticated, user } = useClerkUser();
   const { activeSession, clearActiveSession } = useLiveSimulationStore();
 
@@ -32,7 +31,7 @@ const LiveTradeTab = () => {
     setSelectedStrategyForTrades(null);
   };
 
-  // Fetch strategies from backend API
+  // Fetch strategies from backend API and sync to store
   useEffect(() => {
     const fetchStrategies = async () => {
       if (!user?.id) {
@@ -52,29 +51,32 @@ const LiveTradeTab = () => {
         }
 
         const data = await response.json();
+        console.log('📊 Backend strategies:', data.strategies);
         
-        // Transform backend response to LiveStrategy format
-        const transformedStrategies: LiveStrategy[] = data.strategies.map((s: any) => ({
-          id: s.strategy_id,
-          strategyId: s.strategy_id,
-          name: s.strategy_name,
-          description: '', // Not provided by backend
-          addedAt: s.created_at || new Date().toISOString(),
-          status: s.status === 'running' ? 'active' : 'inactive',
-          isLive: s.status === 'running',
-        }));
-
-        setBackendStrategies(transformedStrategies);
+        // Sync backend strategies to store - add any missing ones
+        data.strategies.forEach((s: any) => {
+          const existsInStore = liveStrategies.some(
+            ls => ls.strategyId === s.strategy_id || ls.id === s.strategy_id
+          );
+          
+          if (!existsInStore) {
+            console.log('➕ Adding missing strategy to store:', s.strategy_id, s.strategy_name);
+            addToLiveTrading({
+              id: s.strategy_id,
+              name: s.strategy_name,
+              description: ''
+            });
+          }
+        });
       } catch (error) {
         console.error('Failed to fetch strategies:', error);
-        setBackendStrategies([]);
       } finally {
         setIsLoadingStrategies(false);
       }
     };
 
     fetchStrategies();
-  }, [user?.id]);
+  }, [user?.id, addToLiveTrading]);
 
   console.log('LiveTradeTab render:', { 
     isAuthenticated, 
