@@ -269,19 +269,35 @@ export const LiveStrategiesGridV2 = () => {
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
 
+        // Get strategy details for names
+        const strategyIds = [...new Set(updatedData?.map(q => q.strategy_id) || [])];
+        const { data: strategiesData } = await (client as any)
+          .from('strategies')
+          .select('id, name, description')
+          .in('id', strategyIds);
+
+        // Create strategy lookup map
+        const strategyMap = (strategiesData || []).reduce((acc: any, strategy: any) => {
+          acc[strategy.id] = strategy;
+          return acc;
+        }, {});
+
         // Transform and update store with fresh data
-        const transformedStrategies = (updatedData || []).map((queueEntry: any) => ({
-          id: queueEntry.id, // Use id as unique identifier
-          strategyId: queueEntry.strategy_id,
-          name: queueEntry.name || `Strategy ${queueEntry.strategy_id}`,
-          description: queueEntry.description || '',
-          status: queueEntry.is_active === 1 ? 'active' : 'inactive', // Use is_active to determine status
-          isLive: false,
-          backendSessionId: null,
-          addedAt: queueEntry.created_at,
-          connectionId: queueEntry.broker_connection_id,
-          error: undefined
-        }));
+        const transformedStrategies = (updatedData || []).map((queueEntry: any) => {
+          const strategyInfo = strategyMap[queueEntry.strategy_id];
+          return {
+            id: queueEntry.id, // Use id as unique identifier
+            strategyId: queueEntry.strategy_id,
+            name: strategyInfo?.name || `Strategy ${queueEntry.strategy_id}`, // Use real name from strategies table
+            description: strategyInfo?.description || '',
+            status: queueEntry.is_active === 1 ? 'active' : 'inactive', // Use is_active to determine status
+            isLive: false,
+            backendSessionId: null,
+            addedAt: queueEntry.created_at,
+            connectionId: queueEntry.broker_connection_id,
+            error: undefined
+          };
+        });
 
         setAllStrategies(transformedStrategies);
 
