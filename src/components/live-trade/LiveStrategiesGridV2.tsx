@@ -85,6 +85,11 @@ export const LiveStrategiesGridV2 = () => {
   const { connections: brokerConnections } = useBrokerConnections();
   const { initApiUrl } = useLiveTradingApi(userId || undefined);
 
+  // Count only active strategies (status = 'active' which maps to is_active = 1)
+  const activeStrategiesCount = useMemo(() => {
+    return liveStrategies.filter(strategy => strategy.status === 'active').length;
+  }, [liveStrategies]);
+
   // HTTP Polling - get session IDs of all live strategies
   const liveSessionIds = useMemo(() => {
     return liveStrategies
@@ -109,7 +114,7 @@ export const LiveStrategiesGridV2 = () => {
     init();
   }, [initApiUrl]);
 
-  // Load strategies from multi_strategy_queue table (single source of truth)
+  // Load ALL strategies from multi_strategy_queue table (single source of truth)
   useEffect(() => {
     if (!userId) return;
 
@@ -120,32 +125,30 @@ export const LiveStrategiesGridV2 = () => {
           .from('multi_strategy_queue')
           .select('*')
           .eq('user_id', userId)
-          .eq('is_active', 1)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        // Transform queue data to liveStrategies format
+        // Transform ALL queue data to liveStrategies format (both active and inactive)
         const transformedStrategies = (data || []).map((queueEntry: any) => ({
           id: queueEntry.strategy_id,
           strategyId: queueEntry.strategy_id,
           name: queueEntry.name || `Strategy ${queueEntry.strategy_id}`,
           description: queueEntry.description || '',
-          status: queueEntry.status || 'ready',
+          status: queueEntry.is_active === 1 ? 'active' : 'inactive', // Status based on is_active
           isLive: false,
           backendSessionId: null,
-          pnl: 0,
-          selected: true, // All queue strategies are selected
-          createdAt: queueEntry.created_at,
-          updatedAt: queueEntry.updated_at
+          addedAt: queueEntry.created_at,
+          connectionId: queueEntry.broker_connection_id,
+          error: undefined
         }));
 
-        // Update the store with queue data
+        // Update the store with ALL queue data
         transformedStrategies.forEach(strategy => {
           updateStrategyStatus(strategy.id, strategy.status, false);
         });
 
-        // Load connections and scales from queue data
+        // Load connections from queue data
         (data || []).forEach((queueEntry: any) => {
           if (queueEntry.broker_connection_id) {
             assignConnection(queueEntry.strategy_id, queueEntry.broker_connection_id);
@@ -157,7 +160,7 @@ export const LiveStrategiesGridV2 = () => {
     };
 
     loadQueueStrategies();
-  }, [userId, updateStrategyStatus]);
+  }, [userId, updateStrategyStatus, assignConnection]);
 
   // Listen for session completion
   useEffect(() => {
@@ -349,11 +352,11 @@ export const LiveStrategiesGridV2 = () => {
     
     setHasLoadedInitialData(true);
     console.log('[Stream] Initial data load complete');
-  }, [apiBaseUrl, liveStrategies, backtestDate]);
+  }, [apiBaseUrl, activeStrategiesCount, backtestDate]);
 
   // Execute backtest
   const handleRunBacktest = useCallback(async () => {
-    if (!apiBaseUrl || liveStrategies.length === 0) {
+    if (!apiBaseUrl || activeStrategiesCount === 0) {
       toast.error('No strategies in queue');
       return;
     }
@@ -364,7 +367,7 @@ export const LiveStrategiesGridV2 = () => {
 
     try {
       const baseUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
-      const strategyIds = liveStrategies.map(s => s.strategyId);
+      const strategyIds = liveStrategies.filter(s => s.status === 'active').map(s => s.strategyId);
       const dateStr = format(backtestDate, 'yyyy-MM-dd');
       
       const response = await fetch(`${baseUrl}/api/v1/backtest/multi-strategy`, {
@@ -446,11 +449,11 @@ export const LiveStrategiesGridV2 = () => {
     } finally {
       setIsExecutingQueue(false);
     }
-  }, [apiBaseUrl, liveStrategies, backtestDate]);
+  }, [apiBaseUrl, activeStrategiesCount, backtestDate]);
 
   // Execute streaming backtest (SSE)
   const handleRunBacktestStream = useCallback(async () => {
-    if (!apiBaseUrl || liveStrategies.length === 0) {
+    if (!apiBaseUrl || activeStrategiesCount === 0) {
       toast.error('No strategies in queue');
       return;
     }
@@ -696,7 +699,7 @@ export const LiveStrategiesGridV2 = () => {
       setIsExecutingQueue(false);
       setStreamingProgress(prev => prev ? { ...prev, isStreaming: false } : null);
     }
-  }, [apiBaseUrl, liveStrategies, backtestDate]);
+  }, [apiBaseUrl, activeStrategiesCount, backtestDate]);
 
   // Execute queue (live trading)
   const handleStartAll = useCallback(async () => {
@@ -705,7 +708,7 @@ export const LiveStrategiesGridV2 = () => {
       return handleRunBacktest();
     }
 
-    if (!userId || !apiBaseUrl || liveStrategies.length === 0) {
+    if (!userId || !apiBaseUrl || activeStrategiesCount === 0) {
       toast.error('No strategies in queue');
       return;
     }
@@ -747,7 +750,7 @@ export const LiveStrategiesGridV2 = () => {
         setTradingStatus('running');
         // Polling starts automatically when tradingStatus changes to 'running'
 
-        toast.success(`Started ${liveStrategies.length} strategies`);
+        toast.success(`Started ${activeStrategiesCount} strategies`);
       } else {
         const error = await response.json();
         toast.error(error.detail || 'Failed to execute queue');
@@ -758,7 +761,7 @@ export const LiveStrategiesGridV2 = () => {
     } finally {
       setIsExecutingQueue(false);
     }
-  }, [userId, apiBaseUrl, liveStrategies, updateStrategyStatus, setTradingStatus]);
+  }, [userId, apiBaseUrl, activeStrategiesCount, liveStrategies, updateStrategyStatus, setTradingStatus]);
 
   // Stop all
   const handleStopAll = useCallback(() => {
@@ -852,7 +855,7 @@ export const LiveStrategiesGridV2 = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <span className="text-sm font-medium">
-                  Queue: {liveStrategies.length} strategies
+                  Queue: {activeStrategiesCount} strategies
                 </span>
                 {liveStrategies.length === 0 && (
                   <span className="text-xs text-muted-foreground">
@@ -907,16 +910,16 @@ export const LiveStrategiesGridV2 = () => {
                   <div className="flex gap-2">
                     <Button
                       onClick={handleRunBacktest}
-                      disabled={liveStrategies.length === 0 || isExecutingQueue}
+                      disabled={activeStrategiesCount === 0 || isExecutingQueue}
                       size="sm"
                       variant="outline"
                     >
                       <FlaskConical className="h-4 w-4 mr-1" />
-                      Backtest ({liveStrategies.length})
+                      Backtest ({activeStrategiesCount})
                     </Button>
                     <Button
                       onClick={handleRunBacktestStream}
-                      disabled={liveStrategies.length === 0 || isExecutingQueue}
+                      disabled={activeStrategiesCount === 0 || isExecutingQueue}
                       size="sm"
                     >
                       {streamingProgress?.isStreaming ? (
@@ -927,7 +930,7 @@ export const LiveStrategiesGridV2 = () => {
                       ) : (
                         <>
                           <Play className="h-4 w-4 mr-1" />
-                          Stream ({liveStrategies.length})
+                          Stream ({activeStrategiesCount})
                         </>
                       )}
                     </Button>
@@ -935,11 +938,11 @@ export const LiveStrategiesGridV2 = () => {
                 ) : tradingStatus === 'idle' ? (
                   <Button
                     onClick={handleStartAll}
-                    disabled={liveStrategies.length === 0 || isExecutingQueue}
+                    disabled={activeStrategiesCount === 0 || isExecutingQueue}
                     size="sm"
                   >
                     <Play className="h-4 w-4 mr-1" />
-                    Start All ({liveStrategies.length})
+                    Start All ({activeStrategiesCount})
                   </Button>
                 ) : (
                   activeSessionCount > 0 && (
