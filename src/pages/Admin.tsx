@@ -7,6 +7,7 @@ import UserManagementForm from '@/components/admin/UserManagementForm';
 import RoleManager from '@/components/admin/RoleManager';
 import StrategyDecryption from '@/components/admin/StrategyDecryption';
 import ApiConfigManager from '@/components/admin/ApiConfigManager';
+import AdminUserPlansManager from '@/components/admin/AdminUserPlansManager';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -80,10 +81,11 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-10">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="roles">Roles</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="plans">Plans</TabsTrigger>
             <TabsTrigger value="api">API Config</TabsTrigger>
             <TabsTrigger value="encryption">Encryption</TabsTrigger>
             <TabsTrigger value="decryption">Decryption</TabsTrigger>
@@ -143,6 +145,10 @@ const Admin = () => {
 
           <TabsContent value="users" className="space-y-6">
             <UserManagementForm />
+          </TabsContent>
+
+          <TabsContent value="plans" className="space-y-6">
+            <AdminUserPlansManager />
           </TabsContent>
 
           <TabsContent value="api" className="space-y-6">
