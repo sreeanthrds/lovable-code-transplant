@@ -122,30 +122,50 @@ export const LiveStrategiesGridV2 = () => {
     const loadQueueStrategies = async () => {
       try {
         const client = await getAuthenticatedTradelayoutClient();
-        const { data, error } = await (client as any)
+        
+        // Get queue data
+        const { data: queueData, error: queueError } = await (client as any)
           .from('multi_strategy_queue')
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (queueError) throw queueError;
 
-        console.log('[DEBUG] Raw queue data from table:', data);
-        console.log('[DEBUG] Number of rows loaded:', data?.length || 0);
+        console.log('[DEBUG] Raw queue data from table:', queueData);
+        console.log('[DEBUG] Number of rows loaded:', queueData?.length || 0);
+
+        // Get strategy details for names
+        const strategyIds = [...new Set(queueData?.map(q => q.strategy_id) || [])];
+        const { data: strategiesData, error: strategiesError } = await (client as any)
+          .from('strategies')
+          .select('id, name, description')
+          .in('id', strategyIds);
+
+        if (strategiesError) throw strategiesError;
+
+        // Create strategy lookup map
+        const strategyMap = (strategiesData || []).reduce((acc: any, strategy: any) => {
+          acc[strategy.id] = strategy;
+          return acc;
+        }, {});
 
         // Transform ALL queue data to liveStrategies format (both active and inactive)
-        const transformedStrategies = (data || []).map((queueEntry: any) => ({
-          id: queueEntry.id, // Use id as the unique identifier
-          strategyId: queueEntry.strategy_id,
-          name: queueEntry.name || `Strategy ${queueEntry.strategy_id}`,
-          description: queueEntry.description || '',
-          status: queueEntry.is_active === 1 ? 'active' : 'inactive', // Status based on is_active
-          isLive: false,
-          backendSessionId: null,
-          addedAt: queueEntry.created_at,
-          connectionId: queueEntry.broker_connection_id,
-          error: undefined
-        }));
+        const transformedStrategies = (queueData || []).map((queueEntry: any) => {
+          const strategyInfo = strategyMap[queueEntry.strategy_id];
+          return {
+            id: queueEntry.id, // Use id as the unique identifier
+            strategyId: queueEntry.strategy_id,
+            name: strategyInfo?.name || `Strategy ${queueEntry.strategy_id}`, // Use real name from strategies table
+            description: strategyInfo?.description || '',
+            status: queueEntry.is_active === 1 ? 'active' : 'inactive', // Status based on is_active
+            isLive: false,
+            backendSessionId: null,
+            addedAt: queueEntry.created_at,
+            connectionId: queueEntry.broker_connection_id,
+            error: undefined
+          };
+        });
 
         console.log('[DEBUG] Transformed strategies:', transformedStrategies);
         console.log('[DEBUG] Number of transformed strategies:', transformedStrategies.length);
@@ -154,7 +174,7 @@ export const LiveStrategiesGridV2 = () => {
         setAllStrategies(transformedStrategies);
 
         // Load connections from queue data
-        (data || []).forEach((queueEntry: any) => {
+        (queueData || []).forEach((queueEntry: any) => {
           if (queueEntry.broker_connection_id) {
             assignConnection(queueEntry.id, queueEntry.broker_connection_id);
           }
