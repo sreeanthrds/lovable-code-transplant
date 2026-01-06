@@ -335,72 +335,171 @@ export const useQuota = () => {
     };
   }, [quotaInfo, fetchQuotaInfo]);
 
-  // Consume backtest quota (call after successful execution) with retry
+  // Helper to get today's date string for daily reset check
+  const getTodayDateString = () => new Date().toISOString().split('T')[0];
+
+  // Consume backtest quota via direct database update
   const consumeBacktest = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
     try {
       await retryWithBackoff(async () => {
-        const { error } = await tradelayoutClient.functions.invoke('update-usage', {
-          body: { user_id: userId, action: 'backtest' },
-        });
+        // Fetch current plan
+        const { data: plan, error: fetchError } = await tradelayoutClient
+          .from('user_plans' as any)
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
 
-        if (error) {
-          throw new Error(`Failed to consume backtest: ${error.message}`);
+        if (fetchError) throw new Error(`Failed to fetch plan: ${fetchError.message}`);
+
+        const today = getTodayDateString();
+        const currentPlan = plan as any;
+
+        // Reset daily counters if needed
+        const needsDailyReset = currentPlan?.usage_reset_date !== today;
+        const backtestsUsedToday = needsDailyReset ? 0 : (currentPlan?.backtests_used_today || 0);
+
+        // Update plan with incremented usage
+        const updateData = {
+          backtests_used: (currentPlan?.backtests_used || 0) + 1,
+          backtests_used_today: backtestsUsedToday + 1,
+          usage_reset_date: today,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (currentPlan) {
+          const { error: updateError } = await tradelayoutClient
+            .from('user_plans' as any)
+            .update(updateData)
+            .eq('user_id', userId);
+
+          if (updateError) throw new Error(`Failed to update usage: ${updateError.message}`);
+        } else {
+          // Create FREE plan if none exists
+          const { error: insertError } = await tradelayoutClient
+            .from('user_plans' as any)
+            .insert({
+              user_id: userId,
+              plan: 'FREE',
+              status: 'active',
+              ...updateData,
+            });
+
+          if (insertError) throw new Error(`Failed to create plan: ${insertError.message}`);
         }
       });
 
-      // Refresh quota info
       await fetchQuotaInfo();
       return true;
     } catch (err) {
-      console.error('[useQuota] Error consuming backtest after retries:', err);
+      console.error('[useQuota] Error consuming backtest:', err);
       return false;
     }
   }, [userId, fetchQuotaInfo]);
 
-  // Consume live execution quota with retry
+  // Consume live execution quota via direct database update
   const consumeLiveExecution = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
     try {
       await retryWithBackoff(async () => {
-        const { error } = await tradelayoutClient.functions.invoke('update-usage', {
-          body: { user_id: userId, action: 'live_execution' },
-        });
+        const { data: plan, error: fetchError } = await tradelayoutClient
+          .from('user_plans' as any)
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
 
-        if (error) {
-          throw new Error(`Failed to consume live execution: ${error.message}`);
+        if (fetchError) throw new Error(`Failed to fetch plan: ${fetchError.message}`);
+
+        const currentPlan = plan as any;
+
+        const updateData = {
+          live_executions_used: (currentPlan?.live_executions_used || 0) + 1,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (currentPlan) {
+          const { error: updateError } = await tradelayoutClient
+            .from('user_plans' as any)
+            .update(updateData)
+            .eq('user_id', userId);
+
+          if (updateError) throw new Error(`Failed to update usage: ${updateError.message}`);
+        } else {
+          const { error: insertError } = await tradelayoutClient
+            .from('user_plans' as any)
+            .insert({
+              user_id: userId,
+              plan: 'FREE',
+              status: 'active',
+              ...updateData,
+            });
+
+          if (insertError) throw new Error(`Failed to create plan: ${insertError.message}`);
         }
       });
 
       await fetchQuotaInfo();
       return true;
     } catch (err) {
-      console.error('[useQuota] Error consuming live execution after retries:', err);
+      console.error('[useQuota] Error consuming live execution:', err);
       return false;
     }
   }, [userId, fetchQuotaInfo]);
 
-  // Consume paper trading quota with retry
+  // Consume paper trading quota via direct database update
   const consumePaperTrade = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
     try {
       await retryWithBackoff(async () => {
-        const { error } = await tradelayoutClient.functions.invoke('update-usage', {
-          body: { user_id: userId, action: 'paper_trade' },
-        });
+        const { data: plan, error: fetchError } = await tradelayoutClient
+          .from('user_plans' as any)
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
 
-        if (error) {
-          throw new Error(`Failed to consume paper trade: ${error.message}`);
+        if (fetchError) throw new Error(`Failed to fetch plan: ${fetchError.message}`);
+
+        const today = getTodayDateString();
+        const currentPlan = plan as any;
+
+        const needsDailyReset = currentPlan?.usage_reset_date !== today;
+        const paperTradingUsedToday = needsDailyReset ? 0 : (currentPlan?.paper_trading_used_today || 0);
+
+        const updateData = {
+          paper_trading_used: (currentPlan?.paper_trading_used || 0) + 1,
+          paper_trading_used_today: paperTradingUsedToday + 1,
+          usage_reset_date: today,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (currentPlan) {
+          const { error: updateError } = await tradelayoutClient
+            .from('user_plans' as any)
+            .update(updateData)
+            .eq('user_id', userId);
+
+          if (updateError) throw new Error(`Failed to update usage: ${updateError.message}`);
+        } else {
+          const { error: insertError } = await tradelayoutClient
+            .from('user_plans' as any)
+            .insert({
+              user_id: userId,
+              plan: 'FREE',
+              status: 'active',
+              ...updateData,
+            });
+
+          if (insertError) throw new Error(`Failed to create plan: ${insertError.message}`);
         }
       });
 
       await fetchQuotaInfo();
       return true;
     } catch (err) {
-      console.error('[useQuota] Error consuming paper trade after retries:', err);
+      console.error('[useQuota] Error consuming paper trade:', err);
       return false;
     }
   }, [userId, fetchQuotaInfo]);
