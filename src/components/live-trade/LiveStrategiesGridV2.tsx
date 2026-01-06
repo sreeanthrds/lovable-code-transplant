@@ -135,7 +135,7 @@ export const LiveStrategiesGridV2 = () => {
 
         // Transform ALL queue data to liveStrategies format (both active and inactive)
         const transformedStrategies = (data || []).map((queueEntry: any) => ({
-          id: queueEntry.queue_id, // Use queue_id as the unique identifier
+          id: queueEntry.id, // Use id as the unique identifier
           strategyId: queueEntry.strategy_id,
           name: queueEntry.name || `Strategy ${queueEntry.strategy_id}`,
           description: queueEntry.description || '',
@@ -156,7 +156,7 @@ export const LiveStrategiesGridV2 = () => {
         // Load connections from queue data
         (data || []).forEach((queueEntry: any) => {
           if (queueEntry.broker_connection_id) {
-            assignConnection(queueEntry.queue_id, queueEntry.broker_connection_id);
+            assignConnection(queueEntry.id, queueEntry.broker_connection_id);
           }
         });
       } catch (error) {
@@ -207,7 +207,7 @@ export const LiveStrategiesGridV2 = () => {
       const { error } = await (client as any)
         .from('multi_strategy_queue')
         .delete()
-        .eq('queue_id', strategyId);
+        .eq('id', strategyId);
 
       if (error) throw error;
 
