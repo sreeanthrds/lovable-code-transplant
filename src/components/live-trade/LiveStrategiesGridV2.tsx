@@ -109,51 +109,55 @@ export const LiveStrategiesGridV2 = () => {
     init();
   }, [initApiUrl]);
 
-  // Fetch initial queue status - from Supabase for backtest, from API for live
+  // Load strategies from multi_strategy_queue table (single source of truth)
   useEffect(() => {
     if (!userId) return;
 
-    const fetchQueueStatus = async () => {
+    const loadQueueStrategies = async () => {
       try {
-        // Backtest mode: Load from multi_strategy_queue table
-        if (mode === 'backtest') {
-          const client = await getAuthenticatedTradelayoutClient();
-          const { data, error } = await (client as any)
-            .from('multi_strategy_queue')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('is_active', 1);
+        const client = await getAuthenticatedTradelayoutClient();
+        const { data, error } = await (client as any)
+          .from('multi_strategy_queue')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('is_active', 1)
+          .order('created_at', { ascending: false });
 
-          if (error) throw error;
+        if (error) throw error;
 
-          const queuedIds = new Set<string>(
-            (data || []).map((entry: any) => String(entry.strategy_id))
-          );
-          setQueuedStrategyIds(queuedIds);
-          return;
-        }
+        // Transform queue data to liveStrategies format
+        const transformedStrategies = (data || []).map((queueEntry: any) => ({
+          id: queueEntry.strategy_id,
+          strategyId: queueEntry.strategy_id,
+          name: queueEntry.name || `Strategy ${queueEntry.strategy_id}`,
+          description: queueEntry.description || '',
+          status: queueEntry.status || 'ready',
+          isLive: false,
+          backendSessionId: null,
+          pnl: 0,
+          selected: true, // All queue strategies are selected
+          createdAt: queueEntry.created_at,
+          updatedAt: queueEntry.updated_at
+        }));
 
-        // Live mode: Load from API
-        if (!apiBaseUrl) return;
-        const baseUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
-        const response = await fetch(`${baseUrl}/api/queue/status/admin_tester`, {
-          headers: { 'ngrok-skip-browser-warning': 'true' }
+        // Update the store with queue data
+        transformedStrategies.forEach(strategy => {
+          updateStrategyStatus(strategy.id, strategy.status, false);
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          const queuedIds = new Set<string>(
-            data.entries?.map((entry: any) => String(entry.strategy_id)) || []
-          );
-          setQueuedStrategyIds(queuedIds);
-        }
+        // Load connections and scales from queue data
+        (data || []).forEach((queueEntry: any) => {
+          if (queueEntry.broker_connection_id) {
+            assignConnection(queueEntry.strategy_id, queueEntry.broker_connection_id);
+          }
+        });
       } catch (error) {
-        console.error('Failed to fetch queue status:', error);
+        console.error('Failed to load queue strategies:', error);
       }
     };
 
-    fetchQueueStatus();
-  }, [userId, apiBaseUrl, mode]);
+    loadQueueStrategies();
+  }, [userId, updateStrategyStatus]);
 
   // Listen for session completion
   useEffect(() => {
@@ -219,18 +223,33 @@ export const LiveStrategiesGridV2 = () => {
 
         if (error) throw error;
 
-        // Update local state
-        if (shouldQueue) {
-          setQueuedStrategyIds(prev => new Set(prev).add(strategy.strategyId));
-          toast.success('Added to backtest queue');
-        } else {
-          setQueuedStrategyIds(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(strategy.strategyId);
-            return newSet;
-          });
-          toast.success('Removed from backtest queue');
-        }
+        // Reload strategies from table to sync UI
+        const { data: updatedData } = await (client as any)
+          .from('multi_strategy_queue')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('is_active', 1);
+
+        // Transform and update store with fresh data
+        const transformedStrategies = (updatedData || []).map((queueEntry: any) => ({
+          id: queueEntry.strategy_id,
+          strategyId: queueEntry.strategy_id,
+          name: queueEntry.name || `Strategy ${queueEntry.strategy_id}`,
+          description: queueEntry.description || '',
+          status: queueEntry.status || 'ready',
+          isLive: false,
+          backendSessionId: null,
+          pnl: 0,
+          selected: true,
+          createdAt: queueEntry.created_at,
+          updatedAt: queueEntry.updated_at
+        }));
+
+        transformedStrategies.forEach(strategy => {
+          updateStrategyStatus(strategy.id, strategy.status, false);
+        });
+
+        toast.success(shouldQueue ? 'Added to backtest queue' : 'Removed from backtest queue');
         return;
       }
 
@@ -330,11 +349,11 @@ export const LiveStrategiesGridV2 = () => {
     
     setHasLoadedInitialData(true);
     console.log('[Stream] Initial data load complete');
-  }, [apiBaseUrl, queuedStrategyIds, backtestDate]);
+  }, [apiBaseUrl, liveStrategies, backtestDate]);
 
   // Execute backtest
   const handleRunBacktest = useCallback(async () => {
-    if (!apiBaseUrl || queuedStrategyIds.size === 0) {
+    if (!apiBaseUrl || liveStrategies.length === 0) {
       toast.error('No strategies in queue');
       return;
     }
@@ -345,7 +364,7 @@ export const LiveStrategiesGridV2 = () => {
 
     try {
       const baseUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
-      const strategyIds = Array.from(queuedStrategyIds);
+      const strategyIds = liveStrategies.map(s => s.strategyId);
       const dateStr = format(backtestDate, 'yyyy-MM-dd');
       
       const response = await fetch(`${baseUrl}/api/v1/backtest/multi-strategy`, {
@@ -427,11 +446,11 @@ export const LiveStrategiesGridV2 = () => {
     } finally {
       setIsExecutingQueue(false);
     }
-  }, [apiBaseUrl, queuedStrategyIds, backtestDate]);
+  }, [apiBaseUrl, liveStrategies, backtestDate]);
 
   // Execute streaming backtest (SSE)
   const handleRunBacktestStream = useCallback(async () => {
-    if (!apiBaseUrl || queuedStrategyIds.size === 0) {
+    if (!apiBaseUrl || liveStrategies.length === 0) {
       toast.error('No strategies in queue');
       return;
     }
@@ -677,7 +696,7 @@ export const LiveStrategiesGridV2 = () => {
       setIsExecutingQueue(false);
       setStreamingProgress(prev => prev ? { ...prev, isStreaming: false } : null);
     }
-  }, [apiBaseUrl, queuedStrategyIds, backtestDate]);
+  }, [apiBaseUrl, liveStrategies, backtestDate]);
 
   // Execute queue (live trading)
   const handleStartAll = useCallback(async () => {
@@ -686,7 +705,7 @@ export const LiveStrategiesGridV2 = () => {
       return handleRunBacktest();
     }
 
-    if (!userId || !apiBaseUrl || queuedStrategyIds.size === 0) {
+    if (!userId || !apiBaseUrl || liveStrategies.length === 0) {
       toast.error('No strategies in queue');
       return;
     }
@@ -718,20 +737,17 @@ export const LiveStrategiesGridV2 = () => {
         
         console.log('[Execute] Session ID map:', Object.fromEntries(sessionIdMap));
 
-        // Mark queued strategies as LIVE with correct session IDs
-        const queuedStrategies = liveStrategies.filter(s => queuedStrategyIds.has(s.strategyId));
-        queuedStrategies.forEach((strategy) => {
+        // Update strategies as active
+        liveStrategies.forEach(strategy => {
           const backendSessionId = sessionIdMap.get(strategy.strategyId);
           console.log(`[Execute] Setting ${strategy.name} -> sessionId: ${backendSessionId}`);
           updateStrategyStatus(strategy.id, 'active', true, backendSessionId);
         });
 
-        // Clear queue
-        setQueuedStrategyIds(new Set());
         setTradingStatus('running');
         // Polling starts automatically when tradingStatus changes to 'running'
 
-        toast.success(`Started ${queuedStrategies.length} strategies`);
+        toast.success(`Started ${liveStrategies.length} strategies`);
       } else {
         const error = await response.json();
         toast.error(error.detail || 'Failed to execute queue');
@@ -742,7 +758,7 @@ export const LiveStrategiesGridV2 = () => {
     } finally {
       setIsExecutingQueue(false);
     }
-  }, [userId, apiBaseUrl, queuedStrategyIds, liveStrategies, updateStrategyStatus, setTradingStatus]);
+  }, [userId, apiBaseUrl, liveStrategies, updateStrategyStatus, setTradingStatus]);
 
   // Stop all
   const handleStopAll = useCallback(() => {
@@ -836,9 +852,9 @@ export const LiveStrategiesGridV2 = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <span className="text-sm font-medium">
-                  Queue: {queuedStrategyIds.size} strategies
+                  Queue: {liveStrategies.length} strategies
                 </span>
-                {queuedStrategyIds.size === 0 && (
+                {liveStrategies.length === 0 && (
                   <span className="text-xs text-muted-foreground">
                     (Check strategies to add to queue)
                   </span>
@@ -891,16 +907,16 @@ export const LiveStrategiesGridV2 = () => {
                   <div className="flex gap-2">
                     <Button
                       onClick={handleRunBacktest}
-                      disabled={queuedStrategyIds.size === 0 || isExecutingQueue}
+                      disabled={liveStrategies.length === 0 || isExecutingQueue}
                       size="sm"
                       variant="outline"
                     >
                       <FlaskConical className="h-4 w-4 mr-1" />
-                      Backtest ({queuedStrategyIds.size})
+                      Backtest ({liveStrategies.length})
                     </Button>
                     <Button
                       onClick={handleRunBacktestStream}
-                      disabled={queuedStrategyIds.size === 0 || isExecutingQueue}
+                      disabled={liveStrategies.length === 0 || isExecutingQueue}
                       size="sm"
                     >
                       {streamingProgress?.isStreaming ? (
@@ -911,7 +927,7 @@ export const LiveStrategiesGridV2 = () => {
                       ) : (
                         <>
                           <Play className="h-4 w-4 mr-1" />
-                          Stream ({queuedStrategyIds.size})
+                          Stream ({liveStrategies.length})
                         </>
                       )}
                     </Button>
@@ -919,11 +935,11 @@ export const LiveStrategiesGridV2 = () => {
                 ) : tradingStatus === 'idle' ? (
                   <Button
                     onClick={handleStartAll}
-                    disabled={queuedStrategyIds.size === 0 || isExecutingQueue}
+                    disabled={liveStrategies.length === 0 || isExecutingQueue}
                     size="sm"
                   >
                     <Play className="h-4 w-4 mr-1" />
-                    Start All ({queuedStrategyIds.size})
+                    Start All ({liveStrategies.length})
                   </Button>
                 ) : (
                   activeSessionCount > 0 && (
