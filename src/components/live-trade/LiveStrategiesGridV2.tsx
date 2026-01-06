@@ -134,7 +134,7 @@ export const LiveStrategiesGridV2 = () => {
 
         // Transform ALL queue data to liveStrategies format (both active and inactive)
         const transformedStrategies = (data || []).map((queueEntry: any) => ({
-          id: queueEntry.strategy_id,
+          id: queueEntry.queue_id, // Use queue_id as the unique identifier
           strategyId: queueEntry.strategy_id,
           name: queueEntry.name || `Strategy ${queueEntry.strategy_id}`,
           description: queueEntry.description || '',
@@ -157,7 +157,7 @@ export const LiveStrategiesGridV2 = () => {
         // Load connections from queue data
         (data || []).forEach((queueEntry: any) => {
           if (queueEntry.broker_connection_id) {
-            assignConnection(queueEntry.strategy_id, queueEntry.broker_connection_id);
+            assignConnection(queueEntry.queue_id, queueEntry.broker_connection_id);
           }
         });
       } catch (error) {
