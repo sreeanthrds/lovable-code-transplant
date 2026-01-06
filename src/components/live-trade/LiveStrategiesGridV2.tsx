@@ -129,6 +129,9 @@ export const LiveStrategiesGridV2 = () => {
 
         if (error) throw error;
 
+        console.log('[DEBUG] Raw queue data from table:', data);
+        console.log('[DEBUG] Number of rows loaded:', data?.length || 0);
+
         // Transform ALL queue data to liveStrategies format (both active and inactive)
         const transformedStrategies = (data || []).map((queueEntry: any) => ({
           id: queueEntry.strategy_id,
@@ -142,6 +145,9 @@ export const LiveStrategiesGridV2 = () => {
           connectionId: queueEntry.broker_connection_id,
           error: undefined
         }));
+
+        console.log('[DEBUG] Transformed strategies:', transformedStrategies);
+        console.log('[DEBUG] Number of transformed strategies:', transformedStrategies.length);
 
         // Update the store with ALL queue data
         transformedStrategies.forEach(strategy => {
@@ -161,6 +167,13 @@ export const LiveStrategiesGridV2 = () => {
 
     loadQueueStrategies();
   }, [userId, updateStrategyStatus, assignConnection]);
+
+  // Debug: Log liveStrategies after loading
+  useEffect(() => {
+    console.log('[DEBUG] Current liveStrategies in store:', liveStrategies);
+    console.log('[DEBUG] Number of strategies in store:', liveStrategies.length);
+    console.log('[DEBUG] Active strategies count:', activeStrategiesCount);
+  }, [liveStrategies, activeStrategiesCount]);
 
   // Listen for session completion
   useEffect(() => {
