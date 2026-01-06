@@ -79,7 +79,8 @@ export const LiveStrategiesGridV2 = () => {
     updateStrategyStatus,
     removeFromLiveTrading,
     tradingStatus,
-    setTradingStatus
+    setTradingStatus,
+    setAllStrategies
   } = useLiveTradeStore();
 
   const { connections: brokerConnections } = useBrokerConnections();
@@ -149,10 +150,8 @@ export const LiveStrategiesGridV2 = () => {
         console.log('[DEBUG] Transformed strategies:', transformedStrategies);
         console.log('[DEBUG] Number of transformed strategies:', transformedStrategies.length);
 
-        // Update the store with ALL queue data
-        transformedStrategies.forEach(strategy => {
-          updateStrategyStatus(strategy.id, strategy.status, false);
-        });
+        // Set all strategies at once (replaces existing strategies)
+        setAllStrategies(transformedStrategies);
 
         // Load connections from queue data
         (data || []).forEach((queueEntry: any) => {
@@ -166,7 +165,7 @@ export const LiveStrategiesGridV2 = () => {
     };
 
     loadQueueStrategies();
-  }, [userId, updateStrategyStatus, assignConnection]);
+  }, [userId, setAllStrategies, assignConnection]);
 
   // Debug: Log liveStrategies after loading
   useEffect(() => {

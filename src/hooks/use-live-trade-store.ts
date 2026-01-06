@@ -56,6 +56,7 @@ interface LiveTradeState {
   setSelectedConnection: (connectionId: string | null) => void;
   isStrategyInLiveTrading: (strategyId: string) => boolean;
   clearAllStrategies: () => void;
+  setAllStrategies: (strategies: LiveStrategy[]) => void;
   setTradingStatus: (status: TradingStatus) => void;
 }
 
@@ -210,6 +211,10 @@ export const useLiveTradeStore = create<LiveTradeState>()(
 
       clearAllStrategies: () => {
         set({ liveStrategies: [], strategyConnections: {}, tradingStatus: 'idle' });
+      },
+
+      setAllStrategies: (strategies) => {
+        set({ liveStrategies: strategies });
       },
 
       setTradingStatus: (status) => {
