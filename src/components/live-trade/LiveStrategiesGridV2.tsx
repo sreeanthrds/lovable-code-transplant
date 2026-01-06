@@ -262,31 +262,28 @@ export const LiveStrategiesGridV2 = () => {
 
         if (error) throw error;
 
-        // Reload strategies from table to sync UI
+        // Reload strategies from table to sync UI (load ALL strategies, not just active)
         const { data: updatedData } = await (client as any)
           .from('multi_strategy_queue')
           .select('*')
           .eq('user_id', userId)
-          .eq('is_active', 1);
+          .order('created_at', { ascending: false });
 
         // Transform and update store with fresh data
         const transformedStrategies = (updatedData || []).map((queueEntry: any) => ({
-          id: queueEntry.strategy_id,
+          id: queueEntry.id, // Use id as unique identifier
           strategyId: queueEntry.strategy_id,
           name: queueEntry.name || `Strategy ${queueEntry.strategy_id}`,
           description: queueEntry.description || '',
-          status: queueEntry.status || 'ready',
+          status: queueEntry.is_active === 1 ? 'active' : 'inactive', // Use is_active to determine status
           isLive: false,
           backendSessionId: null,
-          pnl: 0,
-          selected: true,
-          createdAt: queueEntry.created_at,
-          updatedAt: queueEntry.updated_at
+          addedAt: queueEntry.created_at,
+          connectionId: queueEntry.broker_connection_id,
+          error: undefined
         }));
 
-        transformedStrategies.forEach(strategy => {
-          updateStrategyStatus(strategy.id, strategy.status, false);
-        });
+        setAllStrategies(transformedStrategies);
 
         toast.success(shouldQueue ? 'Added to backtest queue' : 'Removed from backtest queue');
         return;
