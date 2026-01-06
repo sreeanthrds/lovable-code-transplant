@@ -295,7 +295,7 @@ export class TimeframeMigrationService {
     
     const { unit, number } = TimeframeMigrationService.parseTimeframe(timeframeStr);
     return {
-      id: `tf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: timeframeStr,
       timeframe: timeframeStr,
       indicators: {},
       unit,
