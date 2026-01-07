@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Square, Trash2, AlertCircle, Activity, Calendar, FlaskConical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useLiveTradeStore } from '@/hooks/use-live-trade-store';
+import { useLiveTradeStore, LiveStrategy } from '@/hooks/use-live-trade-store';
 import { useBrokerConnections } from '@/hooks/use-broker-connections';
 import { useLiveTradingApi } from '@/hooks/use-live-trading-api';
 import { useClerkUser } from '@/hooks/useClerkUser';
@@ -18,6 +18,13 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
+import { v4 as uuidv4 } from 'uuid';
+
+// Temporary clone that hasn't been persisted yet
+interface TempClonedStrategy extends LiveStrategy {
+  isTemporary: true;
+  originalStrategyId: string;
+}
 
 // Type for card display - simplified from SSE data
 interface LiveTickDataForCard {
@@ -71,6 +78,9 @@ export const LiveStrategiesGridV2 = () => {
   
   // Live Data Panel expansion state
   const [isDataPanelExpanded, setIsDataPanelExpanded] = useState(false);
+  
+  // Temporary cloned strategies (not persisted until valid connection selected)
+  const [tempClones, setTempClones] = useState<TempClonedStrategy[]>([]);
 
   const {
     liveStrategies,
@@ -243,10 +253,129 @@ export const LiveStrategiesGridV2 = () => {
 
   // Helper to get existing combinations excluding a specific strategy
   const getExistingCombinations = (excludeStrategyId: string) => {
-    return liveStrategies
+    const allStrategies = [...liveStrategies, ...tempClones];
+    return allStrategies
       .filter(s => s.id !== excludeStrategyId && strategyConnections[s.id])
       .map(s => [s.strategyId, strategyConnections[s.id]] as [string, string]);
   };
+
+  // Clone a strategy - creates a temporary card with error state until unique connection is selected
+  const handleCloneStrategy = useCallback((strategy: LiveStrategy) => {
+    const tempId = uuidv4();
+    const tempClone: TempClonedStrategy = {
+      ...strategy,
+      id: tempId,
+      isTemporary: true,
+      originalStrategyId: strategy.strategyId,
+      status: 'inactive',
+      isLive: false,
+      error: 'Select a different broker connection to save this clone'
+    };
+    
+    setTempClones(prev => [...prev, tempClone]);
+    toast.info('Clone created. Select a different broker connection to save.');
+  }, []);
+
+  // Remove a temporary clone
+  const handleRemoveTempClone = useCallback((cloneId: string) => {
+    setTempClones(prev => prev.filter(c => c.id !== cloneId));
+  }, []);
+
+  // Handle connection change for temp clones - persist when valid
+  const handleTempCloneConnectionChange = useCallback(async (cloneId: string, connectionId: string) => {
+    if (!userId) return;
+    
+    const tempClone = tempClones.find(c => c.id === cloneId);
+    if (!tempClone) return;
+
+    // Check for duplicate strategy+broker combination
+    const allStrategies = [...liveStrategies, ...tempClones];
+    const existingDuplicate = allStrategies.find(s => {
+      if (s.id === cloneId) return false;
+      const existingConnectionId = strategyConnections[s.id];
+      const sBaseId = (s as TempClonedStrategy).originalStrategyId || s.strategyId;
+      return sBaseId === tempClone.originalStrategyId && existingConnectionId === connectionId;
+    });
+
+    if (existingDuplicate) {
+      const conn = brokerConnections.find(c => c.id === connectionId);
+      toast.error(`This strategy is already using ${conn?.connection_name || 'this broker'}. Select a different broker.`);
+      return;
+    }
+
+    // Valid unique connection - persist to database
+    try {
+      const client = await getAuthenticatedTradelayoutClient();
+      const { error } = await (client as any)
+        .from('multi_strategy_queue')
+        .insert({
+          user_id: userId,
+          strategy_id: tempClone.originalStrategyId,
+          broker_connection_id: connectionId,
+          scale: 1,
+          is_active: 0,
+          status: 'pending'
+        });
+
+      if (error) {
+        console.error('Failed to persist clone:', error);
+        toast.error('Failed to save cloned strategy');
+        return;
+      }
+
+      // Remove from temp clones - it will appear via the real strategies after refetch
+      setTempClones(prev => prev.filter(c => c.id !== cloneId));
+      const conn = brokerConnections.find(c => c.id === connectionId);
+      toast.success(`Clone saved with ${conn?.connection_name}`);
+
+      // Trigger a reload of strategies
+      window.dispatchEvent(new CustomEvent('refresh_strategies'));
+      
+      // Reload strategies from table
+      const { data: queueData } = await (client as any)
+        .from('multi_strategy_queue')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      const strategyIds = [...new Set(queueData?.map((q: any) => q.strategy_id) || [])];
+      const { data: strategiesData } = await (client as any)
+        .from('strategies')
+        .select('id, name, description')
+        .in('id', strategyIds);
+
+      const strategyMap = (strategiesData || []).reduce((acc: any, s: any) => {
+        acc[s.id] = s;
+        return acc;
+      }, {});
+
+      const transformedStrategies = (queueData || []).map((queueEntry: any) => {
+        const strategyInfo = strategyMap[queueEntry.strategy_id];
+        return {
+          id: queueEntry.id,
+          strategyId: queueEntry.strategy_id,
+          name: strategyInfo?.name || `Strategy ${queueEntry.strategy_id}`,
+          description: strategyInfo?.description || '',
+          status: queueEntry.is_active === 1 ? 'active' : 'inactive',
+          isLive: false,
+          backendSessionId: null,
+          addedAt: queueEntry.created_at,
+          connectionId: queueEntry.broker_connection_id,
+          error: undefined
+        };
+      });
+
+      setAllStrategies(transformedStrategies);
+      (queueData || []).forEach((queueEntry: any) => {
+        if (queueEntry.broker_connection_id) {
+          assignConnection(queueEntry.id, queueEntry.broker_connection_id);
+        }
+      });
+    } catch (err) {
+      console.error('Error persisting clone:', err);
+      toast.error('Failed to save cloned strategy');
+    }
+  }, [userId, tempClones, liveStrategies, strategyConnections, brokerConnections, setAllStrategies, assignConnection]);
 
   // Queue management - direct Supabase upsert for backtest mode
   const handleQueueToggle = useCallback(async (strategyId: string, shouldQueue: boolean) => {
@@ -1162,6 +1291,35 @@ export const LiveStrategiesGridV2 = () => {
                   onScaleChange={(id, newScale) => setStrategyScales(prev => ({ ...prev, [id]: newScale }))}
                   onViewTrades={setSelectedStrategyForTrades}
                   onRemove={handleRemoveStrategy}
+                  onClone={() => handleCloneStrategy(strategy)}
+                />
+              );
+            })}
+            
+            {/* Temporary cloned strategies - shown with error state until valid connection */}
+            {tempClones.map((clone) => {
+              const connectionId = strategyConnections[clone.id];
+              
+              return (
+                <LiveStrategyCardV2
+                  key={clone.id}
+                  strategy={clone}
+                  connectionId={connectionId}
+                  brokerConnections={brokerConnections}
+                  existingCombinations={getExistingCombinations(clone.id)}
+                  userId={userId}
+                  apiBaseUrl={apiBaseUrl}
+                  liveTickData={null}
+                  isQueued={false}
+                  canQueue={false}
+                  scale={1}
+                  mode={mode}
+                  onConnectionChange={handleTempCloneConnectionChange}
+                  onQueueToggle={() => {}}
+                  onScaleChange={() => {}}
+                  onViewTrades={() => {}}
+                  onRemove={handleRemoveTempClone}
+                  isTemporaryClone={true}
                 />
               );
             })}
