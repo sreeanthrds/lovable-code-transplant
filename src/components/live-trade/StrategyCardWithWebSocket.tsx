@@ -49,6 +49,8 @@ interface StrategyCardWithWebSocketProps {
   canQueue?: boolean;
   scale?: number;
   onScaleChange?: (strategyId: string, scale: number) => void;
+  onClone?: () => void;
+  isTemporaryClone?: boolean;
 }
 
 export const StrategyCardWithWebSocket: React.FC<StrategyCardWithWebSocketProps> = ({
@@ -67,7 +69,9 @@ export const StrategyCardWithWebSocket: React.FC<StrategyCardWithWebSocketProps>
   onQueueToggle,
   canQueue = false,
   scale = 1,
-  onScaleChange
+  onScaleChange,
+  onClone,
+  isTemporaryClone = false
 }) => {
   // Use live tick data from user-level SSE
   const pnlData = liveTickData?.pnl_summary;
@@ -287,8 +291,21 @@ export const StrategyCardWithWebSocket: React.FC<StrategyCardWithWebSocketProps>
 
       <CardFooter className="flex gap-2 justify-between pt-4">
         <div className="flex gap-2 flex-wrap items-center">
-          {/* View Trades button - Always show */}
-          {onViewTrades && (
+          {/* Clone button - Only for non-temporary strategies */}
+          {onClone && !isTemporaryClone && (
+            <Button
+              onClick={onClone}
+              size="sm"
+              variant="outline"
+              disabled={strategy.isLive}
+            >
+              <Copy className="h-4 w-4 mr-1" />
+              Clone
+            </Button>
+          )}
+          
+          {/* View Trades button - Only for non-temporary strategies */}
+          {onViewTrades && !isTemporaryClone && (
             <Button
               onClick={() => onViewTrades(strategy.id)}
               size="sm"
