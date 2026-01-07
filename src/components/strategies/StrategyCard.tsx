@@ -12,6 +12,7 @@ import { setSavingState } from '@/hooks/strategy-store/supabase-persistence';
 import { useToast } from '@/hooks/use-toast';
 import { saveStrategy } from '@/hooks/strategy-store/supabase-persistence';
 import { strategyService } from '@/lib/supabase/services/strategy-service';
+import { getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
 import { v4 as uuidv4 } from 'uuid';
 
 interface StrategyCardProps {
@@ -117,9 +118,18 @@ const StrategyCard = ({
     navigate(`/app/strategy-builder?id=${id}&name=${encodeURIComponent(name)}&mode=view`);
   };
 
-  const handleAddToLiveTrade = (e: React.MouseEvent) => {
+  const handleAddToLiveTrade = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    if (!user?.id) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to add strategy to live trading",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if (isInLiveTrading) {
       toast({
@@ -128,13 +138,48 @@ const StrategyCard = ({
       });
       return;
     }
-    
-    addToLiveTrading({ id, name, description });
-    
-    toast({
-      title: "Added to Live Trading",
-      description: `"${name}" has been added to live trading`,
-    });
+
+    try {
+      // Insert into multi_strategy_queue table
+      const client = await getAuthenticatedTradelayoutClient();
+      const { error } = await (client as any)
+        .from('multi_strategy_queue')
+        .upsert({
+          user_id: user.id,
+          strategy_id: id,
+          broker_connection_id: null, // User will assign connection in live trading page
+          scale: 1,
+          is_active: 0, // Inactive until user starts it
+          status: 'pending'
+        }, {
+          onConflict: 'strategy_id,user_id,broker_connection_id'
+        });
+
+      if (error) {
+        console.error('Failed to add to multi_strategy_queue:', error);
+        toast({
+          title: "Failed to add",
+          description: error.message || "Could not add strategy to live trading",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Also update local store for immediate UI feedback
+      addToLiveTrading({ id, name, description });
+      
+      toast({
+        title: "Added to Live Trading",
+        description: `"${name}" has been added to live trading queue`,
+      });
+    } catch (error) {
+      console.error('Error adding to live trading:', error);
+      toast({
+        title: "Failed to add",
+        description: "An error occurred while adding to live trading",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCardClick = () => {
