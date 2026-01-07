@@ -13,7 +13,9 @@ import { useToast } from '@/hooks/use-toast';
 import { saveStrategy } from '@/hooks/strategy-store/supabase-persistence';
 import { strategyService } from '@/lib/supabase/services/strategy-service';
 import { getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
+import { useBrokerConnections } from '@/hooks/use-broker-connections';
 import { v4 as uuidv4 } from 'uuid';
+
 
 interface StrategyCardProps {
   id: string;
@@ -46,6 +48,9 @@ const StrategyCard = ({
   // Live trading store
   const { addToLiveTrading, isStrategyInLiveTrading } = useLiveTradeStore();
   const isInLiveTrading = isStrategyInLiveTrading(id);
+  
+  // Broker connections
+  const { connections } = useBrokerConnections();
   
   // Helper function to load strategy from database only
   const loadStrategyFromSource = async (strategyId: string) => {
@@ -139,6 +144,20 @@ const StrategyCard = ({
       return;
     }
 
+    // Require at least one broker connection
+    if (!connections || connections.length === 0) {
+      toast({
+        title: "No broker connection",
+        description: "Please connect a broker first in the Broker Connection page",
+        variant: "destructive",
+      });
+      navigate('/app/broker-connection');
+      return;
+    }
+
+    // Use the first available broker connection
+    const defaultConnectionId = connections[0].id;
+
     try {
       // Insert into multi_strategy_queue table
       const client = await getAuthenticatedTradelayoutClient();
@@ -147,7 +166,7 @@ const StrategyCard = ({
         .upsert({
           user_id: user.id,
           strategy_id: id,
-          broker_connection_id: null, // User will assign connection in live trading page
+          broker_connection_id: defaultConnectionId,
           scale: 1,
           is_active: 0, // Inactive until user starts it
           status: 'pending'
