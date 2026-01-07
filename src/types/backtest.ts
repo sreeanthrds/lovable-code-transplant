@@ -249,6 +249,11 @@ export interface ExecutionNode {
     current_time: string;
     strategy_symbol: string;
   };
+  // Node variables calculated during execution
+  node_variables?: Record<string, {
+    expression_preview: string;
+    value: number;
+  }>;
 }
 
 export interface DiagnosticsExport {

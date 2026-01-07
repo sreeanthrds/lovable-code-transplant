@@ -159,6 +159,51 @@ const NodeDetailModal: React.FC<NodeDetailModalProps> = ({ node, isOpen, onClose
 
   const parentLabel = getParentLabel();
 
+  // Render node variables calculated during execution
+  const renderNodeVariables = () => {
+    if (!node.node_variables || Object.keys(node.node_variables).length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Database className="h-4 w-4" />
+          Node Variables
+          <Badge variant="secondary" className="ml-auto">
+            {Object.keys(node.node_variables).length}
+          </Badge>
+        </div>
+        <div className="space-y-2">
+          {Object.entries(node.node_variables).map(([variableName, variable]) => (
+            <div key={variableName} className="p-3 bg-muted/30 rounded-lg border">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <span className="font-mono text-sm font-medium">{variableName}</span>
+                <Badge variant="outline" className="text-xs">
+                  Number
+                </Badge>
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Value:</span>
+                  <span className="font-mono font-semibold text-blue-600">
+                    {variable.value.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Expression:</span>
+                  <span className="font-mono text-orange-600">
+                    {variable.expression_preview}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] p-0">
@@ -252,6 +297,9 @@ const NodeDetailModal: React.FC<NodeDetailModalProps> = ({ node, isOpen, onClose
                     </div>
                   </div>
                 )}
+
+                {/* Node Variables */}
+                {renderNodeVariables()}
 
                 {/* Market Data - Candles, Signal, LTP unified section */}
                 {(node.evaluated_conditions?.candle_data || node.exit_signal_data || node.ltp_store) && (
@@ -442,6 +490,9 @@ const NodeDetailModal: React.FC<NodeDetailModalProps> = ({ node, isOpen, onClose
                   </div>
                 )}
 
+                {/* Node Variables */}
+                {renderNodeVariables()}
+
                 {/* Exit Result */}
                 {node.exit_result && (
                   <div className={cn(
@@ -537,6 +588,9 @@ const NodeDetailModal: React.FC<NodeDetailModalProps> = ({ node, isOpen, onClose
                       )}
                     </div>
                   )}
+
+                  {/* Node Variables */}
+                  {renderNodeVariables()}
                 </div>
 
                 {/* Closed Positions */}
