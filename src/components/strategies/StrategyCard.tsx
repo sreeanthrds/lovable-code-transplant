@@ -13,8 +13,11 @@ import { useToast } from '@/hooks/use-toast';
 import { saveStrategy } from '@/hooks/strategy-store/supabase-persistence';
 import { strategyService } from '@/lib/supabase/services/strategy-service';
 import { queueService } from '@/lib/supabase/services/queue-service';
+import { getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
+import { useBrokerConnections } from '@/hooks/use-broker-connections';
 import { v4 as uuidv4 } from 'uuid';
 import { getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
+
 
 interface StrategyCardProps {
   id: string;
@@ -48,7 +51,10 @@ const StrategyCard = ({
   const { addToLiveTrading, isStrategyInLiveTrading } = useLiveTradeStore();
   const isInLiveTrading = isStrategyInLiveTrading(id);
   
-  console.log('🔍 StrategyCard render:', { id, name, isInLiveTrading });
+console.log('🔍 StrategyCard render:', { id, name, isInLiveTrading });
+  
+  // Broker connections
+  const { connections } = useBrokerConnections();
   
   // Helper function to load strategy from database only
   const loadStrategyFromSource = async (strategyId: string) => {
@@ -125,6 +131,15 @@ const StrategyCard = ({
     e.preventDefault();
     e.stopPropagation();
     
+    if (!user?.id) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to add strategy to live trading",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (isInLiveTrading) {
       toast({
         title: "Already in Live Trading",
@@ -132,8 +147,7 @@ const StrategyCard = ({
       });
       return;
     }
-    
-    try {
+try {
       // Use the queue service - same pattern as strategyService.saveStrategy
       const result = await queueService.addToQueue(id, userId);
       
