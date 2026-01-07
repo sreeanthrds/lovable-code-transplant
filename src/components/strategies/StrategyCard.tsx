@@ -12,7 +12,9 @@ import { setSavingState } from '@/hooks/strategy-store/supabase-persistence';
 import { useToast } from '@/hooks/use-toast';
 import { saveStrategy } from '@/hooks/strategy-store/supabase-persistence';
 import { strategyService } from '@/lib/supabase/services/strategy-service';
+import { queueService } from '@/lib/supabase/services/queue-service';
 import { v4 as uuidv4 } from 'uuid';
+import { getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
 
 interface StrategyCardProps {
   id: string;
@@ -38,13 +40,15 @@ const StrategyCard = ({
   isLiveTrade = false
 }: StrategyCardProps) => {
   const navigate = useNavigate();
-  const { user } = useClerkUser();
+  const { user, userId } = useClerkUser();
   const { theme } = useWebsiteTheme();
   const { toast } = useToast();
   
   // Live trading store
   const { addToLiveTrading, isStrategyInLiveTrading } = useLiveTradeStore();
   const isInLiveTrading = isStrategyInLiveTrading(id);
+  
+  console.log('🔍 StrategyCard render:', { id, name, isInLiveTrading });
   
   // Helper function to load strategy from database only
   const loadStrategyFromSource = async (strategyId: string) => {
@@ -117,7 +121,7 @@ const StrategyCard = ({
     navigate(`/app/strategy-builder?id=${id}&name=${encodeURIComponent(name)}&mode=view`);
   };
 
-  const handleAddToLiveTrade = (e: React.MouseEvent) => {
+  const handleAddToLiveTrade = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -129,12 +133,32 @@ const StrategyCard = ({
       return;
     }
     
-    addToLiveTrading({ id, name, description });
-    
-    toast({
-      title: "Added to Live Trading",
-      description: `"${name}" has been added to live trading`,
-    });
+    try {
+      // Use the queue service - same pattern as strategyService.saveStrategy
+      const result = await queueService.addToQueue(id, userId);
+      
+      console.log('✅ Successfully added to queue:', result);
+
+      // Also update local state
+      addToLiveTrading({ id, name, description }, userId || '');
+      
+      // Force refresh the LiveStrategiesGrid by triggering a page reload
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+      
+      toast({
+        title: "Added to Live Trading",
+        description: `"${name}" has been added to live trading`,
+      });
+    } catch (error) {
+      console.error('❌ Error adding to queue:', error);
+      toast({
+        title: "Error",
+        description: `Failed to add strategy: ${error.message}`,
+        variant: "destructive"
+      });
+    }
   };
 
   const handleCardClick = () => {
