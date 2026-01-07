@@ -331,7 +331,15 @@ function QueueStrategyCard({
   onRemove: () => void;
   mode: 'live' | 'backtest';
 }) {
-  const { readyValidation } = useReadyValidation(strategy.strategy_id, connectionId);
+  // UI-side validation for backtest mode (pass null for userId/apiBaseUrl, provide connections)
+  const readyValidation = useReadyValidation(
+    null, // userId - skip API validation
+    strategy.strategy_id,
+    connectionId,
+    [], // existing combinations
+    null, // apiBaseUrl - skip API validation
+    brokerConnections // broker connections for UI validation
+  );
 
   const statusBadge = () => {
     if (readyValidation.loading) {
@@ -343,7 +351,7 @@ function QueueStrategyCard({
       );
     }
 
-    if (readyValidation.isReady) {
+    if (readyValidation.ready) {
       return (
         <Badge className="bg-green-600 hover:bg-green-700 flex items-center gap-1">
           <CheckCircle2 className="h-3 w-3" />
