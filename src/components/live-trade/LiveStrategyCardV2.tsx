@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Trash2, FileText, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Trash2, FileText, CheckCircle2, XCircle, Loader2, Copy } from 'lucide-react';
 import { LiveStrategy } from '@/hooks/use-live-trade-store';
 import { useReadyValidation } from '@/hooks/use-ready-validation';
 
@@ -44,6 +44,8 @@ interface LiveStrategyCardV2Props {
   onScaleChange: (strategyId: string, scale: number) => void;
   onViewTrades: (strategyId: string) => void;
   onRemove: (strategyId: string) => void;
+  onClone?: () => void;
+  isTemporaryClone?: boolean;
 }
 
 export const LiveStrategyCardV2: React.FC<LiveStrategyCardV2Props> = ({
@@ -62,7 +64,9 @@ export const LiveStrategyCardV2: React.FC<LiveStrategyCardV2Props> = ({
   onQueueToggle,
   onScaleChange,
   onViewTrades,
-  onRemove
+  onRemove,
+  onClone,
+  isTemporaryClone = false
 }) => {
   // Validate READY state - use UI-side validation in backtest mode
   const readyValidation = useReadyValidation(
@@ -307,16 +311,32 @@ export const LiveStrategyCardV2: React.FC<LiveStrategyCardV2Props> = ({
       </CardContent>
 
       <CardFooter className="flex gap-2 justify-between pt-4">
-        {/* View Trades */}
-        <Button
-          onClick={() => onViewTrades(strategy.id)}
-          size="sm"
-          variant="default"
-          className="flex-1"
-        >
-          <FileText className="h-4 w-4 mr-1" />
-          View Trades
-        </Button>
+        <div className="flex gap-2">
+          {/* Clone button - Only for non-temporary strategies */}
+          {onClone && !isTemporaryClone && (
+            <Button
+              onClick={onClone}
+              size="sm"
+              variant="outline"
+              disabled={strategy.isLive}
+            >
+              <Copy className="h-4 w-4 mr-1" />
+              Clone
+            </Button>
+          )}
+          
+          {/* View Trades - Only for non-temporary strategies */}
+          {!isTemporaryClone && (
+            <Button
+              onClick={() => onViewTrades(strategy.id)}
+              size="sm"
+              variant="default"
+            >
+              <FileText className="h-4 w-4 mr-1" />
+              View Trades
+            </Button>
+          )}
+        </div>
 
         {/* Remove */}
         <Button
