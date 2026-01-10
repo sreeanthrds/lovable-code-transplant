@@ -106,101 +106,55 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
         status: 'streaming',
       } : null);
 
-      // Connect to SSE stream using fetch (supports custom headers)
+      // Connect to SSE stream using EventSource (proper SSE implementation)
       const streamUrl = `${baseUrl}${data.stream_url}`;
-      const abortController = new AbortController();
-      abortControllerRef.current = abortController;
+      
+      // Create EventSource for proper SSE handling
+      const eventSource = new EventSource(streamUrl);
 
-      const streamResponse = await fetch(streamUrl, {
-        headers: {
-          'Accept': 'text/event-stream',
-          'ngrok-skip-browser-warning': 'true',
-        },
-        signal: abortController.signal,
-      });
-
-      if (!streamResponse.ok) {
-        throw new Error('Failed to connect to SSE stream');
-      }
-
-      const reader = streamResponse.body?.getReader();
-      if (!reader) {
-        throw new Error('No readable stream available');
-      }
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      // Process the stream
-      const processStream = async () => {
+      // Handle SSE events
+      eventSource.onmessage = (event) => {
+        console.log("SSE message:", event.data);
         try {
-          while (true) {
-            const { done, value } = await reader.read();
-            
-            if (done) {
-              console.log('SSE stream ended');
-              // Process any remaining buffer - may contain multiple events
-              if (buffer.trim()) {
-                const remainingEvents = buffer.split('\n\n');
-                for (const eventText of remainingEvents) {
-                  if (!eventText.trim()) continue;
-                  const parsed = parseSSEEvent(eventText);
-                  if (parsed) {
-                    handleSSEEvent(parsed.event, parsed.data);
-                  }
-                }
-              }
-              // If stream ended but status is still streaming, mark as completed
-              setSession(prev => {
-                if (!prev || prev.status === 'completed' || prev.status === 'failed') return prev;
-                return { ...prev, status: 'completed', progress: 100 };
-              });
-              break;
-            }
-
-            buffer += decoder.decode(value, { stream: true });
-            
-            // Normalize line endings - handle both \r\n and \n
-            buffer = buffer.replace(/\r\n/g, '\n');
-            
-            console.log('Buffer received, length:', buffer.length);
-            console.log('Has double newline:', buffer.includes('\n\n'));
-            console.log('Newline count:', (buffer.match(/\n/g) || []).length);
-            
-            // Split by double newlines (SSE event separator)
-            const events = buffer.split('\n\n');
-            buffer = events.pop() || ''; // Keep incomplete event in buffer
-
-            console.log('Split into', events.length, 'events, remaining buffer:', buffer.length);
-            for (const eventText of events) {
-              if (!eventText.trim()) continue;
-              
-              const parsed = parseSSEEvent(eventText);
-              if (!parsed) {
-                console.log('Failed to parse event:', eventText.substring(0, 100));
-                continue;
-              }
-
-              console.log('Parsed event:', parsed.event);
-              handleSSEEvent(parsed.event, parsed.data);
-            }
+          const parsed = parseSSEEvent(`message\ndata: ${event.data}`);
+          if (parsed) {
+            handleSSEEvent(parsed.event, parsed.data);
           }
-        } catch (err) {
-          if ((err as Error).name === 'AbortError') {
-            console.log('SSE stream aborted');
-            return;
-          }
-          console.error('SSE stream error:', err);
-          setSession(prev => {
-            if (!prev || prev.status === 'completed') return prev;
-            return {
-              ...prev,
-              status: 'failed',
-              error: 'Connection to server lost',
-            };
-          });
+        } catch (error) {
+          console.error('Error parsing SSE message:', error);
         }
       };
+
+      eventSource.addEventListener("day_started", (e) => {
+        const payload = JSON.parse(e.data);
+        console.log("Day started:", payload);
+        handleSSEEvent("day_started", payload);
+      });
+
+      eventSource.addEventListener("day_completed", (e) => {
+        const payload = JSON.parse(e.data);
+        console.log("Day completed:", payload);
+        handleSSEEvent("day_completed", payload);
+      });
+
+      eventSource.addEventListener("backtest_completed", (e) => {
+        const payload = JSON.parse(e.data);
+        console.log("Backtest completed:", payload);
+        handleSSEEvent("backtest_completed", payload);
+        eventSource.close();
+        abortControllerRef.current = null;
+      });
+
+      eventSource.addEventListener("error", (err) => {
+        console.error("SSE error:", err);
+        setSession(prev => prev ? { ...prev, status: 'failed' } : null);
+        eventSource.close();
+        abortControllerRef.current = null;
+      });
+
+      eventSource.addEventListener("open", () => {
+        console.log("SSE connection opened");
+      });
 
       // Handle SSE events
       const handleSSEEvent = (event: string, eventData: any) => {
@@ -296,9 +250,6 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
             break;
         }
       };
-
-      // Start processing the stream
-      processStream();
 
     } catch (error) {
       // Clear session on failure so form reappears
