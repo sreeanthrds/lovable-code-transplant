@@ -10,7 +10,7 @@ import { useClerkUser } from '@/hooks/useClerkUser';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const Backtesting = () => {
   const { user } = useClerkUser();
@@ -28,6 +28,9 @@ const Backtesting = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // Modal state for BacktestReport
+  const [isBacktestReportModalOpen, setIsBacktestReportModalOpen] = useState(false);
 
   // Legacy test mode state
   const [legacyMode, setLegacyMode] = useState(false);
@@ -120,6 +123,7 @@ const Backtesting = () => {
     setSelectedDate(date);
     try {
       await loadDayDetail(date);
+      setIsBacktestReportModalOpen(true); // Show modal instead of navigating
     } catch (error) {
       toast({
         title: 'Failed to load day details',
@@ -137,47 +141,10 @@ const Backtesting = () => {
     setSelectedDate(null);
   };
 
-  const handleBackToOverview = () => {
-    setSelectedDate(null);
-  };
-
   const dailyResults = getDailyResultsArray();
   const isRunning = session?.status === 'starting' || session?.status === 'streaming';
   const isCompleted = session?.status === 'completed';
   const isFailed = session?.status === 'failed';
-
-  // Show detailed view for selected day
-  if (selectedDayData && selectedDate) {
-    return (
-      <AppLayout>
-        <div className="h-[calc(100vh-4rem)] overflow-auto relative">
-          {/* Floating Back Button */}
-          <Button 
-            onClick={handleBackToOverview}
-            className="fixed bottom-6 left-6 z-50 shadow-lg hover:shadow-xl transition-all duration-200 gap-2 rounded-full px-5 py-6"
-            size="lg"
-          >
-            <ArrowLeft className="h-5 w-5" />
-            <span className="font-medium">Back to Overview</span>
-          </Button>
-
-          <div className="container max-w-7xl mx-auto px-4 py-6">
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold mb-2">Day Detail: {selectedDate}</h1>
-              <p className="text-muted-foreground">
-                Detailed trades and execution diagnostics for this day
-              </p>
-            </div>
-
-            <BacktestReport 
-              externalTradesData={selectedDayData.trades}
-              externalDiagnosticsData={selectedDayData.diagnostics}
-            />
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
 
   // Show legacy mode (test strategy)
   if (legacyMode && legacyTradesData && legacyDiagnosticsData) {
@@ -201,6 +168,16 @@ const Backtesting = () => {
             <BacktestReport 
               externalTradesData={legacyTradesData}
               externalDiagnosticsData={legacyDiagnosticsData}
+              showModal={false}
+              onCloseModal={() => {}}
+              strategy={{
+                id: 'test-strategy',
+                strategyId: 'test-strategy',
+                name: 'Test Strategy',
+                description: 'Static test data for UI testing'
+              }}
+              userId={user?.id}
+              apiBaseUrl={null}
             />
           </div>
         </div>
@@ -258,6 +235,24 @@ const Backtesting = () => {
                 loadingDate={loadingDay}
                 onSelectDay={handleDaySelect}
               />
+
+              {/* BacktestReport Modal - show when day is selected */}
+              {selectedDayData && (
+                <BacktestReport 
+                  externalTradesData={selectedDayData.trades}
+                  externalDiagnosticsData={selectedDayData.diagnostics}
+                  showModal={isBacktestReportModalOpen}
+                  onCloseModal={() => setIsBacktestReportModalOpen(false)}
+                  strategy={{
+                    id: session?.backtest_id || '',
+                    strategyId: session?.strategy_id || 'backtest',
+                    name: `Backtest - ${selectedDate}`,
+                    description: `Day ${selectedDate} detailed trades`
+                  }}
+                  userId={user?.id}
+                  apiBaseUrl={null}
+                />
+              )}
 
               {/* Failed State */}
               {isFailed && (

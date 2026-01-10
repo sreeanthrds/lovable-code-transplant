@@ -7,15 +7,32 @@ import type { ExecutionNode, TradesDaily, DiagnosticsExport } from '@/types/back
 import SummaryDashboard from './SummaryDashboard';
 import TradesTable from './TradesTable';
 import NodeDetailModal from './NodeDetailModal';
+import { ViewTradesModalV2 } from '@/components/live-trade/ViewTradesModalV2';
 
 interface BacktestReportProps {
   externalTradesData?: TradesDaily;
   externalDiagnosticsData?: DiagnosticsExport;
+  // Props for ViewTradesModalV2
+  showModal?: boolean;
+  onCloseModal?: () => void;
+  strategy?: {
+    id: string;
+    strategyId: string;
+    name: string;
+    description: string;
+  };
+  userId?: string | null;
+  apiBaseUrl?: string | null;
 }
 
 const BacktestReport: React.FC<BacktestReportProps> = ({ 
   externalTradesData, 
-  externalDiagnosticsData 
+  externalDiagnosticsData,
+  showModal,
+  onCloseModal,
+  strategy,
+  userId,
+  apiBaseUrl
 }) => {
   const hasExternalData = !!(externalTradesData && externalDiagnosticsData);
   
@@ -111,28 +128,56 @@ const BacktestReport: React.FC<BacktestReportProps> = ({
   }
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Summary Dashboard */}
-      <SummaryDashboard 
-        summary={tradesData.summary} 
-        date={tradesData.date} 
-      />
+    <>
+      {/* BacktestReport Content */}
+      <div className="space-y-6 p-6">
+        {/* Summary Dashboard */}
+        <SummaryDashboard 
+          summary={tradesData.summary} 
+          date={tradesData.date} 
+        />
 
-      {/* Trades Table with Flow Diagrams */}
-      <TradesTable 
-        trades={tradesData.trades}
-        getFlowNodes={getFlowNodes}
-        onNodeClick={handleNodeClick}
-      />
+        {/* Trades Table with Flow Diagrams */}
+        <TradesTable 
+          trades={tradesData.trades}
+          getFlowNodes={getFlowNodes}
+          onNodeClick={handleNodeClick}
+        />
 
-      {/* Node Detail Modal */}
-      <NodeDetailModal
-        node={selectedNode}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        allNodes={allNodes}
-      />
-    </div>
+        {/* Node Detail Modal */}
+        <NodeDetailModal
+          node={selectedNode}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          allNodes={allNodes}
+        />
+      </div>
+
+      {/* ViewTradesModal for entire BacktestReport */}
+      {showModal && strategy && (
+        <ViewTradesModalV2
+          strategy={strategy}
+          userId={userId || null}
+          apiBaseUrl={apiBaseUrl || null}
+          onClose={onCloseModal || (() => {})}
+          mode="backtest"
+          backtestDate={tradesData?.date}
+          streamingTradesData={{
+            date: tradesData?.date || '',
+            summary: {
+              total_trades: tradesData?.summary?.total_trades || 0,
+              total_pnl: tradesData?.summary?.total_pnl || '0',
+              realized_pnl: tradesData?.summary?.realized_pnl || '0',
+              unrealized_pnl: tradesData?.summary?.unrealized_pnl || '0',
+              winning_trades: tradesData?.summary?.winning_trades || 0,
+              losing_trades: tradesData?.summary?.losing_trades || 0,
+            },
+            trades: tradesData?.trades || [],
+            diagnostics: externalDiagnosticsData || { events_history: {} }
+          }}
+        />
+      )}
+    </>
   );
 };
 
