@@ -5,6 +5,7 @@ import BacktestReport from '@/components/backtest-report/BacktestReport';
 import BacktestProgress from '@/components/backtest/BacktestProgress';
 import DailyResultsList from '@/components/backtest/DailyResultsList';
 import OverallSummaryCard from '@/components/backtest/OverallSummaryCard';
+import { ViewTradesModalV2 } from '@/components/live-trade/ViewTradesModalV2';
 import { useBacktestSession } from '@/hooks/useBacktestSession';
 import { useClerkUser } from '@/hooks/useClerkUser';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +29,8 @@ const Backtesting = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalStrategy, setModalStrategy] = useState<any>(null);
 
   // Legacy test mode state
   const [legacyMode, setLegacyMode] = useState(false);
@@ -129,15 +132,31 @@ const Backtesting = () => {
     }
   };
 
+  // Open modal when day data is loaded
+  useEffect(() => {
+    if (selectedDayData && selectedDate && !isModalOpen) {
+      setModalStrategy({
+        id: selectedDate,
+        strategyId: session?.strategy_id || 'backtest',
+        name: `Backtest - ${selectedDate}`,
+        description: `Daily results for ${selectedDate}`
+      });
+      setIsModalOpen(true);
+    }
+  }, [selectedDayData, selectedDate, isModalOpen, session?.strategy_id]);
+
   const handleReset = () => {
     reset();
     setLegacyMode(false);
     setLegacyTradesData(null);
     setLegacyDiagnosticsData(null);
     setSelectedDate(null);
+    setIsModalOpen(false);
+    setModalStrategy(null);
   };
 
-  const handleBackToOverview = () => {
+  const handleModalClose = () => {
+    setIsModalOpen(false);
     setSelectedDate(null);
   };
 
@@ -145,39 +164,6 @@ const Backtesting = () => {
   const isRunning = session?.status === 'starting' || session?.status === 'streaming';
   const isCompleted = session?.status === 'completed';
   const isFailed = session?.status === 'failed';
-
-  // Show detailed view for selected day
-  if (selectedDayData && selectedDate) {
-    return (
-      <AppLayout>
-        <div className="h-[calc(100vh-4rem)] overflow-auto relative">
-          {/* Floating Back Button */}
-          <Button 
-            onClick={handleBackToOverview}
-            className="fixed bottom-6 left-6 z-50 shadow-lg hover:shadow-xl transition-all duration-200 gap-2 rounded-full px-5 py-6"
-            size="lg"
-          >
-            <ArrowLeft className="h-5 w-5" />
-            <span className="font-medium">Back to Overview</span>
-          </Button>
-
-          <div className="container max-w-7xl mx-auto px-4 py-6">
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold mb-2">Day Detail: {selectedDate}</h1>
-              <p className="text-muted-foreground">
-                Detailed trades and execution diagnostics for this day
-              </p>
-            </div>
-
-            <BacktestReport 
-              externalTradesData={selectedDayData.trades}
-              externalDiagnosticsData={selectedDayData.diagnostics}
-            />
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
 
   // Show legacy mode (test strategy)
   if (legacyMode && legacyTradesData && legacyDiagnosticsData) {
@@ -312,6 +298,32 @@ const Backtesting = () => {
           )}
         </div>
       </div>
+
+      {/* View Trades Modal */}
+      {isModalOpen && modalStrategy && selectedDayData && (
+        <ViewTradesModalV2
+          strategy={modalStrategy}
+          userId={user?.id || null}
+          apiBaseUrl={null}
+          onClose={handleModalClose}
+          mode="backtest"
+          backtestDate={selectedDate}
+          streamingTradesData={{
+            date: selectedDate,
+            summary: {
+              total_trades: selectedDayData.trades?.summary?.total_trades || 0,
+              total_pnl: selectedDayData.trades?.summary?.total_pnl || "0",
+              realized_pnl: selectedDayData.trades?.summary?.realized_pnl || "0",
+              unrealized_pnl: selectedDayData.trades?.summary?.unrealized_pnl || "0",
+              winning_trades: selectedDayData.trades?.summary?.winning_trades || 0,
+              losing_trades: selectedDayData.trades?.summary?.losing_trades || 0
+            },
+            trades: selectedDayData.trades?.trades || [],
+            diagnostics: selectedDayData.diagnostics
+          }}
+          cachedBacktestResults={selectedDayData}
+        />
+      )}
     </AppLayout>
   );
 };

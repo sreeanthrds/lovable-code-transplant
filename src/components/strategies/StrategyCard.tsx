@@ -16,7 +16,6 @@ import { queueService } from '@/lib/supabase/services/queue-service';
 import { getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
 import { useBrokerConnections } from '@/hooks/use-broker-connections';
 import { v4 as uuidv4 } from 'uuid';
-import { getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
 
 
 interface StrategyCardProps {
