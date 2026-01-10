@@ -16,7 +16,6 @@ import { queueService } from '@/lib/supabase/services/queue-service';
 import { getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
 import { useBrokerConnections } from '@/hooks/use-broker-connections';
 import { v4 as uuidv4 } from 'uuid';
-import { getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
 
 
 interface StrategyCardProps {
@@ -154,7 +153,7 @@ try {
       console.log('✅ Successfully added to queue:', result);
 
       // Also update local state
-      addToLiveTrading({ id, name, description }, userId || '');
+      addToLiveTrading({ id, name, description });
       
       // Force refresh the LiveStrategiesGrid by triggering a page reload
       setTimeout(() => {
