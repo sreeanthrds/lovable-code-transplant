@@ -23,6 +23,21 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const apiBaseUrl = useRef<string>('');
 
+  const decodePossiblyGzippedJson = (bytes: Uint8Array, fileName: string) => {
+    // GZIP magic header: 1f 8b
+    const looksGzipped = bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+    try {
+      const text = looksGzipped
+        ? pako.ungzip(bytes, { to: 'string' })
+        : new TextDecoder('utf-8').decode(bytes);
+      return JSON.parse(text);
+    } catch (e) {
+      throw new Error(
+        `Failed to parse ${fileName} as ${looksGzipped ? 'gzip+json' : 'json'}: ${e instanceof Error ? e.message : String(e)}`
+      );
+    }
+  };
+
   // Initialize API URL
   const initApiUrl = useCallback(async () => {
     if (userId && !apiBaseUrl.current) {
@@ -145,8 +160,25 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
         abortControllerRef.current = null;
       });
 
-      eventSource.addEventListener("error", (err) => {
-        console.error("SSE error:", err);
+      eventSource.addEventListener("error", (e) => {
+        // NOTE:
+        // - EventSource uses the 'error' event for connection-level failures.
+        // - Our backend ALSO emits `event: error` with a JSON payload (date + error message).
+        // Distinguish by presence of `data` (MessageEvent) and handle gracefully.
+        const maybeMessageEvent = e as MessageEvent;
+        if (typeof maybeMessageEvent?.data === 'string' && maybeMessageEvent.data.trim()) {
+          try {
+            const payload = JSON.parse(maybeMessageEvent.data);
+            console.log("Backtest error event:", payload);
+            handleSSEEvent("error", payload);
+            return;
+          } catch (parseErr) {
+            console.error("Failed to parse SSE error payload:", parseErr, maybeMessageEvent.data);
+            // fall through to treat as connection error
+          }
+        }
+
+        console.error("SSE connection error:", e);
         setSession(prev => prev ? { ...prev, status: 'failed' } : null);
         eventSource.close();
         abortControllerRef.current = null;
@@ -289,17 +321,17 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
       let trades: TradesDaily | null = null;
       let diagnostics: DiagnosticsExport | null = null;
 
+      const zipFileNames = Object.keys(zip.files);
+
       for (const [fileName, file] of Object.entries(zip.files)) {
         if (file.dir) continue;
         
         const fileData = await file.async('uint8array');
         
         if (fileName.includes('trades_daily')) {
-          const decompressed = pako.ungzip(fileData, { to: 'string' });
-          trades = JSON.parse(decompressed);
+          trades = decodePossiblyGzippedJson(fileData, fileName);
         } else if (fileName.includes('diagnostics_export')) {
-          const decompressed = pako.ungzip(fileData, { to: 'string' });
-          diagnostics = JSON.parse(decompressed);
+          diagnostics = decodePossiblyGzippedJson(fileData, fileName);
         }
       }
 
@@ -336,7 +368,9 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
         setSelectedDayData({ trades: normalizedTrades, diagnostics });
       } else {
         console.error('Missing data - trades:', !!trades, 'diagnostics:', !!diagnostics);
-        throw new Error('Missing trades or diagnostics data in ZIP');
+        throw new Error(
+          `Missing trades or diagnostics data in ZIP. Found files: ${zipFileNames.join(', ')}`
+        );
       }
     } catch (error) {
       console.error('Error loading day details:', error);
