@@ -151,9 +151,9 @@ const TradesTable: React.FC<TradesTableProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedTrades.map((trade) => {
-              // Use trade_id as unique key (already unique: position_id + re_entry_num)
-              const uniqueKey = trade.trade_id;
+            {sortedTrades.map((trade, index) => {
+              // Use array index as unique key to ensure individual expansion
+              const uniqueKey = `trade-${index}`;
               const isExpanded = expandedTradeKey === uniqueKey;
               const pnl = parseFloat(trade.pnl);
               const isProfitable = pnl >= 0;
