@@ -118,7 +118,7 @@ const getProxyBaseUrl = (): string => {
 
 const getDefaultConfig = (): ApiConfig => {
   const defaultConfig: ApiConfig = {
-    baseUrl: getProxyBaseUrl(),
+    baseUrl: 'http://localhost:8000',
     timeout: 30000,
     retries: 3
   };
