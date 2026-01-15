@@ -15,7 +15,7 @@ const BacktestProgress: React.FC<BacktestProgressProps> = ({ session }) => {
 
   // Timer effect
   useEffect(() => {
-    if (session.status === 'starting' || session.status === 'streaming') {
+    if (session.status === 'starting' || session.status === 'running') {
       const interval = setInterval(() => {
         setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
       }, 1000);
@@ -41,7 +41,7 @@ const BacktestProgress: React.FC<BacktestProgressProps> = ({ session }) => {
     switch (session.status) {
       case 'starting':
         return <Loader2 className="h-5 w-5 animate-spin text-primary" />;
-      case 'streaming':
+      case 'running':
         return <Loader2 className="h-5 w-5 animate-spin text-primary" />;
       case 'completed':
         return <CheckCircle2 className="h-5 w-5 text-green-500" />;
@@ -56,7 +56,7 @@ const BacktestProgress: React.FC<BacktestProgressProps> = ({ session }) => {
     switch (session.status) {
       case 'starting':
         return 'Initializing backtest...';
-      case 'streaming':
+      case 'running':
         return `Processing day ${completedDays + runningDays} of ${session.total_days}`;
       case 'completed':
         return 'Backtest completed';
@@ -67,7 +67,7 @@ const BacktestProgress: React.FC<BacktestProgressProps> = ({ session }) => {
     }
   };
 
-  const isRunning = session.status === 'starting' || session.status === 'streaming';
+  const isRunning = session.status === 'starting' || session.status === 'running';
 
   return (
     <Card>

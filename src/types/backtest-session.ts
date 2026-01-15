@@ -29,11 +29,12 @@ export interface BacktestSession {
   start_date: string;
   end_date: string;
   total_days: number;
-  status: 'idle' | 'starting' | 'streaming' | 'completed' | 'failed';
+  status: 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'stopped';
   daily_results: Map<string, DayResult>;
   overall_summary?: OverallSummary;
   error?: string;
   progress: number; // 0-100
+  start_time?: string; // For polling implementation
 }
 
 // SSE Event Types
