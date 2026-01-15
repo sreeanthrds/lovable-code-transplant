@@ -77,23 +77,23 @@ const DayDetail: React.FC<DayDetailProps> = ({ detail }) => {
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-10 gap-3 mb-4 p-3 bg-background rounded-lg">
         <div>
           <p className="text-xs text-muted-foreground">Total Trades</p>
-          <p className="font-medium">{detail.summary.total_positions}</p>
+          <p className="font-medium">{detail.summary.total_positions || 0}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Winning</p>
-          <p className="font-medium text-green-500">{detail.summary.winning_trades}</p>
+          <p className="font-medium text-green-500">{detail.summary.winning_trades || 0}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Losing</p>
-          <p className="font-medium text-red-500">{detail.summary.losing_trades}</p>
+          <p className="font-medium text-red-500">{detail.summary.losing_trades || 0}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Breakeven</p>
-          <p className="font-medium text-muted-foreground">{detail.summary.breakeven_trades}</p>
+          <p className="font-medium text-muted-foreground">{detail.summary.breakeven_trades || 0}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Win Rate</p>
-          <p className="font-medium">{detail.summary.win_rate.toFixed(1)}%</p>
+          <p className="font-medium">{(detail.summary.win_rate || 0).toFixed(1)}%</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Total PNL</p>
@@ -101,31 +101,31 @@ const DayDetail: React.FC<DayDetailProps> = ({ detail }) => {
             'font-medium',
             detail.summary.total_pnl > 0 ? 'text-green-500' : detail.summary.total_pnl < 0 ? 'text-red-500' : ''
           )}>
-            ₹{detail.summary.total_pnl.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            ₹{(detail.summary.total_pnl || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
           </p>
         </div>
         {detail.summary.avg_win !== undefined && (
           <div>
             <p className="text-xs text-muted-foreground">Avg Win</p>
-            <p className="font-medium text-green-500">₹{detail.summary.avg_win.toFixed(2)}</p>
+            <p className="font-medium text-green-500">₹{(detail.summary.avg_win || 0).toFixed(2)}</p>
           </div>
         )}
         {detail.summary.avg_loss !== undefined && (
           <div>
             <p className="text-xs text-muted-foreground">Avg Loss</p>
-            <p className="font-medium text-red-500">₹{detail.summary.avg_loss.toFixed(2)}</p>
+            <p className="font-medium text-red-500">₹{(detail.summary.avg_loss || 0).toFixed(2)}</p>
           </div>
         )}
         {detail.summary.largest_win !== undefined && (
           <div>
             <p className="text-xs text-muted-foreground">Largest Win</p>
-            <p className="font-medium text-green-500">₹{detail.summary.largest_win.toFixed(2)}</p>
+            <p className="font-medium text-green-500">₹{(detail.summary.largest_win || 0).toFixed(2)}</p>
           </div>
         )}
         {detail.summary.largest_loss !== undefined && (
           <div>
             <p className="text-xs text-muted-foreground">Largest Loss</p>
-            <p className="font-medium text-red-500">₹{detail.summary.largest_loss.toFixed(2)}</p>
+            <p className="font-medium text-red-500">₹{(detail.summary.largest_loss || 0).toFixed(2)}</p>
           </div>
         )}
       </div>
