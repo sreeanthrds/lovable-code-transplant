@@ -234,7 +234,7 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
   }, [session, initApiUrl, stopPolling]);
 
   // Reset session
-  const resetSession = useCallback(() => {
+  const reset = useCallback(() => {
     stopPolling();
     setSession(null);
     setSelectedDayData(null);
@@ -263,7 +263,7 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
     startBacktest,
     loadDayDetail,
     stopBacktest,
-    resetSession,
+    reset, // Changed from resetSession to reset for compatibility
     getDailyResultsArray,
   };
 }
