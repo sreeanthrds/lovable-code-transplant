@@ -50,6 +50,11 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
 
         const sessionData = await response.json();
         
+        // Convert daily_results from object to Map if needed
+        if (sessionData.daily_results && typeof sessionData.daily_results === 'object' && !(sessionData.daily_results instanceof Map)) {
+          sessionData.daily_results = new Map(Object.entries(sessionData.daily_results));
+        }
+        
         // Update session state
         setSession(sessionData);
         

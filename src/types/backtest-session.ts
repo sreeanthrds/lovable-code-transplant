@@ -30,10 +30,11 @@ export interface BacktestSession {
   end_date: string;
   total_days: number;
   status: 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'stopped';
+  current_day?: string; // Currently running day
+  completed_days: number; // Number of completed days
   daily_results: Map<string, DayResult>;
   overall_summary?: OverallSummary;
   error?: string;
-  progress: number; // 0-100
   start_time?: string; // For polling implementation
 }
 

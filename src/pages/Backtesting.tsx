@@ -165,11 +165,27 @@ const Backtesting = () => {
               </Button>
             </div>
 
+            {/* Show BacktestReport in modal instead of directly on page */}
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center">
+                  <h3 className="text-lg font-medium mb-2">Test Data Loaded</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Static test data is ready. Click below to view the detailed report.
+                  </p>
+                  <Button onClick={() => setIsBacktestReportModalOpen(true)}>
+                    View Detailed Report
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* BacktestReport Modal for legacy mode */}
             <BacktestReport 
               externalTradesData={legacyTradesData}
               externalDiagnosticsData={legacyDiagnosticsData}
-              showModal={false}
-              onCloseModal={() => {}}
+              showModal={isBacktestReportModalOpen}
+              onCloseModal={() => setIsBacktestReportModalOpen(false)}
               strategy={{
                 id: 'test-strategy',
                 strategyId: 'test-strategy',

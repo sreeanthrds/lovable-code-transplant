@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, CheckCircle2, XCircle, Clock, Timer } from 'lucide-react';
 import { BacktestSession } from '@/types/backtest-session';
@@ -29,14 +28,6 @@ const BacktestProgress: React.FC<BacktestProgressProps> = ({ session }) => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const completedDays = Array.from(session.daily_results.values()).filter(
-    d => d.status === 'completed'
-  ).length;
-  
-  const runningDays = Array.from(session.daily_results.values()).filter(
-    d => d.status === 'running'
-  ).length;
-
   const getStatusIcon = () => {
     switch (session.status) {
       case 'starting':
@@ -55,11 +46,14 @@ const BacktestProgress: React.FC<BacktestProgressProps> = ({ session }) => {
   const getStatusText = () => {
     switch (session.status) {
       case 'starting':
-        return 'Initializing backtest...';
+        return `Starting backtest for ${session.total_days} day${session.total_days > 1 ? 's' : ''}...`;
       case 'running':
-        return `Processing day ${completedDays + runningDays} of ${session.total_days}`;
+        if (session.current_day) {
+          return `Processing ${session.current_day} (${session.completed_days} of ${session.total_days} completed)`;
+        }
+        return `Processing backtest (${session.completed_days} of ${session.total_days} completed)`;
       case 'completed':
-        return 'Backtest completed';
+        return `Backtest completed - ${session.total_days} day${session.total_days > 1 ? 's' : ''} processed`;
       case 'failed':
         return session.error || 'Backtest failed';
       default:
@@ -85,19 +79,22 @@ const BacktestProgress: React.FC<BacktestProgressProps> = ({ session }) => {
               </span>
             )}
             <span>
-              {completedDays} / {session.total_days} days
+              {session.completed_days} / {session.total_days} days
             </span>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Progress value={session.progress} className="h-2" />
-        <p className={cn(
-          "text-sm",
-          session.status === 'failed' ? "text-destructive" : "text-muted-foreground"
-        )}>
-          {getStatusText()}
-        </p>
+        <div className="flex items-center justify-between text-sm">
+          <span className={cn(
+            session.status === 'failed' ? "text-destructive" : "text-muted-foreground"
+          )}>
+            {getStatusText()}
+          </span>
+          <span className="text-muted-foreground">
+            {session.completed_days} / {session.total_days} days
+          </span>
+        </div>
       </CardContent>
     </Card>
   );
