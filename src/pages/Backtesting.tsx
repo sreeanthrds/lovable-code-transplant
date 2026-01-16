@@ -6,6 +6,7 @@ import BacktestProgress from '@/components/backtest/BacktestProgress';
 import DailyResultsList from '@/components/backtest/DailyResultsList';
 import OverallSummaryCard from '@/components/backtest/OverallSummaryCard';
 import { useBacktestSession } from '@/hooks/useBacktestSession';
+// import { useBacktestSessionSimple } from '@/hooks/useBacktestSessionSimple'; // Fallback option
 import { useClerkUser } from '@/hooks/useClerkUser';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';

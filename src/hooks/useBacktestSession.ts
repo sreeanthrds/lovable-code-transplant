@@ -23,8 +23,12 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const apiBaseUrl = useRef<string>('');
 
+  // DEBUG: Add console logging to track function calls
+  console.log('[DEBUG] useBacktestSession initialized');
+
   // Initialize API URL
   const initApiUrl = useCallback(async () => {
+    console.log('[DEBUG] initApiUrl called');
     if (userId && !apiBaseUrl.current) {
       apiBaseUrl.current = await getApiBaseUrl(userId) || '';
     }
@@ -33,6 +37,7 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
 
   // Start polling for backtest status
   const startPolling = useCallback((backtestId: string) => {
+    console.log('[DEBUG] startPolling called with:', backtestId);
     // Clear any existing polling
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
