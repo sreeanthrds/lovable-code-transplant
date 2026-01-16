@@ -52,7 +52,29 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
         
         // Convert daily_results from object to Map if needed
         if (sessionData.daily_results && typeof sessionData.daily_results === 'object' && !(sessionData.daily_results instanceof Map)) {
-          sessionData.daily_results = new Map(Object.entries(sessionData.daily_results));
+          try {
+            const dailyResultsMap = new Map();
+            if (Array.isArray(sessionData.daily_results)) {
+              // If it's an array, convert each item
+              sessionData.daily_results.forEach((item: any) => {
+                if (item && typeof item === 'object' && item.date) {
+                  dailyResultsMap.set(item.date, item);
+                }
+              });
+            } else {
+              // If it's an object, convert entries
+              Object.entries(sessionData.daily_results).forEach(([key, value]) => {
+                if (value && typeof value === 'object') {
+                  dailyResultsMap.set(key, value);
+                }
+              });
+            }
+            sessionData.daily_results = dailyResultsMap;
+          } catch (error) {
+            console.error('Error converting daily_results to Map:', error);
+            // Fallback: create empty Map
+            sessionData.daily_results = new Map();
+          }
         }
         
         // Update session state
@@ -107,9 +129,9 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
         status: 'starting',
         start_time: new Date().toISOString(),
         total_days: result.total_days,
-        progress: 0,
+        completed_days: 0,
         daily_results: new Map(),
-        overall_summary: null,
+        overall_summary: undefined,
       };
 
       setSession(initialSession);
