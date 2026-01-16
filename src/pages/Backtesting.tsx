@@ -142,7 +142,7 @@ const Backtesting = () => {
   };
 
   const dailyResults = getDailyResultsArray();
-  const isRunning = session?.status === 'starting' || session?.status === 'streaming';
+  const isRunning = session?.status === 'starting' || session?.status === 'running';
   const isCompleted = session?.status === 'completed';
   const isFailed = session?.status === 'failed';
 
