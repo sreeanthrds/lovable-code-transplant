@@ -156,24 +156,37 @@ export function useBacktestSessionSimple({ userId }: UseBacktestSessionOptions) 
       }
 
       const blob = await response.blob();
-      const arrayBuffer = await blob.arrayBuffer();
-      const decompressed = pako.ungzip(new Uint8Array(arrayBuffer));
-      const text = new TextDecoder().decode(decompressed);
-      
       const zip = new JSZip();
-      const zipContent = await zip.loadAsync(text);
+      const zipContent = await zip.loadAsync(blob);
       
-      const [tradesFile, diagnosticsFile] = await Promise.all([
-        zipContent.file('trades_daily.json')?.async('string'),
-        zipContent.file('diagnostics_export.json')?.async('string')
-      ]);
-
-      if (tradesFile && diagnosticsFile) {
-        const trades = JSON.parse(tradesFile);
-        const diagnostics = JSON.parse(diagnosticsFile);
-        
-        setSelectedDayData({ trades, diagnostics });
+      // Get the gzipped files from the ZIP
+      const tradesGzFile = zipContent.file('trades_daily.json.gz');
+      const diagnosticsGzFile = zipContent.file('diagnostics_export.json.gz');
+      
+      if (!tradesGzFile || !diagnosticsGzFile) {
+        throw new Error('Required files not found in ZIP archive');
       }
+      
+      // Decompress the gzipped files
+      const [tradesGzData, diagnosticsGzData] = await Promise.all([
+        tradesGzFile.async('uint8array'),
+        diagnosticsGzFile.async('uint8array')
+      ]);
+      
+      const [tradesDecompressed, diagnosticsDecompressed] = await Promise.all([
+        pako.ungzip(tradesGzData),
+        pako.ungzip(diagnosticsGzData)
+      ]);
+      
+      const [tradesText, diagnosticsText] = [
+        new TextDecoder().decode(tradesDecompressed),
+        new TextDecoder().decode(diagnosticsDecompressed)
+      ];
+      
+      const trades = JSON.parse(tradesText);
+      const diagnostics = JSON.parse(diagnosticsText);
+      
+      setSelectedDayData({ trades, diagnostics });
       
     } catch (error) {
       console.error('Failed to load day details:', error);

@@ -22,6 +22,10 @@ let cachedConfig: ApiConfig | null = null;
 let configExpiry = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+// Clear cache on module load to force fresh fetch from Supabase
+cachedConfig = null;
+configExpiry = 0;
+
 /**
  * Get Clerk JWT token for Supabase authentication
  */
@@ -74,6 +78,7 @@ export const getApiConfig = async (userId?: string): Promise<ApiConfig> => {
 
   try {
     if (!userId) {
+      console.log('⚠️ No user ID provided, using default API config');
       return getDefaultConfig();
     }
 
@@ -100,9 +105,11 @@ export const getApiConfig = async (userId?: string): Promise<ApiConfig> => {
       
       cachedConfig = config;
       configExpiry = now + CACHE_DURATION;
+      console.log('✅ Using API config from Supabase:', config);
       return config;
     }
 
+    console.log('⚠️ No API config found in Supabase, using default');
     return getDefaultConfig();
 
   } catch (error) {
@@ -117,8 +124,10 @@ const getProxyBaseUrl = (): string => {
 };
 
 const getDefaultConfig = (): ApiConfig => {
+  // Try to detect the backend server port dynamically
+  // Default to localhost:8001 for development, but this should be overridden by Supabase config
   const defaultConfig: ApiConfig = {
-    baseUrl: 'http://localhost:8000',
+    baseUrl: 'http://localhost:8001',
     timeout: 30000,
     retries: 3
   };
