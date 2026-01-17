@@ -124,10 +124,26 @@ const getProxyBaseUrl = (): string => {
 };
 
 const getDefaultConfig = (): ApiConfig => {
-  // Try to detect the backend server port dynamically
-  // Default to localhost:8001 for development, but this should be overridden by Supabase config
+  // Auto-detect environment and set appropriate base URL
+  let baseUrl: string;
+  
+  // Check if we're in production environment
+  const hostname = window.location.hostname;
+  const isProduction = hostname !== 'localhost' && hostname !== '127.0.0.1';
+  
+  if (isProduction) {
+    // Production: Use the same domain as the frontend
+    // Assumes backend is served from same domain with /api prefix or subdomain
+    baseUrl = `${window.location.protocol}//${hostname}:8001`;
+    console.log('🌐 Production environment detected, base URL:', baseUrl);
+  } else {
+    // Development: Use localhost
+    baseUrl = 'http://localhost:8001';
+    console.log('💻 Development environment detected, base URL:', baseUrl);
+  }
+  
   const defaultConfig: ApiConfig = {
-    baseUrl: 'http://localhost:8001',
+    baseUrl: baseUrl,
     timeout: 30000,
     retries: 3
   };
