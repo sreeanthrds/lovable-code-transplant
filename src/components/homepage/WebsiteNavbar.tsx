@@ -14,7 +14,6 @@ const navItems = [
   { label: 'Build Strategy', href: '#build-strategy', isScroll: true },
   { label: 'Why Visual', href: '#why-visual', isScroll: true },
   { label: 'Pricing', href: '#pricing', isScroll: true },
-  { label: 'Blog', href: '/blog' },
 ];
 
 const WebsiteNavbar = () => {
@@ -80,24 +79,14 @@ const WebsiteNavbar = () => {
               {/* Desktop Navigation */}
               <div className="hidden lg:flex items-center gap-8">
                 {navItems.map((item) => (
-                  item.isScroll ? (
-                    <a
-                      key={item.label}
-                      href={item.href}
-                      onClick={(e) => handleNavClick(item, e)}
-                      className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                    >
-                      {item.label}
-                    </a>
-                  ) : (
-                    <Link
-                      key={item.label}
-                      to={item.href}
-                      className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {item.label}
-                    </Link>
-                  )
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    onClick={(e) => handleNavClick(item, e)}
+                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    {item.label}
+                  </a>
                 ))}
               </div>
 
@@ -154,28 +143,17 @@ const WebsiteNavbar = () => {
             >
               <div className="container mx-auto px-4 py-4 space-y-4">
                 {navItems.map((item) => (
-                  item.isScroll ? (
-                    <a
-                      key={item.label}
-                      href={item.href}
-                      onClick={(e) => {
-                        handleNavClick(item, e);
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="block text-base font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                    >
-                      {item.label}
-                    </a>
-                  ) : (
-                    <Link
-                      key={item.label}
-                      to={item.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="block text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {item.label}
-                    </Link>
-                  )
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    onClick={(e) => {
+                      handleNavClick(item, e);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="block text-base font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    {item.label}
+                  </a>
                 ))}
                 <div className="pt-4 border-t border-border/30 space-y-3">
                   {isAuthenticated ? (
