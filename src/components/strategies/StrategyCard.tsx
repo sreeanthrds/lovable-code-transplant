@@ -153,7 +153,7 @@ try {
       console.log('✅ Successfully added to queue:', result);
 
       // Also update local state
-      addToLiveTrading({ id, name, description }, userId || '');
+      addToLiveTrading({ id, name, description });
       
       // Force refresh the LiveStrategiesGrid by triggering a page reload
       setTimeout(() => {
