@@ -23,8 +23,20 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const apiBaseUrl = useRef<string>('');
 
-  // DEBUG: Add console logging to track function calls
-  console.log('[DEBUG] useBacktestSession initialized');
+  const decodePossiblyGzippedJson = (bytes: Uint8Array, fileName: string) => {
+    // GZIP magic header: 1f 8b
+    const looksGzipped = bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+    try {
+      const text = looksGzipped
+        ? pako.ungzip(bytes, { to: 'string' })
+        : new TextDecoder('utf-8').decode(bytes);
+      return JSON.parse(text);
+    } catch (e) {
+      throw new Error(
+        `Failed to parse ${fileName} as ${looksGzipped ? 'gzip+json' : 'json'}: ${e instanceof Error ? e.message : String(e)}`
+      );
+    }
+  };
 
   // Initialize API URL
   const initApiUrl = useCallback(async () => {
@@ -196,7 +208,9 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
 
       if (!trades || !diagnostics) {
         console.error('Missing data - trades:', !!trades, 'diagnostics:', !!diagnostics);
-        throw new Error('Missing trades or diagnostics data in ZIP');
+        throw new Error(
+          `Missing trades or diagnostics data in ZIP. Found files: ${Object.keys(zip.files).join(', ')}`
+        );
       }
 
       // Debug: Log the structure of the data with actual string values

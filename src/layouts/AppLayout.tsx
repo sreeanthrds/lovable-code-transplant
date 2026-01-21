@@ -87,20 +87,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                   
                    {/* Mobile Navigation Links */}
                    <nav className="flex-1 p-6 space-y-4">
-                     <Link 
-                       to="/app/dashboard" 
-                       onClick={closeSheet}
-                       className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
-                         location.pathname === '/app/dashboard' 
-                           ? 'bg-primary/10 text-primary' 
-                           : 'hover:bg-muted text-white/75'
-                       }`}
-                     >
-                       <div className="text-2xl">📈</div>
-                       <span className="font-medium">Dashboard</span>
-                     </Link>
-                     
-                     <Link 
+                     <Link
                        to="/app/strategies" 
                        onClick={closeSheet}
                        className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
@@ -184,16 +171,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 <Link to="/" className={`relative flex items-center justify-center w-8 h-8 rounded-lg text-white/75 hover:text-primary hover:bg-white/10 transition-all`} title="Home">
                   <Home className="h-4 w-4" />
                 </Link>
-                <Link to="/app/dashboard" className={`relative flex items-center gap-2 text-sm font-medium transition-all ${location.pathname === '/app/dashboard' 
-                  ? 'text-primary' 
-                  : 'text-white/75 hover:text-primary'
-                }`}>
-                  <span>Dashboard</span>
-                  {location.pathname === '/app/dashboard' && (
-                    <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full"></div>
-                  )}
-                </Link>
-                <Link to="/app/strategies" className={`relative flex items-center gap-2 text-sm font-medium transition-all ${location.pathname === '/app/strategies' 
+                <Link to="/app/strategies" className={`relative flex items-center gap-2 text-sm font-medium transition-all ${location.pathname === '/app/strategies'
                   ? 'text-primary' 
                   : 'text-white/75 hover:text-primary'
                 }`}>

@@ -41,6 +41,26 @@ const TradesTable: React.FC<TradesTableProps> = ({
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [flowTypes, setFlowTypes] = useState<Record<string, 'entry' | 'exit'>>({});
 
+  // Debug: Check for duplicate trade_ids and unique keys
+  React.useEffect(() => {
+    const tradeIds = trades.map(t => t.trade_id);
+    const uniqueIds = new Set(tradeIds);
+    if (tradeIds.length !== uniqueIds.size) {
+      console.warn('🔴 Duplicate trade_ids detected:', {
+        total: tradeIds.length,
+        unique: uniqueIds.size,
+        duplicates: tradeIds.filter((id, index) => tradeIds.indexOf(id) !== index)
+      });
+    }
+    
+    // Check array indices are always unique (they always are!)
+    console.log('🔍 Array indices check:', {
+      total: trades.length,
+      uniqueIndices: trades.length, // Array indices are always unique
+      allUnique: true // Always true for array indices
+    });
+  }, [trades]);
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -152,8 +172,8 @@ const TradesTable: React.FC<TradesTableProps> = ({
           </TableHeader>
           <TableBody>
             {sortedTrades.map((trade, index) => {
-              // Use array index as unique key to ensure individual expansion
-              const uniqueKey = `trade-${index}`;
+              // Use array index as unique key - simple and effective
+              const uniqueKey = index.toString();
               const isExpanded = expandedTradeKey === uniqueKey;
               const pnl = parseFloat(trade.pnl);
               const isProfitable = pnl >= 0;
@@ -168,7 +188,15 @@ const TradesTable: React.FC<TradesTableProps> = ({
                       isExpanded && "bg-muted/30",
                       "hover:bg-muted/50"
                     )}
-                    onClick={() => setExpandedTradeKey(isExpanded ? null : uniqueKey)}
+                    onClick={() => {
+                      console.log('🔵 Trade clicked:', {
+                        tradeId: uniqueKey,
+                        trade: trade.symbol,
+                        currentlyExpanded: expandedTradeKey,
+                        willExpand: !isExpanded
+                      });
+                      setExpandedTradeKey(isExpanded ? null : uniqueKey);
+                    }}
                   >
                     <TableCell className="w-10">
                       <ChevronRight 
@@ -293,7 +321,16 @@ const TradesTable: React.FC<TradesTableProps> = ({
                   </TableRow>
 
                   {/* Expanded Row with Flow Diagram */}
-                  {isExpanded && (
+                  {(() => {
+                    const shouldExpand = isExpanded;
+                    console.log('🔍 Expansion check:', {
+                      tradeId: uniqueKey,
+                      isExpanded,
+                      shouldExpand,
+                      expandedTradeKey
+                    });
+                    return shouldExpand;
+                  })() && (
                     <TableRow>
                       <TableCell colSpan={9} className="p-0">
                         <div className="bg-muted/20 p-4 space-y-4 overflow-hidden">

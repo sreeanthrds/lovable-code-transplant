@@ -120,7 +120,8 @@ export const getApiConfig = async (userId?: string): Promise<ApiConfig> => {
 
 // Get the Supabase edge function proxy URL (TradeLayout project)
 const getProxyBaseUrl = (): string => {
-  return `${TRADELAYOUT_URL}/functions/v1/backtest-proxy`;
+  // Using the configured domain with IP mapping
+  return 'https://www.tradelayout.com';
 };
 
 /**

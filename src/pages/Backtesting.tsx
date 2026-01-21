@@ -5,8 +5,8 @@ import BacktestReport from '@/components/backtest-report/BacktestReport';
 import BacktestProgress from '@/components/backtest/BacktestProgress';
 import DailyResultsList from '@/components/backtest/DailyResultsList';
 import OverallSummaryCard from '@/components/backtest/OverallSummaryCard';
-// import { useBacktestSession } from '@/hooks/useBacktestSession';
-import { useBacktestSessionSimple } from '@/hooks/useBacktestSessionSimple'; // Fallback option
+import { ViewTradesModalV2 } from '@/components/live-trade/ViewTradesModalV2';
+import { useBacktestSession } from '@/hooks/useBacktestSession';
 import { useClerkUser } from '@/hooks/useClerkUser';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,10 +25,12 @@ const Backtesting = () => {
     loadDayDetail,
     reset,
     getDailyResultsArray,
-  } = useBacktestSessionSimple({ userId: user?.id });
+  } = useBacktestSession({ userId: user?.id });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalStrategy, setModalStrategy] = useState<any>(null);
 
   // Modal state for BacktestReport
   const [isBacktestReportModalOpen, setIsBacktestReportModalOpen] = useState(false);
@@ -134,14 +136,33 @@ const Backtesting = () => {
     }
   };
 
+  // Open modal when day data is loaded
+  useEffect(() => {
+    if (selectedDayData && selectedDate && !isModalOpen) {
+      setModalStrategy({
+        id: selectedDate,
+        strategyId: session?.strategy_id || 'backtest',
+        name: `Backtest - ${selectedDate}`,
+        description: `Daily results for ${selectedDate}`
+      });
+      setIsModalOpen(true);
+    }
+  }, [selectedDayData, selectedDate, isModalOpen, session?.strategy_id]);
+
   const handleReset = () => {
     reset();
     setLegacyMode(false);
     setLegacyTradesData(null);
     setLegacyDiagnosticsData(null);
     setSelectedDate(null);
+    setIsModalOpen(false);
+    setModalStrategy(null);
   };
 
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedDate(null);
+  };
   const dailyResults = getDailyResultsArray();
   const isRunning = session?.status === 'starting' || session?.status === 'running';
   const isCompleted = session?.status === 'completed';
@@ -324,6 +345,32 @@ const Backtesting = () => {
           )}
         </div>
       </div>
+
+      {/* View Trades Modal */}
+      {isModalOpen && modalStrategy && selectedDayData && (
+        <ViewTradesModalV2
+          strategy={modalStrategy}
+          userId={user?.id || null}
+          apiBaseUrl={null}
+          onClose={handleModalClose}
+          mode="backtest"
+          backtestDate={selectedDate}
+          streamingTradesData={{
+            date: selectedDate,
+            summary: {
+              total_trades: selectedDayData.trades?.summary?.total_trades || 0,
+              total_pnl: selectedDayData.trades?.summary?.total_pnl || "0",
+              realized_pnl: selectedDayData.trades?.summary?.realized_pnl || "0",
+              unrealized_pnl: selectedDayData.trades?.summary?.unrealized_pnl || "0",
+              winning_trades: selectedDayData.trades?.summary?.winning_trades || 0,
+              losing_trades: selectedDayData.trades?.summary?.losing_trades || 0
+            },
+            trades: selectedDayData.trades?.trades || [],
+            diagnostics: selectedDayData.diagnostics
+          }}
+          cachedBacktestResults={selectedDayData}
+        />
+      )}
     </AppLayout>
   );
 };
