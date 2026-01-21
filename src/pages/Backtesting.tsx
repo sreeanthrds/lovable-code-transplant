@@ -11,7 +11,7 @@ import { useClerkUser } from '@/hooks/useClerkUser';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 
 const Backtesting = () => {
   const { user } = useClerkUser();
@@ -31,9 +31,6 @@ const Backtesting = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalStrategy, setModalStrategy] = useState<any>(null);
-
-  // Modal state for BacktestReport
-  const [isBacktestReportModalOpen, setIsBacktestReportModalOpen] = useState(false);
 
   // Legacy test mode state
   const [legacyMode, setLegacyMode] = useState(false);
@@ -126,7 +123,6 @@ const Backtesting = () => {
     setSelectedDate(date);
     try {
       await loadDayDetail(date);
-      setIsBacktestReportModalOpen(true); // Show modal instead of navigating
     } catch (error) {
       toast({
         title: 'Failed to load day details',
@@ -163,8 +159,9 @@ const Backtesting = () => {
     setIsModalOpen(false);
     setSelectedDate(null);
   };
+
   const dailyResults = getDailyResultsArray();
-  const isRunning = session?.status === 'starting' || session?.status === 'running';
+  const isRunning = session?.status === 'starting' || session?.status === 'streaming';
   const isCompleted = session?.status === 'completed';
   const isFailed = session?.status === 'failed';
 
@@ -187,35 +184,9 @@ const Backtesting = () => {
               </Button>
             </div>
 
-            {/* Show BacktestReport in modal instead of directly on page */}
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center">
-                  <h3 className="text-lg font-medium mb-2">Test Data Loaded</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Static test data is ready. Click below to view the detailed report.
-                  </p>
-                  <Button onClick={() => setIsBacktestReportModalOpen(true)}>
-                    View Detailed Report
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* BacktestReport Modal for legacy mode */}
             <BacktestReport 
               externalTradesData={legacyTradesData}
               externalDiagnosticsData={legacyDiagnosticsData}
-              showModal={isBacktestReportModalOpen}
-              onCloseModal={() => setIsBacktestReportModalOpen(false)}
-              strategy={{
-                id: 'test-strategy',
-                strategyId: 'test-strategy',
-                name: 'Test Strategy',
-                description: 'Static test data for UI testing'
-              }}
-              userId={user?.id}
-              apiBaseUrl={null}
             />
           </div>
         </div>
@@ -273,24 +244,6 @@ const Backtesting = () => {
                 loadingDate={loadingDay}
                 onSelectDay={handleDaySelect}
               />
-
-              {/* BacktestReport Modal - show when day is selected */}
-              {selectedDayData && (
-                <BacktestReport 
-                  externalTradesData={selectedDayData.trades}
-                  externalDiagnosticsData={selectedDayData.diagnostics}
-                  showModal={isBacktestReportModalOpen}
-                  onCloseModal={() => setIsBacktestReportModalOpen(false)}
-                  strategy={{
-                    id: session?.backtest_id || '',
-                    strategyId: session?.strategy_id || 'backtest',
-                    name: `Backtest - ${selectedDate}`,
-                    description: `Day ${selectedDate} detailed trades`
-                  }}
-                  userId={user?.id}
-                  apiBaseUrl={null}
-                />
-              )}
 
               {/* Failed State */}
               {isFailed && (

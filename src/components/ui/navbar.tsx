@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu } from 'lucide-react';
+import { Menu, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { UserButton, SignedIn, SignedOut } from '@clerk/clerk-react';
 import Logo from './logo';
@@ -68,6 +68,11 @@ const Navbar = () => {
           </div>
           
           <div className="flex flex-1 items-center justify-end space-x-3">
+            <Link to="/demo">
+              <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+                Try Demo
+              </Button>
+            </Link>
             <SignedIn>
               <Link to="/app/account?tab=billing" className="hover:opacity-80 transition-opacity">
                 {!planLoading && <PlanBadge plan={planData.plan} expiresAt={planData.expires_date} />}

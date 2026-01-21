@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { LogIn } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import Logo from './logo';
 
@@ -66,6 +67,16 @@ const MobileNav: React.FC<MobileNavProps> = ({ toggleMenu }) => {
             Backtesting
           </Link>
           
+          <Link
+            to="/app/multi-strategy-backtest"
+            className={`py-3 text-left text-base hover:text-primary transition-colors ${isActive('/app/multi-strategy-backtest') 
+              ? 'text-primary font-medium' 
+              : 'text-foreground/80'}`}
+            onClick={toggleMenu}
+          >
+            Multi-Strategy
+          </Link>
+          
           {isAdmin && (
             <Link
               to="/app/admin"
@@ -79,13 +90,33 @@ const MobileNav: React.FC<MobileNavProps> = ({ toggleMenu }) => {
           )}
           
           <Link 
-            to="/pitch" 
-            className={`py-3 text-base hover:text-primary transition-colors ${isActive('/pitch') 
+            to="/features" 
+            className={`py-3 text-base hover:text-primary transition-colors ${isActive('/features') 
               ? 'text-primary font-medium' 
               : 'text-foreground/80'}`}
             onClick={toggleMenu}
           >
-            Pitch
+            Features
+          </Link>
+          
+          <Link 
+            to="/pricing" 
+            className={`py-3 text-base hover:text-primary transition-colors ${isActive('/pricing') 
+              ? 'text-primary font-medium' 
+              : 'text-foreground/80'}`}
+            onClick={toggleMenu}
+          >
+            Pricing
+          </Link>
+          
+          <Link 
+            to="/blog" 
+            className={`py-3 text-base hover:text-primary transition-colors ${isActive('/blog') 
+              ? 'text-primary font-medium' 
+              : 'text-foreground/80'}`}
+            onClick={toggleMenu}
+          >
+            Blog
           </Link>
           
           {/* Auth Section */}

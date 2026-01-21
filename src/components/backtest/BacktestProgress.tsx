@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, CheckCircle2, XCircle, Clock, Timer } from 'lucide-react';
 import { BacktestSession } from '@/types/backtest-session';
@@ -14,7 +15,7 @@ const BacktestProgress: React.FC<BacktestProgressProps> = ({ session }) => {
 
   // Timer effect
   useEffect(() => {
-    if (session.status === 'starting' || session.status === 'running') {
+    if (session.status === 'starting' || session.status === 'streaming') {
       const interval = setInterval(() => {
         setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
       }, 1000);
@@ -28,11 +29,19 @@ const BacktestProgress: React.FC<BacktestProgressProps> = ({ session }) => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const completedDays = Array.from(session.daily_results.values()).filter(
+    d => d.status === 'completed'
+  ).length;
+  
+  const runningDays = Array.from(session.daily_results.values()).filter(
+    d => d.status === 'running'
+  ).length;
+
   const getStatusIcon = () => {
     switch (session.status) {
       case 'starting':
         return <Loader2 className="h-5 w-5 animate-spin text-primary" />;
-      case 'running':
+      case 'streaming':
         return <Loader2 className="h-5 w-5 animate-spin text-primary" />;
       case 'completed':
         return <CheckCircle2 className="h-5 w-5 text-green-500" />;
@@ -46,14 +55,11 @@ const BacktestProgress: React.FC<BacktestProgressProps> = ({ session }) => {
   const getStatusText = () => {
     switch (session.status) {
       case 'starting':
-        return `Starting backtest for ${session.total_days} day${session.total_days > 1 ? 's' : ''}...`;
-      case 'running':
-        if (session.current_day) {
-          return `Processing ${session.current_day} (${session.completed_days} of ${session.total_days} completed)`;
-        }
-        return `Processing backtest (${session.completed_days} of ${session.total_days} completed)`;
+        return 'Initializing backtest...';
+      case 'streaming':
+        return `Processing day ${completedDays + runningDays} of ${session.total_days}`;
       case 'completed':
-        return `Backtest completed - ${session.total_days} day${session.total_days > 1 ? 's' : ''} processed`;
+        return 'Backtest completed';
       case 'failed':
         return session.error || 'Backtest failed';
       default:
@@ -61,7 +67,7 @@ const BacktestProgress: React.FC<BacktestProgressProps> = ({ session }) => {
     }
   };
 
-  const isRunning = session.status === 'starting' || session.status === 'running';
+  const isRunning = session.status === 'starting' || session.status === 'streaming';
 
   return (
     <Card>
@@ -79,22 +85,19 @@ const BacktestProgress: React.FC<BacktestProgressProps> = ({ session }) => {
               </span>
             )}
             <span>
-              {session.completed_days} / {session.total_days} days
+              {completedDays} / {session.total_days} days
             </span>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center justify-between text-sm">
-          <span className={cn(
-            session.status === 'failed' ? "text-destructive" : "text-muted-foreground"
-          )}>
-            {getStatusText()}
-          </span>
-          <span className="text-muted-foreground">
-            {session.completed_days} / {session.total_days} days
-          </span>
-        </div>
+        <Progress value={session.progress} className="h-2" />
+        <p className={cn(
+          "text-sm",
+          session.status === 'failed' ? "text-destructive" : "text-muted-foreground"
+        )}>
+          {getStatusText()}
+        </p>
       </CardContent>
     </Card>
   );

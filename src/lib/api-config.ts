@@ -22,10 +22,6 @@ let cachedConfig: ApiConfig | null = null;
 let configExpiry = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-// Clear cache on module load to force fresh fetch from Supabase
-cachedConfig = null;
-configExpiry = 0;
-
 /**
  * Get Clerk JWT token for Supabase authentication
  */
@@ -78,8 +74,7 @@ export const getApiConfig = async (userId?: string): Promise<ApiConfig> => {
 
   try {
     if (!userId) {
-      console.log('⚠️ No user ID provided, cannot fetch API config from Supabase');
-      throw new Error('User ID required to fetch API configuration');
+      return getDefaultConfig();
     }
 
     // Use authenticated client with Clerk JWT for RLS
@@ -93,7 +88,7 @@ export const getApiConfig = async (userId?: string): Promise<ApiConfig> => {
 
     if (error) {
       console.error('❌ Error fetching API config:', error);
-      throw new Error(`Failed to fetch API config: ${error.message}`);
+      return getDefaultConfig();
     }
 
     if (configData) {
@@ -105,16 +100,14 @@ export const getApiConfig = async (userId?: string): Promise<ApiConfig> => {
       
       cachedConfig = config;
       configExpiry = now + CACHE_DURATION;
-      console.log('✅ Using API config from Supabase:', config);
       return config;
     }
 
-    console.log('⚠️ No API config found in Supabase for user:', userId);
-    throw new Error(`No API configuration found for user: ${userId}`);
+    return getDefaultConfig();
 
   } catch (error) {
     console.error('❌ Error fetching API config:', error);
-    throw error;
+    return getDefaultConfig();
   }
 };
 
@@ -122,6 +115,18 @@ export const getApiConfig = async (userId?: string): Promise<ApiConfig> => {
 const getProxyBaseUrl = (): string => {
   // Using the configured domain with IP mapping
   return 'https://www.tradelayout.com';
+};
+
+const getDefaultConfig = (): ApiConfig => {
+  const defaultConfig: ApiConfig = {
+    baseUrl: getProxyBaseUrl(),
+    timeout: 30000,
+    retries: 3
+  };
+
+  cachedConfig = defaultConfig;
+  configExpiry = Date.now() + CACHE_DURATION;
+  return defaultConfig;
 };
 
 /**
@@ -173,20 +178,10 @@ export const updateApiConfig = async (config: Partial<ApiConfig>, userId?: strin
 
 /**
  * Get the current API base URL
- * Requires user ID to fetch from Supabase
  */
 export const getApiBaseUrl = async (userId?: string): Promise<string> => {
-  if (!userId) {
-    throw new Error('User ID required to get API base URL from Supabase');
-  }
-  
-  try {
-    const config = await getApiConfig(userId);
-    return config.baseUrl;
-  } catch (error) {
-    console.error('❌ Failed to get API base URL:', error);
-    throw error;
-  }
+  const config = await getApiConfig(userId);
+  return config.baseUrl;
 };
 
 /**
@@ -198,125 +193,100 @@ export class ApiClient {
   }
 
   async get(endpoint: string, options?: RequestInit): Promise<Response> {
-    try {
-      const config = await this.getConfig();
-      const url = `${config.baseUrl}${endpoint}`;
-      
-      return this.fetchWithRetry(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers
-        },
-        ...options
-      }, config.retries);
-    } catch (error) {
-      console.error('❌ Failed to get API config for GET request:', error);
-      throw new Error(`API configuration error: ${error.message}`);
-    }
+    const config = await this.getConfig();
+    const url = `${config.baseUrl}${endpoint}`;
+    
+    return this.fetchWithRetry(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+      },
+      ...options
+    }, config.retries);
   }
 
   async post(endpoint: string, data?: any, options?: RequestInit): Promise<Response> {
-    try {
-      const config = await this.getConfig();
-      const url = `${config.baseUrl}${endpoint}`;
-      
-      return this.fetchWithRetry(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers
-        },
-        body: data ? JSON.stringify(data) : undefined,
-        ...options
-      }, config.retries);
-    } catch (error) {
-      console.error('❌ Failed to get API config for POST request:', error);
-      throw new Error(`API configuration error: ${error.message}`);
-    }
+    const config = await this.getConfig();
+    const url = `${config.baseUrl}${endpoint}`;
+    
+    return this.fetchWithRetry(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+      },
+      body: data ? JSON.stringify(data) : undefined,
+      ...options
+    }, config.retries);
   }
 
   async put(endpoint: string, data?: any, options?: RequestInit): Promise<Response> {
-    try {
-      const config = await this.getConfig();
-      const url = `${config.baseUrl}${endpoint}`;
-      
-      return this.fetchWithRetry(url, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers
-        },
-        body: data ? JSON.stringify(data) : undefined,
-        ...options
-      }, config.retries);
-    } catch (error) {
-      console.error('❌ Failed to get API config for PUT request:', error);
-      throw new Error(`API configuration error: ${error.message}`);
-    }
+    const config = await this.getConfig();
+    const url = `${config.baseUrl}${endpoint}`;
+    
+    return this.fetchWithRetry(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+      },
+      body: data ? JSON.stringify(data) : undefined,
+      ...options
+    }, config.retries);
   }
 
   async delete(endpoint: string, options?: RequestInit): Promise<Response> {
-    try {
-      const config = await this.getConfig();
-      const url = `${config.baseUrl}${endpoint}`;
-      
-      return this.fetchWithRetry(url, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers
-        },
-        ...options
-      }, config.retries);
-    } catch (error) {
-      console.error('❌ Failed to get API config for DELETE request:', error);
-      throw new Error(`API configuration error: ${error.message}`);
-    }
+    const config = await this.getConfig();
+    const url = `${config.baseUrl}${endpoint}`;
+    
+    return this.fetchWithRetry(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+      },
+      ...options
+    }, config.retries);
   }
 
   private async fetchWithRetry(url: string, options: RequestInit, retries: number): Promise<Response> {
-    try {
-      const config = await this.getConfig();
-      
-      // Add ngrok header to skip browser warning page
-      const headers = {
-        'ngrok-skip-browser-warning': 'true',
-        ...options.headers
-      };
-      
-      for (let i = 0; i <= retries; i++) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), config.timeout);
+    const config = await this.getConfig();
+    
+    // Add ngrok header to skip browser warning page
+    const headers = {
+      'ngrok-skip-browser-warning': 'true',
+      ...options.headers
+    };
+    
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), config.timeout);
 
-          const response = await fetch(url, {
-            ...options,
-            headers,
-            signal: controller.signal
-          });
+        const response = await fetch(url, {
+          ...options,
+          headers,
+          signal: controller.signal
+        });
 
-          clearTimeout(timeoutId);
-          
-          if (response.ok || i === retries) {
-            return response;
-          }
-          
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
-          
-        } catch (error) {
-          if (i === retries) {
-            throw error;
-          }
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+        clearTimeout(timeoutId);
+        
+        if (response.ok || i === retries) {
+          return response;
         }
+        
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+        
+      } catch (error) {
+        if (i === retries) {
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
       }
-
-      throw new Error(`Failed to fetch ${url} after ${retries} retries`);
-    } catch (error) {
-      console.error('❌ Failed to get API config for fetch:', error);
-      throw error;
     }
+
+    throw new Error(`Failed to fetch ${url} after ${retries} retries`);
   }
 }
 

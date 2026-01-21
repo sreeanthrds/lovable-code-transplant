@@ -8,16 +8,26 @@ import { WebsiteThemeProvider } from "@/hooks/use-website-theme";
 import AuthGuard from "@/components/auth/AuthGuard";
 import OAuthCallback from "@/components/auth/OAuthCallback";
 import Index from "./pages/Index";
+import StrategyBuilder from "./pages/StrategyBuilder";
+import Strategies from "./pages/StrategiesLanding";
+import Features from "./pages/Features";
+import Pricing from "./pages/Pricing";
 import Documentation from "./pages/Documentation";
 import LiveTradingDashboard from "./pages/LiveTradingDashboard";
 import StrategyDetail from "./pages/StrategyDetail";
 import StrategiesPage from "./pages/Strategies";
 import Backtesting from "./pages/Backtesting";
+import MultiStrategyBacktest from "./pages/MultiStrategyBacktest";
 import Account from "./pages/Account";
 import AdminSetup from "./pages/AdminSetup";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import Demo from "./pages/Demo";
+import Blog from "./pages/Blog";
+import ColorPalette from "./pages/ColorPalette";
 import PitchDeck from "./pages/PitchDeck";
+import Dashboard from "./pages/Dashboard";
+import OptionChain from "./pages/OptionChain";
 import BrokerConnection from "./pages/BrokerConnection";
 import { SSETestNew } from "./pages/SSETestNew";
 
@@ -43,8 +53,13 @@ const App = () => {
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/features" element={<Features />} />
+              <Route path="/pricing" element={<Pricing />} />
               <Route path="/documentation" element={<Documentation />} />
+              <Route path="/demo" element={<Demo />} />
+              <Route path="/blog" element={<Blog />} />
               <Route path="/pitch" element={<PitchDeck />} />
+              <Route path="/color-palette" element={<ColorPalette />} />
               {/* OAuth callback routes */}
               <Route path="/auth/callback/:brokerId" element={<OAuthCallback />} />
               {/* Legacy callback route for backward compatibility */}
@@ -52,11 +67,16 @@ const App = () => {
               <Route path="/app/*" element={
                 <AuthGuard>
                   <Routes>
+                    <Route path="strategies-landing" element={<Strategies />} />
                     <Route path="strategies" element={<StrategiesPage />} />
+                    <Route path="strategy-builder" element={<StrategyBuilder />} />
+                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="option-chain" element={<OptionChain />} />
                     <Route path="broker-connection" element={<BrokerConnection />} />
                     <Route path="live-trading" element={<LiveTradingDashboard />} />
                     <Route path="live-trading/:strategyId" element={<StrategyDetail />} />
                     <Route path="backtesting" element={<Backtesting />} />
+                    <Route path="multi-strategy-backtest" element={<MultiStrategyBacktest />} />
                     <Route path="sse-test" element={<SSETestNew />} />
                     <Route path="account" element={<Account />} />
                     <Route path="admin-setup" element={<AdminSetup />} />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,8 +9,8 @@ import { toast } from 'sonner';
 import { useStrategyImport } from '@/hooks/strategy-management/useStrategyImport';
 import { v4 as uuidv4 } from 'uuid';
 
-// Removed react-json-view due to dependency conflicts
-// const ReactJson = lazy(() => import('react-json-view'));
+// Lazy load react-json-view to avoid SSR issues
+const ReactJson = lazy(() => import('react-json-view'));
 
 // Bright, high-visibility themes for JSON viewer
 const JSON_THEMES = {
@@ -334,9 +334,21 @@ export const DecryptedResult: React.FC<DecryptedResultProps> = ({ decryptedData,
       <CardContent>
         {viewMode === 'formatted' && parsedData ? (
           <div className="border border-border rounded-lg p-4 bg-black/80 overflow-auto max-h-[600px]">
-            <pre className="text-green-400 text-sm font-mono whitespace-pre-wrap">
-              {JSON.stringify(parsedData, null, 2)}
-            </pre>
+            <Suspense fallback={<div className="text-muted-foreground">Loading JSON viewer...</div>}>
+              <ReactJson
+                src={parsedData}
+                theme={jsonTheme}
+                displayDataTypes={false}
+                enableClipboard={true}
+                collapsed={2}
+                style={{ 
+                  backgroundColor: 'transparent',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                  fontSize: '0.9rem',
+                  lineHeight: '1.6'
+                }}
+              />
+            </Suspense>
           </div>
         ) : (
           <Textarea
