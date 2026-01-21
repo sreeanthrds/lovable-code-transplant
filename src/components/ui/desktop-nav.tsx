@@ -1,7 +1,6 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LogIn, User } from 'lucide-react';
 import { Button } from './button';
 import { useAdminRole } from '@/hooks/useAdminRole';
 
@@ -32,14 +31,6 @@ const DesktopNav: React.FC = () => {
         >
           Strategies
         </Link>
-        <Link
-          to="/app/multi-strategy-backtest"
-          className={`text-sm font-medium transition-colors ${isActive('/app/multi-strategy-backtest') 
-            ? 'text-green-600 dark:text-green-400' 
-            : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'} whitespace-nowrap`}
-        >
-          Multi-Strategy
-        </Link>
         {isAdmin && (
           <Link
             to="/app/admin"
@@ -50,30 +41,6 @@ const DesktopNav: React.FC = () => {
             Admin
           </Link>
         )}
-        <Link 
-          to="/features" 
-          className={`text-sm font-medium transition-colors ${isActive('/features') 
-            ? 'text-green-600 dark:text-green-400' 
-            : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}`}
-        >
-          Features
-        </Link>
-        <Link 
-          to="/pricing" 
-          className={`text-sm font-medium transition-colors ${isActive('/pricing') 
-            ? 'text-green-600 dark:text-green-400' 
-            : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}`}
-        >
-          Pricing
-        </Link>
-        <Link 
-          to="/blog" 
-          className={`text-sm font-medium transition-colors ${isActive('/blog') 
-            ? 'text-green-600 dark:text-green-400' 
-            : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}`}
-        >
-          Blog
-        </Link>
         <Link 
           to="/pitch" 
           className={`text-sm font-medium transition-colors ${isActive('/pitch') 
