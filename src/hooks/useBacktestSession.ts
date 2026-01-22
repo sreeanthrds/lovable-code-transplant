@@ -15,12 +15,15 @@ interface UseBacktestSessionOptions {
   userId?: string;
 }
 
+// Polling interval in milliseconds
+const POLLING_INTERVAL = 2000;
+
 export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
   const [session, setSession] = useState<BacktestSession | null>(null);
   const [selectedDayData, setSelectedDayData] = useState<DayDetailData | null>(null);
   const [loadingDay, setLoadingDay] = useState<string | null>(null);
   
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const apiBaseUrl = useRef<string>('');
 
   const decodePossiblyGzippedJson = (bytes: Uint8Array, fileName: string) => {
@@ -46,29 +49,85 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
     return apiBaseUrl.current;
   }, [userId]);
 
-  // Parse SSE event from text
-  const parseSSEEvent = (text: string): { event: string; data: any } | null => {
-    const lines = text.split('\n');
-    let event = '';
-    let data = '';
-    
-    for (const line of lines) {
-      if (line.startsWith('event:')) {
-        event = line.slice(6).trim();
-      } else if (line.startsWith('data:')) {
-        data = line.slice(5).trim();
-      }
+  // Stop polling
+  const stopPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
     }
-    
-    if (event && data) {
-      try {
-        return { event, data: JSON.parse(data) };
-      } catch {
-        return null;
+  }, []);
+
+  // Poll backtest status
+  const pollBacktestStatus = useCallback(async (backtestId: string, baseUrl: string) => {
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/backtest/${backtestId}/status`, {
+        headers: {
+          'ngrok-skip-browser-warning': 'true',
+        },
+      });
+
+      if (!response.ok) {
+        console.error('Poll failed with status:', response.status);
+        // Continue polling on non-fatal errors
+        return;
       }
+
+      const data = await response.json();
+      console.log('Poll response:', data);
+
+      // Update session state from polling response
+      setSession(prev => {
+        if (!prev) return null;
+
+        const newResults = new Map(prev.daily_results);
+        
+        // Update daily results from response
+        if (data.daily_results) {
+          for (const day of data.daily_results) {
+            newResults.set(day.date, {
+              date: day.date,
+              day_number: day.day_number,
+              total_days: data.total_days || prev.total_days,
+              summary: day.summary || { total_trades: 0, total_pnl: '0', winning_trades: 0, losing_trades: 0, win_rate: '0' },
+              has_detail_data: day.has_detail_data ?? false,
+              status: day.status || 'completed',
+              error: day.error,
+            });
+          }
+        }
+
+        // Calculate progress
+        const completedCount = Array.from(newResults.values()).filter(d => d.status === 'completed').length;
+        const totalDays = data.total_days || prev.total_days;
+        const progress = totalDays > 0 ? Math.round((completedCount / totalDays) * 100) : 0;
+
+        // Determine status
+        let status = prev.status;
+        if (data.status === 'completed') {
+          status = 'completed';
+          stopPolling();
+        } else if (data.status === 'failed') {
+          status = 'failed';
+          stopPolling();
+        } else if (data.status === 'running') {
+          status = 'running';
+        }
+
+        return {
+          ...prev,
+          daily_results: newResults,
+          progress,
+          status,
+          overall_summary: data.overall_summary || prev.overall_summary,
+          error: data.error,
+          total_days: data.total_days || prev.total_days,
+        };
+      });
+    } catch (error) {
+      console.error('Polling error:', error);
+      // Continue polling on network errors - don't stop
     }
-    return null;
-  };
+  }, [stopPolling]);
 
   // Start a new backtest
   const startBacktest = useCallback(async (request: StartBacktestRequest) => {
@@ -77,10 +136,8 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
       throw new Error('API URL not configured');
     }
 
-    // Abort any existing stream
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+    // Stop any existing polling
+    stopPolling();
 
     // Initialize session
     setSession({
@@ -92,11 +149,12 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
       status: 'starting',
       daily_results: new Map(),
       progress: 0,
+      start_time: Date.now(),
     });
     setSelectedDayData(null);
 
     try {
-      // Call start endpoint via proxy
+      // Call start endpoint
       const response = await fetch(`${baseUrl}/api/v1/backtest/start`, {
         method: 'POST',
         headers: { 
@@ -112,183 +170,32 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
       }
 
       const data: StartBacktestResponse = await response.json();
+      const backtestId = data.backtest_id;
 
-      // Update session with backtest_id
+      // Update session with backtest_id and start polling
       setSession(prev => prev ? {
         ...prev,
-        backtest_id: data.backtest_id,
+        backtest_id: backtestId,
         total_days: data.total_days,
-        status: 'streaming',
+        status: 'running',
       } : null);
 
-      // Connect to SSE stream using EventSource (proper SSE implementation)
-      const streamUrl = `${baseUrl}${data.stream_url}`;
-      
-      // Create EventSource for proper SSE handling
-      const eventSource = new EventSource(streamUrl);
+      // Start polling for status updates
+      console.log('Starting polling for backtest:', backtestId);
+      pollingIntervalRef.current = setInterval(() => {
+        pollBacktestStatus(backtestId, baseUrl);
+      }, POLLING_INTERVAL);
 
-      // Handle SSE events
-      eventSource.onmessage = (event) => {
-        console.log("SSE message:", event.data);
-        try {
-          const parsed = parseSSEEvent(`message\ndata: ${event.data}`);
-          if (parsed) {
-            handleSSEEvent(parsed.event, parsed.data);
-          }
-        } catch (error) {
-          console.error('Error parsing SSE message:', error);
-        }
-      };
-
-      eventSource.addEventListener("day_started", (e) => {
-        const payload = JSON.parse(e.data);
-        console.log("Day started:", payload);
-        handleSSEEvent("day_started", payload);
-      });
-
-      eventSource.addEventListener("day_completed", (e) => {
-        const payload = JSON.parse(e.data);
-        console.log("Day completed:", payload);
-        handleSSEEvent("day_completed", payload);
-      });
-
-      eventSource.addEventListener("backtest_completed", (e) => {
-        const payload = JSON.parse(e.data);
-        console.log("Backtest completed:", payload);
-        handleSSEEvent("backtest_completed", payload);
-        eventSource.close();
-        abortControllerRef.current = null;
-      });
-
-      eventSource.addEventListener("error", (e) => {
-        // NOTE:
-        // - EventSource uses the 'error' event for connection-level failures.
-        // - Our backend ALSO emits `event: error` with a JSON payload (date + error message).
-        // Distinguish by presence of `data` (MessageEvent) and handle gracefully.
-        const maybeMessageEvent = e as MessageEvent;
-        if (typeof maybeMessageEvent?.data === 'string' && maybeMessageEvent.data.trim()) {
-          try {
-            const payload = JSON.parse(maybeMessageEvent.data);
-            console.log("Backtest error event:", payload);
-            handleSSEEvent("error", payload);
-            return;
-          } catch (parseErr) {
-            console.error("Failed to parse SSE error payload:", parseErr, maybeMessageEvent.data);
-            // fall through to treat as connection error
-          }
-        }
-
-        console.error("SSE connection error:", e);
-        setSession(prev => prev ? { ...prev, status: 'failed' } : null);
-        eventSource.close();
-        abortControllerRef.current = null;
-      });
-
-      eventSource.addEventListener("open", () => {
-        console.log("SSE connection opened");
-      });
-
-      // Handle SSE events
-      const handleSSEEvent = (event: string, eventData: any) => {
-        console.log('SSE Event:', event, eventData);
-
-        switch (event) {
-          case 'day_started':
-            console.log('Processing day_started for date:', eventData.date);
-            setSession(prev => {
-              if (!prev) {
-                console.log('day_started: prev is null');
-                return null;
-              }
-              const newResults = new Map(prev.daily_results);
-              newResults.set(eventData.date, {
-                date: eventData.date,
-                day_number: eventData.day_number,
-                total_days: eventData.total_days,
-                summary: { total_trades: 0, total_pnl: '0', winning_trades: 0, losing_trades: 0, win_rate: '0' },
-                has_detail_data: false,
-                status: 'running',
-              });
-              console.log('day_started: Map size after update:', newResults.size);
-              return {
-                ...prev,
-                daily_results: newResults,
-                progress: Math.round(((eventData.day_number - 1) / eventData.total_days) * 100),
-              };
-            });
-            break;
-
-          case 'day_completed':
-            console.log('Processing day_completed for date:', eventData.date, 'summary:', eventData.summary);
-            setSession(prev => {
-              if (!prev) {
-                console.log('day_completed: prev is null');
-                return null;
-              }
-              const newResults = new Map(prev.daily_results);
-              newResults.set(eventData.date, {
-                date: eventData.date,
-                day_number: eventData.day_number,
-                total_days: eventData.total_days,
-                summary: eventData.summary,
-                has_detail_data: eventData.has_detail_data,
-                status: 'completed',
-              });
-              console.log('day_completed: Map size after update:', newResults.size);
-              return {
-                ...prev,
-                daily_results: newResults,
-                progress: Math.round((eventData.day_number / eventData.total_days) * 100),
-              };
-            });
-            break;
-
-          case 'backtest_completed':
-            console.log('Processing backtest_completed');
-            setSession(prev => {
-              if (!prev) return null;
-              console.log('backtest_completed: daily_results size:', prev.daily_results.size);
-              return {
-                ...prev,
-                status: 'completed',
-                overall_summary: eventData.overall_summary,
-                progress: 100,
-              };
-            });
-            break;
-
-          case 'error':
-            if (eventData.date) {
-              setSession(prev => {
-                if (!prev) return null;
-                const newResults = new Map(prev.daily_results);
-                const existing = newResults.get(eventData.date);
-                if (existing) {
-                  newResults.set(eventData.date, {
-                    ...existing,
-                    status: 'error',
-                    error: eventData.error,
-                  });
-                }
-                return { ...prev, daily_results: newResults };
-              });
-            } else {
-              setSession(prev => prev ? {
-                ...prev,
-                status: 'failed',
-                error: eventData.error,
-              } : null);
-            }
-            break;
-        }
-      };
+      // Initial poll
+      await pollBacktestStatus(backtestId, baseUrl);
 
     } catch (error) {
       // Clear session on failure so form reappears
+      stopPolling();
       setSession(null);
       throw error;
     }
-  }, [initApiUrl]);
+  }, [initApiUrl, pollBacktestStatus, stopPolling]);
 
   // Download and extract day detail data
   const loadDayDetail = useCallback(async (date: string) => {
@@ -382,13 +289,11 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
 
   // Reset session
   const reset = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+    stopPolling();
     setSession(null);
     setSelectedDayData(null);
     setLoadingDay(null);
-  }, []);
+  }, [stopPolling]);
 
   // Get sorted daily results as array
   const getDailyResultsArray = useCallback((): DayResult[] => {
@@ -406,5 +311,6 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
     loadDayDetail,
     reset,
     getDailyResultsArray,
+    stopPolling,
   };
 }
