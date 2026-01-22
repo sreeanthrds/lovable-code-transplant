@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Edge } from '@xyflow/react';
+import { Node, Edge } from '@xyflow/react';
 import { useStrategyStore } from '@/hooks/use-strategy-store';
 
 /**
@@ -10,12 +10,12 @@ import { useStrategyStore } from '@/hooks/use-strategy-store';
  * @returns Object with isLocked boolean and descendantCount number
  */
 export const useStartNodeLock = (nodeId: string) => {
-  // Use a stable selector that extracts just the edges array
+  const nodes = useStrategyStore(state => state.nodes);
   const edges = useStrategyStore(state => state.edges);
 
   const lockInfo = useMemo(() => {
     // Find all descendants of the start node using BFS
-    const getDescendants = (startId: string, edgeList: Edge[]): Set<string> => {
+    const getDescendants = (startId: string): Set<string> => {
       const descendants = new Set<string>();
       const queue = [startId];
       const visited = new Set<string>();
@@ -26,7 +26,7 @@ export const useStartNodeLock = (nodeId: string) => {
         visited.add(currentId);
 
         // Find all edges where current node is the source
-        const outgoingEdges = edgeList.filter(edge => edge.source === currentId);
+        const outgoingEdges = edges.filter(edge => edge.source === currentId);
         
         for (const edge of outgoingEdges) {
           const targetId = edge.target;
@@ -40,11 +40,8 @@ export const useStartNodeLock = (nodeId: string) => {
       return descendants;
     };
 
-    const descendants = getDescendants(nodeId, edges);
+    const descendants = getDescendants(nodeId);
     const descendantCount = descendants.size;
-
-    // Debug logging
-    console.log(`[useStartNodeLock] nodeId: ${nodeId}, edges: ${edges.length}, descendants: ${descendantCount}`);
 
     return {
       isLocked: descendantCount > 0,

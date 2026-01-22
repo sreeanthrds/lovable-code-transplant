@@ -6,7 +6,6 @@ import { Building } from 'lucide-react';
 interface ExchangeSelectorProps {
   exchange: string;
   onChange: (exchange: string) => void;
-  disabled?: boolean;
 }
 
 const exchangeOptions = [
@@ -15,7 +14,7 @@ const exchangeOptions = [
   { value: 'MCX', label: 'MCX (Multi Commodity Exchange)' }
 ];
 
-const ExchangeSelector: React.FC<ExchangeSelectorProps> = ({ exchange, onChange, disabled = false }) => {
+const ExchangeSelector: React.FC<ExchangeSelectorProps> = ({ exchange, onChange }) => {
   return (
     <Card>
       <CardHeader className="py-3 px-4">
@@ -33,7 +32,6 @@ const ExchangeSelector: React.FC<ExchangeSelectorProps> = ({ exchange, onChange,
           onChange={onChange}
           placeholder="Choose an exchange"
           required={true}
-          disabled={disabled}
         />
       </CardContent>
     </Card>

@@ -24,14 +24,12 @@ interface TimeframeManagerProps {
   timeframes: TimeframeConfig[];
   onChange: (timeframes: TimeframeConfig[]) => void;
   maxTimeframes: number;
-  deleteDisabled?: boolean;
 }
 
 const TimeframeManager: React.FC<TimeframeManagerProps> = ({
   timeframes,
   onChange,
-  maxTimeframes,
-  deleteDisabled = false
+  maxTimeframes
 }) => {
   
   const [error, setError] = useState<string | null>(null);
@@ -184,9 +182,8 @@ const TimeframeManager: React.FC<TimeframeManagerProps> = ({
                               variant="ghost"
                               size="sm"
                               onClick={() => removeTimeframe(tf.id)}
-                              disabled={deleteDisabled}
-                              className={`h-5 w-5 p-0 ${deleteDisabled ? 'opacity-30 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
-                              title={deleteDisabled ? "Remove descendants to delete" : "Remove timeframe"}
+                              className="h-5 w-5 p-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                              title="Remove timeframe"
                             >
                             <X className="h-2 w-2" />
                           </Button>
@@ -236,20 +233,18 @@ const TimeframeManager: React.FC<TimeframeManagerProps> = ({
                             <span className="truncate whitespace-nowrap max-w-20">
                               {indicator.display_name || indicator.indicator_name || indicatorId}
                             </span>
-                            {!deleteDisabled && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const updatedIndicators = { ...timeframeIndicators };
-                                  delete updatedIndicators[indicatorId];
-                                  handleTimeframeIndicatorsChange(tf.id, updatedIndicators);
-                                }}
-                                className="hover:bg-primary/30 rounded-full p-0.5 transition-colors flex-shrink-0"
-                                title="Remove indicator"
-                              >
-                                <X className="h-2.5 w-2.5" />
-                              </button>
-                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const updatedIndicators = { ...timeframeIndicators };
+                                delete updatedIndicators[indicatorId];
+                                handleTimeframeIndicatorsChange(tf.id, updatedIndicators);
+                              }}
+                              className="hover:bg-primary/30 rounded-full p-0.5 transition-colors flex-shrink-0"
+                              title="Remove indicator"
+                            >
+                              <X className="h-2.5 w-2.5" />
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -264,7 +259,6 @@ const TimeframeManager: React.FC<TimeframeManagerProps> = ({
                       <IndicatorSelector
                         selectedIndicators={timeframeIndicators}
                         onChange={(newIndicators) => handleTimeframeIndicatorsChange(tf.id, newIndicators)}
-                        deleteDisabled={deleteDisabled}
                       />
                     </CardContent>
                   )}

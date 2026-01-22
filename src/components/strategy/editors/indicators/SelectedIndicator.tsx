@@ -14,7 +14,6 @@ interface SelectedIndicatorProps {
   onUpdate: (newParams: any) => void;
   onRemove: () => void;
   onEdit?: () => void;
-  deleteDisabled?: boolean;
 }
 
 const SelectedIndicator: React.FC<SelectedIndicatorProps> = ({
@@ -22,8 +21,7 @@ const SelectedIndicator: React.FC<SelectedIndicatorProps> = ({
   indicatorData,
   onUpdate,
   onRemove,
-  onEdit,
-  deleteDisabled = false
+  onEdit
 }) => {
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   
@@ -70,21 +68,19 @@ const SelectedIndicator: React.FC<SelectedIndicatorProps> = ({
         </div>
       </div>
       
-      {/* Remove button - only show if not disabled */}
-      {!deleteDisabled && (
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-6 w-6 ml-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 transition-colors opacity-60 hover:opacity-100" 
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowRemoveDialog(true);
-          }}
-          title="Remove indicator"
-        >
-          <X className="h-3 w-3" />
-        </Button>
-      )}
+      {/* Remove button */}
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-6 w-6 ml-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 transition-colors opacity-60 hover:opacity-100" 
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowRemoveDialog(true);
+        }}
+        title="Remove indicator"
+      >
+        <X className="h-3 w-3" />
+      </Button>
       
       <RemoveIndicatorDialog
         isOpen={showRemoveDialog}

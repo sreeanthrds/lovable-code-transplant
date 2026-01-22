@@ -11,7 +11,6 @@ interface InstrumentManagerProps {
   handleInputChange: (field: string, value: any) => void;
   handleTradingInstrumentChange: (type: 'stock' | 'futures' | 'options') => void;
   handleUnderlyingTypeChange: (underlyingType: 'index' | 'indexFuture' | 'stock') => void;
-  deleteDisabled?: boolean;
 }
 
 const InstrumentManager: React.FC<InstrumentManagerProps> = ({
@@ -19,8 +18,7 @@ const InstrumentManager: React.FC<InstrumentManagerProps> = ({
   formData,
   handleInputChange,
   handleTradingInstrumentChange,
-  handleUnderlyingTypeChange,
-  deleteDisabled = false
+  handleUnderlyingTypeChange
 }) => {
   const isTrading = instrumentType === 'trading';
   const configKey = isTrading ? 'tradingInstrumentConfig' : 'supportingInstrumentConfig';
@@ -174,7 +172,6 @@ const InstrumentManager: React.FC<InstrumentManagerProps> = ({
             onContractMonthChange={handleContractMonthChange}
             strategyType={formData.strategyType}
             onStrategyTypeChange={(value) => handleInputChange('strategyType', value)}
-            deleteDisabled={deleteDisabled}
           />
         ) : exchange === 'MCX' ? (
           <MCXInstrumentConfig
@@ -186,7 +183,6 @@ const InstrumentManager: React.FC<InstrumentManagerProps> = ({
             onTimeframesChange={handleTimeframesChange}
             strategyType={formData.strategyType}
             onStrategyTypeChange={(value) => handleInputChange('strategyType', value)}
-            deleteDisabled={deleteDisabled}
           />
         ) : (
           <Card>
@@ -228,7 +224,6 @@ const InstrumentManager: React.FC<InstrumentManagerProps> = ({
           onSymbolChange={handleSymbolChange}
           onTimeframesChange={handleTimeframesChange}
           onContractMonthChange={handleContractMonthChange}
-          deleteDisabled={deleteDisabled}
         />
       ) : (
         <Card>
