@@ -19,6 +19,9 @@ interface NSEBSEInstrumentConfigProps {
   onContractMonthChange: (month: string) => void;
   strategyType?: string;
   onStrategyTypeChange?: (type: string) => void;
+  isLocked?: boolean;
+  isIndicatorUsed?: (indicatorId: string) => boolean;
+  isTimeframeUsed?: (timeframeId: string, indicators: Record<string, any>) => boolean;
 }
 
 const NSEBSEInstrumentConfig: React.FC<NSEBSEInstrumentConfigProps> = ({
@@ -33,14 +36,17 @@ const NSEBSEInstrumentConfig: React.FC<NSEBSEInstrumentConfigProps> = ({
   onTimeframesChange,
   onContractMonthChange,
   strategyType,
-  onStrategyTypeChange
+  onStrategyTypeChange,
+  isLocked,
+  isIndicatorUsed,
+  isTimeframeUsed
 }) => {
   const isTrading = instrumentType === 'trading';
 
   return (
     <div className="space-y-3">
       {/* Symbol Type Selection */}
-      <Card>
+      <Card className={isLocked ? 'pointer-events-none opacity-60' : ''}>
         <CardHeader className="py-2 px-3">
           <CardTitle className="text-sm">Underlying Symbol Type</CardTitle>
         </CardHeader>
@@ -61,7 +67,7 @@ const NSEBSEInstrumentConfig: React.FC<NSEBSEInstrumentConfigProps> = ({
 
       {/* For Index: Show Futures/Options selection first */}
       {symbolType === 'index' && (
-        <Card>
+        <Card className={isLocked ? 'pointer-events-none opacity-60' : ''}>
           <CardHeader className="py-2 px-3">
             <CardTitle className="text-sm">Instrument Class</CardTitle>
           </CardHeader>
@@ -83,7 +89,7 @@ const NSEBSEInstrumentConfig: React.FC<NSEBSEInstrumentConfigProps> = ({
 
       {/* Contract Month for Index Futures only - Show before symbol */}
       {symbolType === 'index' && instrumentClass === 'futures' && (
-        <Card>
+        <Card className={isLocked ? 'pointer-events-none opacity-60' : ''}>
           <CardHeader className="py-2 px-3">
             <CardTitle className="text-sm">Contract Month</CardTitle>
           </CardHeader>
@@ -105,7 +111,7 @@ const NSEBSEInstrumentConfig: React.FC<NSEBSEInstrumentConfigProps> = ({
       )}
 
       {/* Symbol Selection */}
-      <Card>
+      <Card className={isLocked ? 'pointer-events-none opacity-60' : ''}>
         <CardHeader className="py-3 px-4">
           <CardTitle className="text-sm flex items-center gap-2">
             <Search className="h-4 w-4" />
@@ -126,7 +132,7 @@ const NSEBSEInstrumentConfig: React.FC<NSEBSEInstrumentConfigProps> = ({
       {/* For Stock: Show instrument class only after symbol selection */}
       {symbolType === 'stock' && config.symbol && (
         <>
-          <Card>
+          <Card className={isLocked ? 'pointer-events-none opacity-60' : ''}>
             <CardHeader className="py-2 px-3">
               <CardTitle className="text-sm">Instrument Class</CardTitle>
             </CardHeader>
@@ -148,7 +154,7 @@ const NSEBSEInstrumentConfig: React.FC<NSEBSEInstrumentConfigProps> = ({
 
           {/* Contract Month for Stock Futures only */}
           {instrumentClass === 'futures' && (
-            <Card>
+            <Card className={isLocked ? 'pointer-events-none opacity-60' : ''}>
               <CardHeader className="py-2 px-3">
                 <CardTitle className="text-sm">Contract Month</CardTitle>
               </CardHeader>
@@ -171,7 +177,7 @@ const NSEBSEInstrumentConfig: React.FC<NSEBSEInstrumentConfigProps> = ({
         </>
       )}
 
-      {/* Timeframes & Indicators */}
+      {/* Timeframes & Indicators - Always enabled for granular control */}
       <Card>
         <CardHeader className="py-2 px-3">
           <CardTitle className="text-sm">Timeframes & Indicators</CardTitle>
@@ -181,13 +187,16 @@ const NSEBSEInstrumentConfig: React.FC<NSEBSEInstrumentConfigProps> = ({
             timeframes={config.timeframes}
             onChange={onTimeframesChange}
             maxTimeframes={3}
+            isLocked={isLocked}
+            isIndicatorUsed={isIndicatorUsed}
+            isTimeframeUsed={isTimeframeUsed}
           />
         </CardContent>
       </Card>
 
       {/* Strategy Type (only for trading instrument) */}
       {isTrading && onStrategyTypeChange && (
-        <Card>
+        <Card className={isLocked ? 'pointer-events-none opacity-60' : ''}>
           <CardHeader className="py-2 px-3">
             <CardTitle className="text-sm">Strategy Type</CardTitle>
           </CardHeader>

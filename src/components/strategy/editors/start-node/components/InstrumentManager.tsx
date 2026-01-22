@@ -11,6 +11,9 @@ interface InstrumentManagerProps {
   handleInputChange: (field: string, value: any) => void;
   handleTradingInstrumentChange: (type: 'stock' | 'futures' | 'options') => void;
   handleUnderlyingTypeChange: (underlyingType: 'index' | 'indexFuture' | 'stock') => void;
+  isLocked?: boolean;
+  isIndicatorUsed?: (indicatorId: string) => boolean;
+  isTimeframeUsed?: (timeframeId: string, indicators: Record<string, any>) => boolean;
 }
 
 const InstrumentManager: React.FC<InstrumentManagerProps> = ({
@@ -18,7 +21,10 @@ const InstrumentManager: React.FC<InstrumentManagerProps> = ({
   formData,
   handleInputChange,
   handleTradingInstrumentChange,
-  handleUnderlyingTypeChange
+  handleUnderlyingTypeChange,
+  isLocked,
+  isIndicatorUsed,
+  isTimeframeUsed
 }) => {
   const isTrading = instrumentType === 'trading';
   const configKey = isTrading ? 'tradingInstrumentConfig' : 'supportingInstrumentConfig';
@@ -172,6 +178,9 @@ const InstrumentManager: React.FC<InstrumentManagerProps> = ({
             onContractMonthChange={handleContractMonthChange}
             strategyType={formData.strategyType}
             onStrategyTypeChange={(value) => handleInputChange('strategyType', value)}
+            isLocked={isLocked}
+            isIndicatorUsed={isIndicatorUsed}
+            isTimeframeUsed={isTimeframeUsed}
           />
         ) : exchange === 'MCX' ? (
           <MCXInstrumentConfig
@@ -183,6 +192,9 @@ const InstrumentManager: React.FC<InstrumentManagerProps> = ({
             onTimeframesChange={handleTimeframesChange}
             strategyType={formData.strategyType}
             onStrategyTypeChange={(value) => handleInputChange('strategyType', value)}
+            isLocked={isLocked}
+            isIndicatorUsed={isIndicatorUsed}
+            isTimeframeUsed={isTimeframeUsed}
           />
         ) : (
           <Card>
@@ -224,6 +236,9 @@ const InstrumentManager: React.FC<InstrumentManagerProps> = ({
           onSymbolChange={handleSymbolChange}
           onTimeframesChange={handleTimeframesChange}
           onContractMonthChange={handleContractMonthChange}
+          isLocked={isLocked}
+          isIndicatorUsed={isIndicatorUsed}
+          isTimeframeUsed={isTimeframeUsed}
         />
       ) : (
         <Card>

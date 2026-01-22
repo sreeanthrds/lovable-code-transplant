@@ -23,7 +23,7 @@ const StartNodeEditor = ({ node, updateNodeData }: StartNodeEditorProps) => {
   } = useStartNodeForm({ node, updateNodeData });
 
   // Check if the start node is locked (has descendants)
-  const { isLocked, descendantCount } = useStartNodeLock(node.id);
+  const { isLocked, descendantCount, isIndicatorUsed, isTimeframeUsed } = useStartNodeLock(node.id);
 
   // Check if we're on mobile with proper hook usage
   const [isMobile, setIsMobile] = React.useState(false);
@@ -70,6 +70,9 @@ const StartNodeEditor = ({ node, updateNodeData }: StartNodeEditorProps) => {
                 handleTradingInstrumentChange={handleTradingInstrumentChange}
                 handleUnderlyingTypeChange={handleUnderlyingTypeChange}
                 instrumentType="trading"
+                isLocked={isLocked}
+                isIndicatorUsed={isIndicatorUsed}
+                isTimeframeUsed={isTimeframeUsed}
               />
             </TabsContent>
             
@@ -81,6 +84,9 @@ const StartNodeEditor = ({ node, updateNodeData }: StartNodeEditorProps) => {
                   handleTradingInstrumentChange={handleTradingInstrumentChange}
                   handleUnderlyingTypeChange={handleUnderlyingTypeChange}
                   instrumentType="supporting"
+                  isLocked={isLocked}
+                  isIndicatorUsed={isIndicatorUsed}
+                  isTimeframeUsed={isTimeframeUsed}
                 />
               </TabsContent>
             )}
