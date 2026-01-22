@@ -29,13 +29,20 @@ const BacktestProgress: React.FC<BacktestProgressProps> = ({ session }) => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const completedDays = Array.from(session.daily_results.values()).filter(
-    d => d.status === 'completed'
-  ).length;
-  
-  const runningDays = Array.from(session.daily_results.values()).filter(
-    d => d.status === 'running'
-  ).length;
+  // Safely handle daily_results whether it's a Map or plain object
+  const getDailyResultsValues = (): Array<{ status: string }> => {
+    if (session.daily_results instanceof Map) {
+      return Array.from(session.daily_results.values());
+    }
+    if (session.daily_results && typeof session.daily_results === 'object') {
+      return Object.values(session.daily_results) as Array<{ status: string }>;
+    }
+    return [];
+  };
+
+  const dailyResultsValues = getDailyResultsValues();
+  const completedDays = dailyResultsValues.filter(d => d.status === 'completed').length;
+  const runningDays = dailyResultsValues.filter(d => d.status === 'running').length;
 
   const getStatusIcon = () => {
     switch (session.status) {
