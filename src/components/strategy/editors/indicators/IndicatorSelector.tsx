@@ -16,11 +16,13 @@ interface IndicatorData {
 interface IndicatorSelectorProps {
   selectedIndicators: Record<string, IndicatorData>;
   onChange: (indicators: Record<string, IndicatorData>) => void;
+  deleteDisabled?: boolean;
 }
 
 const IndicatorSelector: React.FC<IndicatorSelectorProps> = ({
   selectedIndicators,
-  onChange
+  onChange,
+  deleteDisabled = false
 }) => {
   const [selectedIndicator, setSelectedIndicator] = useState('');
   const [configDialog, setConfigDialog] = useState<{
@@ -123,6 +125,7 @@ const IndicatorSelector: React.FC<IndicatorSelectorProps> = ({
               onUpdate={(newParams) => handleIndicatorUpdate(indicatorId, newParams)}
               onRemove={() => removeIndicator(indicatorId)}
               onEdit={() => handleEditIndicator(indicatorId, indicatorData)}
+              deleteDisabled={deleteDisabled}
             />
           ))}
         </div>

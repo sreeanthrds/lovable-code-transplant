@@ -19,6 +19,7 @@ interface NSEBSEInstrumentConfigProps {
   onContractMonthChange: (month: string) => void;
   strategyType?: string;
   onStrategyTypeChange?: (type: string) => void;
+  deleteDisabled?: boolean;
 }
 
 const NSEBSEInstrumentConfig: React.FC<NSEBSEInstrumentConfigProps> = ({
@@ -33,7 +34,8 @@ const NSEBSEInstrumentConfig: React.FC<NSEBSEInstrumentConfigProps> = ({
   onTimeframesChange,
   onContractMonthChange,
   strategyType,
-  onStrategyTypeChange
+  onStrategyTypeChange,
+  deleteDisabled = false
 }) => {
   const isTrading = instrumentType === 'trading';
 
@@ -181,6 +183,7 @@ const NSEBSEInstrumentConfig: React.FC<NSEBSEInstrumentConfigProps> = ({
             timeframes={config.timeframes}
             onChange={onTimeframesChange}
             maxTimeframes={3}
+            deleteDisabled={deleteDisabled}
           />
         </CardContent>
       </Card>
