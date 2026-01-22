@@ -10,8 +10,10 @@ import { useStrategyStore } from '@/hooks/use-strategy-store';
  * @returns Object with isLocked boolean and descendantCount number
  */
 export const useStartNodeLock = (nodeId: string) => {
-  const nodes = useStrategyStore(state => state.nodes);
-  const edges = useStrategyStore(state => state.edges);
+  // Consolidate store calls to ensure consistent hook count
+  const { edges } = useStrategyStore(state => ({
+    edges: state.edges
+  }));
 
   const lockInfo = useMemo(() => {
     // Find all descendants of the start node using BFS
