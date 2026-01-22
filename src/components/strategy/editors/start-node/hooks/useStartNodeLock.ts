@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Edge } from '@xyflow/react';
+import { useMemo, useCallback } from 'react';
+import { Edge, Node } from '@xyflow/react';
 import { useStrategyStore } from '@/hooks/use-strategy-store';
 
 /**
@@ -7,11 +7,12 @@ import { useStrategyStore } from '@/hooks/use-strategy-store';
  * The Start node is locked when it has any descendants (children nodes connected to it).
  * 
  * @param nodeId - The ID of the start node
- * @returns Object with isLocked boolean and descendantCount number
+ * @returns Object with isLocked boolean, descendantCount number, and usage check functions
  */
 export const useStartNodeLock = (nodeId: string) => {
-  // Select edges directly - Zustand handles referential equality for arrays
+  // Select edges and nodes from store
   const edges: Edge[] = useStrategyStore(state => state.edges);
+  const nodes: Node[] = useStrategyStore(state => state.nodes);
 
   // Memoize the descendant calculation to prevent recalculating on every render
   const lockInfo = useMemo(() => {
@@ -20,7 +21,8 @@ export const useStartNodeLock = (nodeId: string) => {
       return {
         isLocked: false,
         descendantCount: 0,
-        descendantNodeIds: [] as string[]
+        descendantNodeIds: [] as string[],
+        descendantsJson: ''
       };
     }
 
@@ -50,15 +52,44 @@ export const useStartNodeLock = (nodeId: string) => {
       return descendants;
     };
 
-    const descendants = getDescendants(nodeId);
-    const descendantCount = descendants.size;
+    const descendantIds = getDescendants(nodeId);
+    const descendantCount = descendantIds.size;
+    
+    // CRITICAL: Get ONLY descendant node objects, NOT the Start node
+    // This ensures we search for indicator usage only in conditions/actions
+    const descendantNodes = nodes.filter(n => descendantIds.has(n.id));
+    
+    // JSON of ONLY descendant nodes for usage search (excludes Start node)
+    const descendantsJson = JSON.stringify(descendantNodes);
 
     return {
       isLocked: descendantCount > 0,
       descendantCount,
-      descendantNodeIds: Array.from(descendants)
+      descendantNodeIds: Array.from(descendantIds),
+      descendantsJson
     };
-  }, [nodeId, edges]);
+  }, [nodeId, edges, nodes]);
 
-  return lockInfo;
+  // Check if indicator UUID exists in descendant nodes ONLY (not Start node)
+  const isIndicatorUsed = useCallback((indicatorId: string): boolean => {
+    if (!lockInfo.isLocked || !lockInfo.descendantsJson) return false;
+    return lockInfo.descendantsJson.includes(`"${indicatorId}"`);
+  }, [lockInfo]);
+
+  // Check if any indicator in a timeframe is used in descendants
+  const isTimeframeUsed = useCallback((
+    timeframeId: string, 
+    indicators: Record<string, any>
+  ): boolean => {
+    if (!lockInfo.isLocked || !indicators) return false;
+    return Object.keys(indicators).some(id => 
+      lockInfo.descendantsJson.includes(`"${id}"`)
+    );
+  }, [lockInfo]);
+
+  return { 
+    ...lockInfo, 
+    isIndicatorUsed, 
+    isTimeframeUsed 
+  };
 };

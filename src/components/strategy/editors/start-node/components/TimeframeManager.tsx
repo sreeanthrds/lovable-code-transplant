@@ -24,12 +24,18 @@ interface TimeframeManagerProps {
   timeframes: TimeframeConfig[];
   onChange: (timeframes: TimeframeConfig[]) => void;
   maxTimeframes: number;
+  isLocked?: boolean;
+  isIndicatorUsed?: (indicatorId: string) => boolean;
+  isTimeframeUsed?: (timeframeId: string, indicators: Record<string, any>) => boolean;
 }
 
 const TimeframeManager: React.FC<TimeframeManagerProps> = ({
   timeframes,
   onChange,
-  maxTimeframes
+  maxTimeframes,
+  isLocked,
+  isIndicatorUsed,
+  isTimeframeUsed
 }) => {
   
   const [error, setError] = useState<string | null>(null);
@@ -162,8 +168,9 @@ const TimeframeManager: React.FC<TimeframeManagerProps> = ({
                           <Select
                             value={getTimeframeDisplay(tf)}
                             onValueChange={(value) => updateTimeframe(tf.id, value)}
+                            disabled={isLocked}
                           >
-                            <SelectTrigger className="w-20 h-6 text-sm flex-shrink-0">
+                            <SelectTrigger className={`w-20 h-6 text-sm flex-shrink-0 ${isLocked ? 'opacity-60' : ''}`}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="max-h-40 overflow-y-auto">
@@ -178,15 +185,38 @@ const TimeframeManager: React.FC<TimeframeManagerProps> = ({
 
                         {/* Quick Actions */}
                         <div className="flex items-center gap-1 flex-shrink-0">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeTimeframe(tf.id)}
-                              className="h-5 w-5 p-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                              title="Remove timeframe"
-                            >
-                            <X className="h-2 w-2" />
-                          </Button>
+                          {(() => {
+                            const tfUsed = isLocked && isTimeframeUsed?.(tf.id, tf.indicators);
+                            return (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => removeTimeframe(tf.id)}
+                                        disabled={tfUsed}
+                                        className={`h-5 w-5 p-0 ${
+                                          tfUsed 
+                                            ? 'opacity-50 cursor-not-allowed text-gray-400' 
+                                            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                                        }`}
+                                        title={tfUsed ? "Cannot delete: timeframe is used in strategy" : "Remove timeframe"}
+                                      >
+                                        <X className="h-2 w-2" />
+                                      </Button>
+                                    </span>
+                                  </TooltipTrigger>
+                                  {tfUsed && (
+                                    <TooltipContent side="top" className="max-w-60">
+                                      <p className="text-sm">Cannot delete: indicators in this timeframe are used in strategy conditions</p>
+                                    </TooltipContent>
+                                  )}
+                                </Tooltip>
+                              </TooltipProvider>
+                            );
+                          })()}
                         </div>
                       </div>
 
@@ -259,6 +289,8 @@ const TimeframeManager: React.FC<TimeframeManagerProps> = ({
                       <IndicatorSelector
                         selectedIndicators={timeframeIndicators}
                         onChange={(newIndicators) => handleTimeframeIndicatorsChange(tf.id, newIndicators)}
+                        isLocked={isLocked}
+                        isIndicatorUsed={isIndicatorUsed}
                       />
                     </CardContent>
                   )}

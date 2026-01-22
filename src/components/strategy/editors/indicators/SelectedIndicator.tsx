@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { X, AlertTriangle } from 'lucide-react';
 import { flatIndicatorConfig } from '../../utils/categorizedIndicatorConfig';
 import RemoveIndicatorDialog from './RemoveIndicatorDialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SelectedIndicatorProps {
   indicatorId: string;
@@ -14,6 +15,8 @@ interface SelectedIndicatorProps {
   onUpdate: (newParams: any) => void;
   onRemove: () => void;
   onEdit?: () => void;
+  isLocked?: boolean;
+  isUsed?: boolean;
 }
 
 const SelectedIndicator: React.FC<SelectedIndicatorProps> = ({
@@ -21,12 +24,17 @@ const SelectedIndicator: React.FC<SelectedIndicatorProps> = ({
   indicatorData,
   onUpdate,
   onRemove,
-  onEdit
+  onEdit,
+  isLocked,
+  isUsed
 }) => {
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   
   // Get indicator config
   const indicator = flatIndicatorConfig[indicatorData.indicator_name];
+  
+  // Check if delete should be disabled
+  const deleteDisabled = isLocked && isUsed;
   
   if (!indicator) {
     return (
@@ -36,14 +44,28 @@ const SelectedIndicator: React.FC<SelectedIndicatorProps> = ({
           <div className="text-sm font-medium">{indicatorData.display_name}</div>
           <span className="text-xs text-destructive">Config not found</span>
         </div>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-6 w-6" 
-          onClick={onRemove}
-        >
-          <X className="h-3 w-3" />
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={`h-6 w-6 ${deleteDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={deleteDisabled ? undefined : onRemove}
+                  disabled={deleteDisabled}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {deleteDisabled && (
+              <TooltipContent side="top" className="max-w-60">
+                <p className="text-sm">Cannot delete: this indicator is used in strategy conditions</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       </div>
     );
   }
@@ -69,18 +91,38 @@ const SelectedIndicator: React.FC<SelectedIndicatorProps> = ({
       </div>
       
       {/* Remove button */}
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="h-6 w-6 ml-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 transition-colors opacity-60 hover:opacity-100" 
-        onClick={(e) => {
-          e.stopPropagation();
-          setShowRemoveDialog(true);
-        }}
-        title="Remove indicator"
-      >
-        <X className="h-3 w-3" />
-      </Button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={`h-6 w-6 ml-2 rounded-full transition-colors ${
+                  deleteDisabled 
+                    ? 'opacity-50 cursor-not-allowed text-gray-400' 
+                    : 'hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 opacity-60 hover:opacity-100'
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!deleteDisabled) {
+                    setShowRemoveDialog(true);
+                  }
+                }}
+                disabled={deleteDisabled}
+                title={deleteDisabled ? "Cannot delete: indicator is used in strategy" : "Remove indicator"}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </span>
+          </TooltipTrigger>
+          {deleteDisabled && (
+            <TooltipContent side="top" className="max-w-60">
+              <p className="text-sm">Cannot delete: this indicator is used in strategy conditions</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
       
       <RemoveIndicatorDialog
         isOpen={showRemoveDialog}

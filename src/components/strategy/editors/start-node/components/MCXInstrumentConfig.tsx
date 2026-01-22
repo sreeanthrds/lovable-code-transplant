@@ -13,6 +13,9 @@ interface MCXInstrumentConfigProps {
   onTimeframesChange: (timeframes: TimeframeConfig[]) => void;
   strategyType?: string;
   onStrategyTypeChange?: (type: string) => void;
+  isLocked?: boolean;
+  isIndicatorUsed?: (indicatorId: string) => boolean;
+  isTimeframeUsed?: (timeframeId: string, indicators: Record<string, any>) => boolean;
 }
 
 const commodityOptions = [
@@ -33,7 +36,10 @@ const MCXInstrumentConfig: React.FC<MCXInstrumentConfigProps> = ({
   onInstrumentClassChange,
   onTimeframesChange,
   strategyType,
-  onStrategyTypeChange
+  onStrategyTypeChange,
+  isLocked,
+  isIndicatorUsed,
+  isTimeframeUsed
 }) => {
   // Derive values from config
   const commodity = config.symbol || '';
@@ -41,7 +47,7 @@ const MCXInstrumentConfig: React.FC<MCXInstrumentConfigProps> = ({
   return (
     <div className="space-y-3">
       {/* Commodity Selection */}
-      <Card>
+      <Card className={isLocked ? 'pointer-events-none opacity-60' : ''}>
         <CardHeader className="py-2 px-3">
           <CardTitle className="text-sm">Select Commodity</CardTitle>
         </CardHeader>
@@ -59,7 +65,7 @@ const MCXInstrumentConfig: React.FC<MCXInstrumentConfigProps> = ({
       </Card>
 
       {/* Contract Type (Current/Next Month) */}
-      <Card>
+      <Card className={isLocked ? 'pointer-events-none opacity-60' : ''}>
         <CardHeader className="py-2 px-3">
           <CardTitle className="text-sm">Trading Symbol</CardTitle>
         </CardHeader>
@@ -79,7 +85,7 @@ const MCXInstrumentConfig: React.FC<MCXInstrumentConfigProps> = ({
       </Card>
 
       {/* Instrument Class (Futures/Options) */}
-      <Card>
+      <Card className={isLocked ? 'pointer-events-none opacity-60' : ''}>
         <CardHeader className="py-2 px-3">
           <CardTitle className="text-sm">Instrument Class</CardTitle>
         </CardHeader>
@@ -98,7 +104,7 @@ const MCXInstrumentConfig: React.FC<MCXInstrumentConfigProps> = ({
         </CardContent>
       </Card>
 
-      {/* Timeframes & Indicators */}
+      {/* Timeframes & Indicators - Always enabled for granular control */}
       <Card>
         <CardHeader className="py-2 px-3">
           <CardTitle className="text-sm">Timeframes & Indicators</CardTitle>
@@ -108,13 +114,16 @@ const MCXInstrumentConfig: React.FC<MCXInstrumentConfigProps> = ({
             timeframes={config.timeframes}
             onChange={onTimeframesChange}
             maxTimeframes={3}
+            isLocked={isLocked}
+            isIndicatorUsed={isIndicatorUsed}
+            isTimeframeUsed={isTimeframeUsed}
           />
         </CardContent>
       </Card>
 
       {/* Strategy Type */}
       {onStrategyTypeChange && (
-        <Card>
+        <Card className={isLocked ? 'pointer-events-none opacity-60' : ''}>
           <CardHeader className="py-2 px-3">
             <CardTitle className="text-sm">Strategy Type</CardTitle>
           </CardHeader>
