@@ -81,17 +81,19 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
 
         const newResults = new Map(prev.daily_results);
         
-        // Update daily results from response
-        if (data.daily_results) {
-          for (const day of data.daily_results) {
-            newResults.set(day.date, {
-              date: day.date,
-              day_number: day.day_number,
+      // Update daily results from response (API returns object, not array)
+        if (data.daily_results && typeof data.daily_results === 'object') {
+          const dailyResultsEntries = Object.entries(data.daily_results);
+          for (const [dateKey, day] of dailyResultsEntries) {
+            const dayData = day as any;
+            newResults.set(dateKey, {
+              date: dayData.date || dateKey,
+              day_number: dayData.day_number,
               total_days: data.total_days || prev.total_days,
-              summary: day.summary || { total_trades: 0, total_pnl: '0', winning_trades: 0, losing_trades: 0, win_rate: '0' },
-              has_detail_data: day.has_detail_data ?? false,
-              status: day.status || 'completed',
-              error: day.error,
+              summary: dayData.summary || { total_trades: 0, total_pnl: '0', winning_trades: 0, losing_trades: 0, win_rate: '0' },
+              has_detail_data: dayData.has_detail_data ?? false,
+              status: dayData.status || 'completed',
+              error: dayData.error,
             });
           }
         }
