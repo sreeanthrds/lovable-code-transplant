@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Node, Edge } from '@xyflow/react';
+import { Edge } from '@xyflow/react';
 import { useStrategyStore } from '@/hooks/use-strategy-store';
 
 /**
@@ -10,12 +10,20 @@ import { useStrategyStore } from '@/hooks/use-strategy-store';
  * @returns Object with isLocked boolean and descendantCount number
  */
 export const useStartNodeLock = (nodeId: string) => {
-  // Consolidate store calls to ensure consistent hook count
-  const { edges } = useStrategyStore(state => ({
-    edges: state.edges
-  }));
+  // Select edges directly - Zustand handles referential equality for arrays
+  const edges: Edge[] = useStrategyStore(state => state.edges);
 
+  // Memoize the descendant calculation to prevent recalculating on every render
   const lockInfo = useMemo(() => {
+    // Early exit if no edges
+    if (!edges || edges.length === 0) {
+      return {
+        isLocked: false,
+        descendantCount: 0,
+        descendantNodeIds: [] as string[]
+      };
+    }
+
     // Find all descendants of the start node using BFS
     const getDescendants = (startId: string): Set<string> => {
       const descendants = new Set<string>();
