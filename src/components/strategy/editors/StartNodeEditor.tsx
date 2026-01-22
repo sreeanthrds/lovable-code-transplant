@@ -39,8 +39,8 @@ const StartNodeEditor = ({ node, updateNodeData }: StartNodeEditorProps) => {
   const showInstrumentTabs = exchange !== '';
   const showSupportingTab = exchange !== 'MCX' && showInstrumentTabs;
 
-  // Content component to avoid duplication
-  const EditorContent = () => (
+  // Content JSX - avoid inline component function to prevent hook order issues
+  const editorContent = (
     <div className="bg-white/[0.03] dark:bg-white/[0.02] rounded-lg border-2 border-blue-400/40 dark:border-blue-500/30 shadow-[inset_0_0_20px_rgba(59,130,246,0.1),0_4px_24px_rgba(0,0,0,0.6),0_8px_32px_rgba(59,130,246,0.15)] backdrop-blur-[10px] p-3 space-y-3">
       {isLocked && <StartNodeLockedBanner descendantCount={descendantCount} />}
       
@@ -95,7 +95,7 @@ const StartNodeEditor = ({ node, updateNodeData }: StartNodeEditorProps) => {
       <ConditionClipboardProvider>
         <ScrollArea className="h-full">
           <div className="space-y-2 p-2">
-            <EditorContent />
+            {editorContent}
           </div>
         </ScrollArea>
       </ConditionClipboardProvider>
@@ -105,7 +105,7 @@ const StartNodeEditor = ({ node, updateNodeData }: StartNodeEditorProps) => {
   return (
     <ConditionClipboardProvider>
       <ScrollArea className="h-full">
-        <EditorContent />
+        {editorContent}
       </ScrollArea>
     </ConditionClipboardProvider>
   );
