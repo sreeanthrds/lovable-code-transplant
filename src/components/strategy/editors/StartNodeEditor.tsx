@@ -5,7 +5,7 @@ import { useStartNodeLock } from './start-node/hooks/useStartNodeLock';
 import { ConditionClipboardProvider } from './condition-builder/providers/ConditionClipboardProvider';
 import BasicSettingsTab from './start-node/BasicSettingsTab';
 import ExchangeSelector from './start-node/components/ExchangeSelector';
-import StartNodeLockedOverlay from './start-node/components/StartNodeLockedOverlay';
+import StartNodeLockedBanner from './start-node/components/StartNodeLockedOverlay';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -41,10 +41,10 @@ const StartNodeEditor = ({ node, updateNodeData }: StartNodeEditorProps) => {
 
   // Content component to avoid duplication
   const EditorContent = () => (
-    <div className="bg-white/[0.03] dark:bg-white/[0.02] rounded-lg border-2 border-blue-400/40 dark:border-blue-500/30 shadow-[inset_0_0_20px_rgba(59,130,246,0.1),0_4px_24px_rgba(0,0,0,0.6),0_8px_32px_rgba(59,130,246,0.15)] backdrop-blur-[10px] p-3 space-y-3 relative">
-      {isLocked && <StartNodeLockedOverlay descendantCount={descendantCount} />}
+    <div className="bg-white/[0.03] dark:bg-white/[0.02] rounded-lg border-2 border-blue-400/40 dark:border-blue-500/30 shadow-[inset_0_0_20px_rgba(59,130,246,0.1),0_4px_24px_rgba(0,0,0,0.6),0_8px_32px_rgba(59,130,246,0.15)] backdrop-blur-[10px] p-3 space-y-3">
+      {isLocked && <StartNodeLockedBanner descendantCount={descendantCount} />}
       
-      <div className={isLocked ? 'pointer-events-none opacity-50' : ''}>
+      <div className={isLocked ? 'pointer-events-none' : ''}>
         <ExchangeSelector
           exchange={exchange}
           onChange={(value) => handleInputChange('exchange', value)}
