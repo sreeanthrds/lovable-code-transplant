@@ -13,6 +13,7 @@ interface MCXInstrumentConfigProps {
   onTimeframesChange: (timeframes: TimeframeConfig[]) => void;
   strategyType?: string;
   onStrategyTypeChange?: (type: string) => void;
+  deleteDisabled?: boolean;
 }
 
 const commodityOptions = [
@@ -33,7 +34,8 @@ const MCXInstrumentConfig: React.FC<MCXInstrumentConfigProps> = ({
   onInstrumentClassChange,
   onTimeframesChange,
   strategyType,
-  onStrategyTypeChange
+  onStrategyTypeChange,
+  deleteDisabled = false
 }) => {
   // Derive values from config
   const commodity = config.symbol || '';
@@ -108,6 +110,7 @@ const MCXInstrumentConfig: React.FC<MCXInstrumentConfigProps> = ({
             timeframes={config.timeframes}
             onChange={onTimeframesChange}
             maxTimeframes={3}
+            deleteDisabled={deleteDisabled}
           />
         </CardContent>
       </Card>

@@ -7,6 +7,7 @@ interface BasicSettingsTabProps {
   handleTradingInstrumentChange: (type: 'stock' | 'futures' | 'options') => void;
   handleUnderlyingTypeChange: (underlyingType: 'index' | 'indexFuture' | 'stock') => void;
   instrumentType?: 'trading' | 'supporting';
+  deleteDisabled?: boolean;
 }
 
 const BasicSettingsTab: React.FC<BasicSettingsTabProps> = ({
@@ -14,7 +15,8 @@ const BasicSettingsTab: React.FC<BasicSettingsTabProps> = ({
   handleInputChange,
   handleTradingInstrumentChange,
   handleUnderlyingTypeChange,
-  instrumentType = 'trading'
+  instrumentType = 'trading',
+  deleteDisabled = false
 }) => {
   return (
     <InstrumentManager
@@ -23,6 +25,7 @@ const BasicSettingsTab: React.FC<BasicSettingsTabProps> = ({
       handleInputChange={handleInputChange}
       handleTradingInstrumentChange={handleTradingInstrumentChange}
       handleUnderlyingTypeChange={handleUnderlyingTypeChange}
+      deleteDisabled={deleteDisabled}
     />
   );
 };
