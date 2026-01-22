@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import pako from 'pako';
 import JSZip from 'jszip';
 import {
@@ -14,9 +14,6 @@ import { getApiBaseUrl } from '@/lib/api-config';
 interface UseBacktestSessionOptions {
   userId?: string;
 }
-
-// Polling interval in milliseconds
-const POLLING_INTERVAL = 2000;
 
 export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
   const [session, setSession] = useState<BacktestSession | null>(null);
@@ -57,77 +54,38 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
     }
   }, []);
 
-  // Poll backtest status
-  const pollBacktestStatus = useCallback(async (backtestId: string, baseUrl: string) => {
-    try {
-      const response = await fetch(`${baseUrl}/api/v1/backtest/${backtestId}/status`, {
-        headers: {
-          'ngrok-skip-browser-warning': 'true',
-        },
-      });
+  // Start polling for backtest status
+  const startPolling = useCallback((backtestId: string) => {
+    // Clear any existing polling
+    stopPolling();
 
-      if (!response.ok) {
-        console.error('Poll failed with status:', response.status);
-        // Continue polling on non-fatal errors
-        return;
-      }
-
-      const data = await response.json();
-      console.log('Poll response:', data);
-
-      // Update session state from polling response
-      setSession(prev => {
-        if (!prev) return null;
-
-        const newResults = new Map(prev.daily_results);
+    // Start polling every 2 seconds
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const baseUrl = await initApiUrl();
+        const response = await fetch(`${baseUrl}/api/v1/backtest/${backtestId}/status`);
         
-        // Update daily results from response
-        if (data.daily_results) {
-          for (const day of data.daily_results) {
-            newResults.set(day.date, {
-              date: day.date,
-              day_number: day.day_number,
-              total_days: data.total_days || prev.total_days,
-              summary: day.summary || { total_trades: 0, total_pnl: '0', winning_trades: 0, losing_trades: 0, win_rate: '0' },
-              has_detail_data: day.has_detail_data ?? false,
-              status: day.status || 'completed',
-              error: day.error,
-            });
-          }
+        if (!response.ok) {
+          throw new Error(`Failed to fetch status: ${response.statusText}`);
         }
 
-        // Calculate progress
-        const completedCount = Array.from(newResults.values()).filter(d => d.status === 'completed').length;
-        const totalDays = data.total_days || prev.total_days;
-        const progress = totalDays > 0 ? Math.round((completedCount / totalDays) * 100) : 0;
-
-        // Determine status
-        let status = prev.status;
-        if (data.status === 'completed') {
-          status = 'completed';
+        const sessionData = await response.json();
+        
+        // Update session state
+        setSession(sessionData);
+        
+        // Stop polling if completed or failed
+        if (sessionData.status === 'completed' || sessionData.status === 'failed') {
           stopPolling();
-        } else if (data.status === 'failed') {
-          status = 'failed';
-          stopPolling();
-        } else if (data.status === 'running') {
-          status = 'running';
         }
+        
+      } catch (error) {
+        console.error('Polling error:', error);
+        // Continue polling on error, but log it
+      }
+    }, 2000);
+  }, [initApiUrl, stopPolling]);
 
-        return {
-          ...prev,
-          daily_results: newResults,
-          progress,
-          status,
-          overall_summary: data.overall_summary || prev.overall_summary,
-          error: data.error,
-          total_days: data.total_days || prev.total_days,
-        };
-      });
-    } catch (error) {
-      console.error('Polling error:', error);
-      // Continue polling on network errors - don't stop
-    }
-  }, [stopPolling]);
 
   // Start a new backtest
   const startBacktest = useCallback(async (request: StartBacktestRequest) => {
@@ -136,8 +94,10 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
       throw new Error('API URL not configured');
     }
 
-    // Stop any existing polling
-    stopPolling();
+    // Abort any existing polling
+    if (pollingIntervalRef.current) {
+      stopPolling();
+    }
 
     // Initialize session
     setSession({
@@ -146,15 +106,14 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
       start_date: request.start_date,
       end_date: request.end_date,
       total_days: 0,
-      status: 'starting',
+      status: 'running',
       daily_results: new Map(),
       progress: 0,
-      start_time: Date.now(),
     });
     setSelectedDayData(null);
 
     try {
-      // Call start endpoint
+      // Call start endpoint via proxy
       const response = await fetch(`${baseUrl}/api/v1/backtest/start`, {
         method: 'POST',
         headers: { 
@@ -170,32 +129,24 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
       }
 
       const data: StartBacktestResponse = await response.json();
-      const backtestId = data.backtest_id;
 
       // Update session with backtest_id and start polling
       setSession(prev => prev ? {
         ...prev,
-        backtest_id: backtestId,
+        backtest_id: data.backtest_id,
         total_days: data.total_days,
         status: 'running',
       } : null);
 
       // Start polling for status updates
-      console.log('Starting polling for backtest:', backtestId);
-      pollingIntervalRef.current = setInterval(() => {
-        pollBacktestStatus(backtestId, baseUrl);
-      }, POLLING_INTERVAL);
-
-      // Initial poll
-      await pollBacktestStatus(backtestId, baseUrl);
+      startPolling(data.backtest_id);
 
     } catch (error) {
       // Clear session on failure so form reappears
-      stopPolling();
       setSession(null);
       throw error;
     }
-  }, [initApiUrl, pollBacktestStatus, stopPolling]);
+  }, [initApiUrl, startPolling]);
 
   // Download and extract day detail data
   const loadDayDetail = useCallback(async (date: string) => {
@@ -287,6 +238,33 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
     }
   }, [session?.backtest_id, initApiUrl]);
 
+  // Stop backtest
+  const stopBacktest = useCallback(async () => {
+    if (!session) return;
+    
+    try {
+      const baseUrl = await initApiUrl();
+      
+      const response = await fetch(`${baseUrl}/api/v1/backtest/${session.backtest_id}/stop`, {
+        method: 'POST',
+        headers: {
+          'ngrok-skip-browser-warning': 'true',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to stop backtest: ${response.statusText}`);
+      }
+
+      stopPolling();
+      setSession(prev => prev ? { ...prev, status: 'stopped' } : null);
+      
+    } catch (error) {
+      console.error('Failed to stop backtest:', error);
+      throw error;
+    }
+  }, [session, initApiUrl, stopPolling]);
+
   // Reset session
   const reset = useCallback(() => {
     stopPolling();
@@ -303,14 +281,21 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
     );
   }, [session]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopPolling();
+    };
+  }, [stopPolling]);
+
   return {
     session,
     selectedDayData,
     loadingDay,
     startBacktest,
     loadDayDetail,
+    stopBacktest,
     reset,
     getDailyResultsArray,
-    stopPolling,
   };
 }

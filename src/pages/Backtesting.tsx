@@ -92,7 +92,7 @@ const Backtesting = () => {
       
       toast({
         title: 'Backtest started',
-        description: 'Streaming results will appear as each day completes',
+        description: 'Results will appear as each day completes',
       });
     } catch (error) {
       console.error('Backtest error:', error);
