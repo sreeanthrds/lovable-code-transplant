@@ -297,12 +297,23 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
     setLoadingDay(null);
   }, [stopPolling]);
 
-  // Get sorted daily results as array
+  // Get sorted daily results as array - handle both Map and plain object
   const getDailyResultsArray = useCallback((): DayResult[] => {
     if (!session) return [];
-    return Array.from(session.daily_results.values()).sort((a, b) => 
-      a.date.localeCompare(b.date)
-    );
+    
+    const dailyResults = session.daily_results;
+    
+    // Handle both Map and plain object formats
+    let resultsArray: DayResult[];
+    if (dailyResults instanceof Map) {
+      resultsArray = Array.from(dailyResults.values());
+    } else if (dailyResults && typeof dailyResults === 'object') {
+      resultsArray = Object.values(dailyResults) as DayResult[];
+    } else {
+      return [];
+    }
+    
+    return resultsArray.sort((a, b) => a.date.localeCompare(b.date));
   }, [session]);
 
   return {
