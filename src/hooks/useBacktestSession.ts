@@ -15,8 +15,10 @@ interface UseBacktestSessionOptions {
   userId?: string;
 }
 
-// Polling interval in milliseconds
+// Polling configuration
 const POLLING_INTERVAL = 2000;
+const STALE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes without changes = stale
+const MAX_CONSECUTIVE_FAILURES = 10; // Stop after 10 consecutive network failures
 
 export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
   const [session, setSession] = useState<BacktestSession | null>(null);
@@ -25,6 +27,9 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
   
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const apiBaseUrl = useRef<string>('');
+  const lastChangeTimeRef = useRef<number>(Date.now());
+  const lastResultsHashRef = useRef<string>('');
+  const consecutiveFailuresRef = useRef<number>(0);
 
   const decodePossiblyGzippedJson = (bytes: Uint8Array, fileName: string) => {
     // GZIP magic header: 1f 8b
@@ -55,9 +60,20 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
+    // Reset tracking refs
+    consecutiveFailuresRef.current = 0;
   }, []);
 
-  // Poll backtest status
+  // Generate a simple hash of results to detect changes
+  const getResultsHash = (dailyResults: any): string => {
+    if (!dailyResults || typeof dailyResults !== 'object') return '';
+    const entries = dailyResults instanceof Map 
+      ? Array.from(dailyResults.entries()) 
+      : Object.entries(dailyResults);
+    return entries.map(([k, v]: [string, any]) => `${k}:${v?.status}`).sort().join('|');
+  };
+
+  // Poll backtest status with smart timeout detection
   const pollBacktestStatus = useCallback(async (backtestId: string, baseUrl: string) => {
     try {
       const response = await fetch(`${baseUrl}/api/v1/backtest/${backtestId}/status`, {
@@ -68,12 +84,43 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
 
       if (!response.ok) {
         console.error('Poll failed with status:', response.status);
-        // Continue polling on non-fatal errors
+        consecutiveFailuresRef.current++;
+        
+        // Stop polling after too many consecutive failures
+        if (consecutiveFailuresRef.current >= MAX_CONSECUTIVE_FAILURES) {
+          console.warn('Stopping polling after', MAX_CONSECUTIVE_FAILURES, 'consecutive failures');
+          stopPolling();
+          setSession(prev => prev ? { ...prev, status: 'failed', error: 'Connection lost - too many failed requests' } : null);
+        }
         return;
       }
 
+      // Reset failure counter on success
+      consecutiveFailuresRef.current = 0;
+
       const data = await response.json();
       console.log('Poll response:', data);
+
+      // Check if results have changed
+      const currentHash = getResultsHash(data.daily_results);
+      if (currentHash !== lastResultsHashRef.current) {
+        lastResultsHashRef.current = currentHash;
+        lastChangeTimeRef.current = Date.now();
+        console.log('Results changed, resetting stale timer');
+      } else {
+        // Check for stale timeout
+        const timeSinceLastChange = Date.now() - lastChangeTimeRef.current;
+        if (timeSinceLastChange >= STALE_TIMEOUT_MS) {
+          console.warn('No changes detected in 5 minutes, stopping polling');
+          stopPolling();
+          setSession(prev => prev ? { 
+            ...prev, 
+            status: 'failed', 
+            error: 'Backtest appears stale - no progress in 5 minutes' 
+          } : null);
+          return;
+        }
+      }
 
       // Update session state from polling response
       setSession(prev => {
@@ -127,9 +174,16 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
       });
     } catch (error) {
       console.error('Polling error:', error);
-      // Continue polling on network errors - don't stop
+      consecutiveFailuresRef.current++;
+      
+      // Stop polling after too many consecutive failures
+      if (consecutiveFailuresRef.current >= MAX_CONSECUTIVE_FAILURES) {
+        console.warn('Stopping polling after', MAX_CONSECUTIVE_FAILURES, 'consecutive network errors');
+        stopPolling();
+        setSession(prev => prev ? { ...prev, status: 'failed', error: 'Connection lost - network errors' } : null);
+      }
     }
-  }, [stopPolling]);
+  }, [stopPolling, getResultsHash]);
 
   // Start a new backtest
   const startBacktest = useCallback(async (request: StartBacktestRequest) => {
@@ -138,8 +192,11 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
       throw new Error('API URL not configured');
     }
 
-    // Stop any existing polling
+    // Stop any existing polling and reset tracking
     stopPolling();
+    lastChangeTimeRef.current = Date.now();
+    lastResultsHashRef.current = '';
+    consecutiveFailuresRef.current = 0;
 
     // Initialize session
     setSession({
