@@ -3,129 +3,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { getApiConfig, updateApiConfig, clearApiConfigCache, getActiveApiUrl, validateUrlPairs, UrlPair } from '@/lib/api-config';
+import { getApiConfig, updateApiConfig, clearApiConfigCache, getActiveApiUrl } from '@/lib/api-config';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useClerkUser } from '@/hooks/useClerkUser';
-import { Loader2, Globe, Settings, RefreshCw, Plus, Trash2, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Loader2, Globe, Settings, RefreshCw, Server, Code } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-interface UrlPairRowProps {
-  pair: UrlPair;
-  index: number;
-  isDefault: boolean;
-  isOnlyRow: boolean;
-  connectionStatus: 'unknown' | 'success' | 'error';
-  isTesting: boolean;
-  onUpdate: (index: number, field: 'webUrl' | 'apiBaseUrl' | 'label', value: string) => void;
-  onDelete: (index: number) => void;
-  onTest: (index: number) => void;
-  disabled: boolean;
-}
-
-const UrlPairRow: React.FC<UrlPairRowProps> = ({
-  pair,
-  index,
-  isDefault,
-  isOnlyRow,
-  connectionStatus,
-  isTesting,
-  onUpdate,
-  onDelete,
-  onTest,
-  disabled
-}) => {
-  const getStatusIcon = () => {
-    if (connectionStatus === 'success') return <CheckCircle className="h-4 w-4 text-green-500" />;
-    if (connectionStatus === 'error') return <XCircle className="h-4 w-4 text-destructive" />;
-    return null;
-  };
-
-  return (
-    <div className="p-4 rounded-lg border bg-card space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-muted-foreground">#{index + 1}</span>
-          {isDefault && (
-            <Badge variant="secondary" className="text-xs">Default</Badge>
-          )}
-          {getStatusIcon()}
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onDelete(index)}
-          disabled={disabled || isOnlyRow}
-          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-      
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Web URL (leave empty for default)</Label>
-          <Input
-            placeholder="example.com or leave empty for default"
-            value={pair.webUrl}
-            onChange={(e) => onUpdate(index, 'webUrl', e.target.value)}
-            disabled={disabled}
-            className="h-9"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">API Base URL</Label>
-          <div className="flex gap-2">
-            <Input
-              placeholder="https://api.example.com"
-              value={pair.apiBaseUrl}
-              onChange={(e) => onUpdate(index, 'apiBaseUrl', e.target.value)}
-              disabled={disabled}
-              className="h-9 flex-1"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onTest(index)}
-              disabled={isTesting || !pair.apiBaseUrl.trim()}
-              className="h-9 px-3"
-            >
-              {isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Test'}
-            </Button>
-          </div>
-        </div>
-      </div>
-      
-      <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">Label (optional)</Label>
-        <Input
-          placeholder="e.g., Production, Development, Staging"
-          value={pair.label || ''}
-          onChange={(e) => onUpdate(index, 'label', e.target.value)}
-          disabled={disabled}
-          className="h-9"
-        />
-      </div>
-      
-      {isDefault && (
-        <p className="text-xs text-muted-foreground">
-          This is the default API endpoint used when no other web URL matches.
-        </p>
-      )}
-    </div>
-  );
-};
-
 const ApiConfigManager: React.FC = () => {
-  const [urlPairs, setUrlPairs] = useState<UrlPair[]>([]);
+  const [baseUrl, setBaseUrl] = useState('');
+  const [devUrl, setDevUrl] = useState('');
+  const [useDevUrl, setUseDevUrl] = useState(false);
   const [timeout, setTimeout] = useState(30000);
   const [retries, setRetries] = useState(3);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
-  const [connectionStatuses, setConnectionStatuses] = useState<Record<string, 'unknown' | 'success' | 'error'>>({});
-  const [testingIndices, setTestingIndices] = useState<Set<number>>(new Set());
-  const [validationError, setValidationError] = useState<string | null>(null);
-  const [currentActiveUrl, setCurrentActiveUrl] = useState<string>('');
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [testingDevConnection, setTestingDevConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'success' | 'error'>('unknown');
+  const [devConnectionStatus, setDevConnectionStatus] = useState<'unknown' | 'success' | 'error'>('unknown');
   
   const { toast } = useToast();
   const { isAdmin, loading: adminLoading } = useAdminRole();
@@ -137,26 +34,15 @@ const ApiConfigManager: React.FC = () => {
     }
   }, [user?.id]);
 
-  useEffect(() => {
-    // Validate URL pairs whenever they change
-    const result = validateUrlPairs(urlPairs);
-    setValidationError(result.valid ? null : result.error || null);
-    
-    // Update current active URL
-    if (urlPairs.length > 0) {
-      const config = { urlPairs, timeout, retries };
-      setCurrentActiveUrl(getActiveApiUrl(config));
-    }
-  }, [urlPairs, timeout, retries]);
-
   const loadCurrentConfig = async () => {
     try {
       setFetching(true);
       const config = await getApiConfig(user?.id);
-      setUrlPairs(config.urlPairs || [{ id: crypto.randomUUID(), webUrl: '', apiBaseUrl: '', label: 'Default' }]);
+      setBaseUrl(config.baseUrl);
+      setDevUrl(config.devUrl || '');
+      setUseDevUrl(config.useDevUrl || false);
       setTimeout(config.timeout);
       setRetries(config.retries);
-      setCurrentActiveUrl(getActiveApiUrl(config));
     } catch (error) {
       console.error('Error loading API config:', error);
       toast({
@@ -170,47 +56,34 @@ const ApiConfigManager: React.FC = () => {
   };
 
   const handleSaveConfig = async () => {
-    // Validate all pairs have API base URLs
-    const emptyApiUrl = urlPairs.find(p => !p.apiBaseUrl.trim());
-    if (emptyApiUrl) {
+    if (!baseUrl.trim()) {
       toast({
         title: "Error",
-        description: "All URL pairs must have an API Base URL",
+        description: "Please enter a valid base URL",
         variant: "destructive"
       });
       return;
     }
 
-    // Validate URL pairs uniqueness
-    const validation = validateUrlPairs(urlPairs);
-    if (!validation.valid) {
+    // Basic URL validation
+    try {
+      new URL(baseUrl);
+    } catch {
       toast({
-        title: "Validation Error",
-        description: validation.error,
+        title: "Error",
+        description: "Please enter a valid URL (e.g., http://localhost:3001)",
         variant: "destructive"
       });
       return;
-    }
-
-    // Validate all API URLs are valid
-    for (const pair of urlPairs) {
-      try {
-        new URL(pair.apiBaseUrl);
-      } catch {
-        toast({
-          title: "Error",
-          description: `Invalid API URL: ${pair.apiBaseUrl}`,
-          variant: "destructive"
-        });
-        return;
-      }
     }
 
     setLoading(true);
 
     try {
       const success = await updateApiConfig({
-        urlPairs,
+        baseUrl: baseUrl.trim(),
+        devUrl: devUrl.trim(),
+        useDevUrl,
         timeout,
         retries
       }, user?.id);
@@ -221,7 +94,8 @@ const ApiConfigManager: React.FC = () => {
           description: "API configuration updated successfully",
           variant: "default"
         });
-        setConnectionStatuses({});
+        setConnectionStatus('unknown');
+        setDevConnectionStatus('unknown');
       } else {
         toast({
           title: "Error",
@@ -241,18 +115,27 @@ const ApiConfigManager: React.FC = () => {
     }
   };
 
-  const testConnection = async (index: number) => {
-    const pair = urlPairs[index];
-    if (!pair?.apiBaseUrl) return;
+  const testConnection = async (url: string, isDev: boolean = false) => {
+    if (isDev) {
+      setTestingDevConnection(true);
+      setDevConnectionStatus('unknown');
+    } else {
+      setTestingConnection(true);
+      setConnectionStatus('unknown');
+    }
 
-    setTestingIndices(prev => new Set(prev).add(index));
-    const pairKey = pair.id || String(index);
-    setConnectionStatuses(prev => ({ ...prev, [pairKey]: 'unknown' as const }));
+    const setStatus = (status: 'success' | 'error') => {
+      if (isDev) {
+        setDevConnectionStatus(status);
+      } else {
+        setConnectionStatus(status);
+      }
+    };
 
     const endpointsToTry = ['/health', '/api/health', '/ping', '/'];
-    const url = pair.apiBaseUrl.replace(/\/+$/, '');
 
     try {
+      let lastError: Error | null = null;
       let succeeded = false;
 
       for (const endpoint of endpointsToTry) {
@@ -271,23 +154,25 @@ const ApiConfigManager: React.FC = () => {
           
           clearTimeout(timeoutId);
 
+          // Any response (even 404) means server is reachable
           if (response.ok || response.status < 500) {
-            setConnectionStatuses(prev => ({ ...prev, [pairKey]: 'success' as const }));
+            setStatus('success');
             toast({
               title: "Connection Successful",
-              description: `API server at ${pair.apiBaseUrl} is reachable`,
+              description: `${isDev ? 'Development' : 'Production'} API server is reachable`,
               variant: "default"
             });
             succeeded = true;
             break;
           }
-        } catch {
+        } catch (e) {
+          lastError = e as Error;
           // Continue trying other endpoints
         }
       }
 
       if (!succeeded) {
-        // Try no-cors fallback
+        // If all endpoints failed, check if it's a CORS issue by trying no-cors
         try {
           const controller = new AbortController();
           const timeoutId = window.setTimeout(() => controller.abort(), 10000);
@@ -295,15 +180,19 @@ const ApiConfigManager: React.FC = () => {
           await fetch(url, {
             method: 'HEAD',
             mode: 'no-cors',
-            headers: { 'ngrok-skip-browser-warning': 'true' },
+            headers: {
+              'ngrok-skip-browser-warning': 'true'
+            },
             signal: controller.signal
           });
 
           clearTimeout(timeoutId);
-          setConnectionStatuses(prev => ({ ...prev, [pairKey]: 'success' as const }));
+
+          // no-cors request succeeded (opaque response) - server is likely reachable
+          setStatus('success');
           toast({
             title: "Connection Likely Successful",
-            description: "Server responded (CORS may block full verification)",
+            description: `${isDev ? 'Development' : 'Production'} server responded (CORS may block full verification)`,
             variant: "default"
           });
           succeeded = true;
@@ -313,45 +202,30 @@ const ApiConfigManager: React.FC = () => {
       }
 
       if (!succeeded) {
-        setConnectionStatuses(prev => ({ ...prev, [pairKey]: 'error' as const }));
+        setStatus('error');
+        const errorMessage = lastError?.name === 'AbortError' 
+          ? 'Connection timed out' 
+          : `Unable to reach the ${isDev ? 'development' : 'production'} API server`;
         toast({
           title: "Connection Failed",
-          description: `Unable to reach API server at ${pair.apiBaseUrl}`,
+          description: errorMessage,
           variant: "destructive"
         });
       }
-    } catch {
-      setConnectionStatuses(prev => ({ ...prev, [pairKey]: 'error' as const }));
+    } catch (error) {
+      setStatus('error');
       toast({
         title: "Connection Failed",
-        description: "Unable to reach the API server",
+        description: `Unable to reach the ${isDev ? 'development' : 'production'} API server`,
         variant: "destructive"
       });
     } finally {
-      setTestingIndices(prev => {
-        const next = new Set(prev);
-        next.delete(index);
-        return next;
-      });
+      if (isDev) {
+        setTestingDevConnection(false);
+      } else {
+        setTestingConnection(false);
+      }
     }
-  };
-
-  const addUrlPair = () => {
-    setUrlPairs(prev => [
-      ...prev,
-      { id: crypto.randomUUID(), webUrl: '', apiBaseUrl: '', label: '' }
-    ]);
-  };
-
-  const updateUrlPair = (index: number, field: 'webUrl' | 'apiBaseUrl' | 'label', value: string) => {
-    setUrlPairs(prev => prev.map((pair, i) => 
-      i === index ? { ...pair, [field]: value } : pair
-    ));
-  };
-
-  const deleteUrlPair = (index: number) => {
-    if (urlPairs.length <= 1) return;
-    setUrlPairs(prev => prev.filter((_, i) => i !== index));
   };
 
   const refreshConfig = async () => {
@@ -397,125 +271,166 @@ const ApiConfigManager: React.FC = () => {
             <Settings className="h-5 w-5" />
             <CardTitle>API Configuration</CardTitle>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={refreshConfig}
-            disabled={fetching}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-        </div>
-        <CardDescription>
-          Configure URL pairs to map websites to their respective API endpoints
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Current Active URL Display */}
-        <div className="p-4 rounded-lg border bg-muted/30">
-          <div className="flex items-center gap-2 mb-2">
-            <Globe className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">Current Active API</span>
-          </div>
-          <code className="text-sm text-muted-foreground break-all">{currentActiveUrl || 'Not configured'}</code>
-          <p className="text-xs text-muted-foreground mt-1">
-            Based on current hostname: {typeof window !== 'undefined' ? window.location.hostname : 'N/A'}
-          </p>
-        </div>
-
-        {/* Validation Error */}
-        {validationError && (
-          <div className="p-3 rounded-lg border border-destructive/50 bg-destructive/10 flex items-start gap-2">
-            <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
-            <span className="text-sm text-destructive">{validationError}</span>
-          </div>
-        )}
-
-        {/* URL Pairs */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label className="text-base font-medium">URL Pairs</Label>
+          <div className="flex items-center gap-2">
+            <Badge variant={useDevUrl ? 'secondary' : 'default'}>
+              {useDevUrl ? 'DEV' : 'PROD'}
+            </Badge>
             <Button
               variant="outline"
               size="sm"
-              onClick={addUrlPair}
-              disabled={loading}
+              onClick={refreshConfig}
+              disabled={fetching}
             >
-              <Plus className="h-4 w-4 mr-1" />
-              Add Pair
+              <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
-          
-          <div className="space-y-3">
-            {urlPairs.map((pair, index) => (
-              <UrlPairRow
-                key={pair.id || index}
-                pair={pair}
-                index={index}
-                isDefault={!pair.webUrl || pair.webUrl.trim() === ''}
-                isOnlyRow={urlPairs.length === 1}
-                connectionStatus={connectionStatuses[pair.id || index] || 'unknown'}
-                isTesting={testingIndices.has(index)}
-                onUpdate={updateUrlPair}
-                onDelete={deleteUrlPair}
-                onTest={testConnection}
-                disabled={loading}
-              />
-            ))}
-          </div>
         </div>
-
-        {/* Advanced Settings */}
-        <div className="space-y-4">
-          <Label className="text-base font-medium">Advanced Settings</Label>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="timeout" className="text-sm">Timeout (ms)</Label>
-              <Input
-                id="timeout"
-                type="number"
-                value={timeout}
-                onChange={(e) => setTimeout(Number(e.target.value))}
-                disabled={loading}
-                min={1000}
-                max={120000}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="retries" className="text-sm">Max Retries</Label>
-              <Input
-                id="retries"
-                type="number"
-                value={retries}
-                onChange={(e) => setRetries(Number(e.target.value))}
-                disabled={loading}
-                min={0}
-                max={10}
-              />
+        <CardDescription>
+          Configure the dynamic API server URL and connection settings
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Environment Toggle */}
+        <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+          <div className="flex items-center gap-3">
+            {useDevUrl ? (
+              <Code className="h-5 w-5 text-orange-500" />
+            ) : (
+              <Server className="h-5 w-5 text-green-500" />
+            )}
+            <div>
+              <Label className="text-base font-medium">
+                Active Environment: {useDevUrl ? 'Development' : 'Production'}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {useDevUrl ? 'Using development URL for all API calls' : 'Using production URL for all API calls'}
+              </p>
             </div>
           </div>
+          <Switch
+            checked={useDevUrl}
+            onCheckedChange={setUseDevUrl}
+            disabled={loading || !devUrl.trim()}
+          />
         </div>
 
-        <Button
-          onClick={handleSaveConfig}
-          disabled={loading || !!validationError}
-          className="w-full"
-        >
-          {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-          Save Configuration
-        </Button>
-
-        {/* Usage Example */}
-        <div className="bg-muted/50 p-4 rounded-lg">
-          <h4 className="font-medium mb-2">How it works:</h4>
-          <p className="text-sm text-muted-foreground mb-3">
-            When your app loads, it matches the current website URL against the configured Web URLs and uses the corresponding API Base URL.
+        {/* Production URL */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Server className="h-4 w-4 text-green-500" />
+            <Label htmlFor="baseUrl">Production API URL</Label>
+            {connectionStatus !== 'unknown' && (
+              <Badge variant={connectionStatus === 'success' ? 'default' : 'destructive'} className="text-xs">
+                {connectionStatus === 'success' ? 'Connected' : 'Error'}
+              </Badge>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              id="baseUrl"
+              placeholder="https://api.example.com"
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.target.value)}
+              disabled={loading}
+              className="flex-1"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => testConnection(baseUrl, false)}
+              disabled={testingConnection || !baseUrl.trim()}
+            >
+              {testingConnection && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              Test
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Your production API server URL
           </p>
-          <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-            <li>Empty Web URL = Default API (used when no match found)</li>
-            <li>Specific Web URL = Maps that domain to its API endpoint</li>
-            <li>Supports subdomain matching (e.g., "example.com" matches "app.example.com")</li>
-          </ul>
+        </div>
+
+        {/* Development URL */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Code className="h-4 w-4 text-orange-500" />
+            <Label htmlFor="devUrl">Development API URL</Label>
+            {devConnectionStatus !== 'unknown' && (
+              <Badge variant={devConnectionStatus === 'success' ? 'default' : 'destructive'} className="text-xs">
+                {devConnectionStatus === 'success' ? 'Connected' : 'Error'}
+              </Badge>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              id="devUrl"
+              placeholder="http://localhost:3001 or ngrok URL"
+              value={devUrl}
+              onChange={(e) => setDevUrl(e.target.value)}
+              disabled={loading}
+              className="flex-1"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => testConnection(devUrl, true)}
+              disabled={testingDevConnection || !devUrl.trim()}
+            >
+              {testingDevConnection && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              Test
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Your local development or ngrok tunnel URL (e.g., http://localhost:3001)
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="timeout">Timeout (ms)</Label>
+            <Input
+              id="timeout"
+              type="number"
+              value={timeout}
+              onChange={(e) => setTimeout(Number(e.target.value))}
+              disabled={loading}
+              min={1000}
+              max={120000}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="retries">Max Retries</Label>
+            <Input
+              id="retries"
+              type="number"
+              value={retries}
+              onChange={(e) => setRetries(Number(e.target.value))}
+              disabled={loading}
+              min={0}
+              max={10}
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <Button
+            onClick={handleSaveConfig}
+            disabled={loading || !baseUrl.trim()}
+            className="flex-1"
+          >
+            {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Save Configuration
+          </Button>
+        </div>
+
+        <div className="bg-muted/50 p-4 rounded-lg">
+          <h4 className="font-medium mb-2">Usage Example:</h4>
+          <code className="text-sm">
+            {`import { apiClient } from '@/lib/api-config';
+
+// Use the configured API client
+const response = await apiClient.get('/api/data');
+const data = await apiClient.post('/api/submit', { key: 'value' });`}
+          </code>
         </div>
       </CardContent>
     </Card>

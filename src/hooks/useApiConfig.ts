@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useClerkUser } from '@/hooks/useClerkUser';
-import { getApiConfig, ApiConfig } from '@/lib/api-config';
+import { getApiConfig } from '@/lib/api-config';
+
+interface ApiConfig {
+  baseUrl: string;
+  timeout: number;
+  retries: number;
+}
 
 /**
  * Hook to get current API configuration

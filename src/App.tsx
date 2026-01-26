@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -5,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { WebsiteThemeProvider } from "@/hooks/use-website-theme";
 import AuthGuard from "@/components/auth/AuthGuard";
-import AdminGuard from "@/components/auth/AdminGuard";
 import OAuthCallback from "@/components/auth/OAuthCallback";
 import Index from "./pages/Index";
 import StrategyBuilder from "./pages/StrategyBuilder";
@@ -79,8 +79,8 @@ const App = () => {
                     <Route path="multi-strategy-backtest" element={<MultiStrategyBacktest />} />
                     <Route path="sse-test" element={<SSETestNew />} />
                     <Route path="account" element={<Account />} />
-                    <Route path="admin-setup" element={<AdminGuard><AdminSetup /></AdminGuard>} />
-                    <Route path="admin" element={<AdminGuard><Admin /></AdminGuard>} />
+                    <Route path="admin-setup" element={<AdminSetup />} />
+                    <Route path="admin" element={<Admin />} />
                   </Routes>
                 </AuthGuard>
               } />
