@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserPlus, Trash2, Shield, User, Crown } from 'lucide-react';
-import { tradelayoutClient as supabase } from '@/lib/supabase/tradelayout-client';
+import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
 
 interface UserRole {
@@ -21,16 +21,14 @@ const RoleManager: React.FC = () => {
   const [newUserId, setNewUserId] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'moderator' | 'user'>('user');
   const [loading, setLoading] = useState(true);
+  const { getAuthenticatedClient } = useSupabaseClient();
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadUserRoles();
-  }, []);
-
-  const loadUserRoles = async () => {
+  const loadUserRoles = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await (supabase as any)
+      const supabase = await getAuthenticatedClient();
+      const { data, error } = await supabase
         .from('user_roles')
         .select('*')
         .order('created_at', { ascending: false });
@@ -47,7 +45,11 @@ const RoleManager: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getAuthenticatedClient, toast]);
+
+  useEffect(() => {
+    loadUserRoles();
+  }, [loadUserRoles]);
 
   const addRole = async () => {
     if (!newUserId.trim()) {
@@ -60,7 +62,8 @@ const RoleManager: React.FC = () => {
     }
 
     try {
-      const { error } = await (supabase as any)
+      const supabase = await getAuthenticatedClient();
+      const { error } = await supabase
         .from('user_roles')
         .insert({
           user_id: newUserId.trim(),
@@ -89,7 +92,8 @@ const RoleManager: React.FC = () => {
 
   const removeRole = async (roleId: string) => {
     try {
-      const { error } = await (supabase as any)
+      const supabase = await getAuthenticatedClient();
+      const { error } = await supabase
         .from('user_roles')
         .delete()
         .eq('id', roleId);
