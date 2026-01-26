@@ -124,43 +124,96 @@ const ApiConfigManager: React.FC = () => {
       setConnectionStatus('unknown');
     }
 
-    try {
-      const response = await fetch(`${url}/health`, {
-        method: 'GET',
-        headers: {
-          'ngrok-skip-browser-warning': 'true'
-        }
-      });
-      
-      if (response.ok) {
-        if (isDev) {
-          setDevConnectionStatus('success');
-        } else {
-          setConnectionStatus('success');
-        }
-        toast({
-          title: "Connection Successful",
-          description: `${isDev ? 'Development' : 'Production'} API server is responding correctly`,
-          variant: "default"
-        });
+    const setStatus = (status: 'success' | 'error') => {
+      if (isDev) {
+        setDevConnectionStatus(status);
       } else {
-        if (isDev) {
-          setDevConnectionStatus('error');
-        } else {
-          setConnectionStatus('error');
+        setConnectionStatus(status);
+      }
+    };
+
+    const endpointsToTry = ['/health', '/api/health', '/ping', '/'];
+
+    try {
+      let lastError: Error | null = null;
+      let succeeded = false;
+
+      for (const endpoint of endpointsToTry) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = window.setTimeout(() => controller.abort(), 10000);
+
+          const response = await fetch(`${url}${endpoint}`, {
+            method: 'GET',
+            headers: {
+              'ngrok-skip-browser-warning': 'true',
+              'Accept': 'application/json, text/plain, */*'
+            },
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+
+          // Any response (even 404) means server is reachable
+          if (response.ok || response.status < 500) {
+            setStatus('success');
+            toast({
+              title: "Connection Successful",
+              description: `${isDev ? 'Development' : 'Production'} API server is reachable`,
+              variant: "default"
+            });
+            succeeded = true;
+            break;
+          }
+        } catch (e) {
+          lastError = e as Error;
+          // Continue trying other endpoints
         }
+      }
+
+      if (!succeeded) {
+        // If all endpoints failed, check if it's a CORS issue by trying no-cors
+        try {
+          const controller = new AbortController();
+          const timeoutId = window.setTimeout(() => controller.abort(), 10000);
+
+          await fetch(url, {
+            method: 'HEAD',
+            mode: 'no-cors',
+            headers: {
+              'ngrok-skip-browser-warning': 'true'
+            },
+            signal: controller.signal
+          });
+
+          clearTimeout(timeoutId);
+
+          // no-cors request succeeded (opaque response) - server is likely reachable
+          setStatus('success');
+          toast({
+            title: "Connection Likely Successful",
+            description: `${isDev ? 'Development' : 'Production'} server responded (CORS may block full verification)`,
+            variant: "default"
+          });
+          succeeded = true;
+        } catch {
+          // Even no-cors failed
+        }
+      }
+
+      if (!succeeded) {
+        setStatus('error');
+        const errorMessage = lastError?.name === 'AbortError' 
+          ? 'Connection timed out' 
+          : `Unable to reach the ${isDev ? 'development' : 'production'} API server`;
         toast({
           title: "Connection Failed",
-          description: `Server responded with status: ${response.status}`,
+          description: errorMessage,
           variant: "destructive"
         });
       }
     } catch (error) {
-      if (isDev) {
-        setDevConnectionStatus('error');
-      } else {
-        setConnectionStatus('error');
-      }
+      setStatus('error');
       toast({
         title: "Connection Failed",
         description: `Unable to reach the ${isDev ? 'development' : 'production'} API server`,
