@@ -8,6 +8,8 @@ const corsHeaders = {
 interface UpdateConfigRequest {
   userId: string;
   baseUrl: string;
+  devUrl?: string;
+  useDevUrl?: boolean;
   timeout: number;
   retries: number;
 }
@@ -25,7 +27,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { userId, baseUrl, timeout, retries }: UpdateConfigRequest = await req.json();
+    const { userId, baseUrl, devUrl, useDevUrl, timeout, retries }: UpdateConfigRequest = await req.json();
 
     console.log('🔄 Updating API config for user:', userId);
 
@@ -52,6 +54,8 @@ Deno.serve(async (req) => {
         user_id: userId,
         config_name: 'default',
         base_url: baseUrl,
+        dev_url: devUrl || '',
+        use_dev_url: useDevUrl || false,
         timeout: timeout,
         retries: retries,
         updated_at: new Date().toISOString()

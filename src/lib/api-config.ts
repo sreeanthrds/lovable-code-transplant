@@ -13,9 +13,18 @@ const TRADELAYOUT_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 interface ApiConfig {
   baseUrl: string;
+  devUrl: string;
+  useDevUrl: boolean;
   timeout: number;
   retries: number;
 }
+
+/**
+ * Get the active API URL based on configuration
+ */
+export const getActiveApiUrl = (config: ApiConfig): string => {
+  return config.useDevUrl && config.devUrl ? config.devUrl : config.baseUrl;
+};
 
 // Cache configuration for 5 minutes
 let cachedConfig: ApiConfig | null = null;
@@ -94,6 +103,8 @@ export const getApiConfig = async (userId?: string): Promise<ApiConfig> => {
     if (configData) {
       const config: ApiConfig = {
         baseUrl: configData.base_url,
+        devUrl: (configData as any).dev_url || '',
+        useDevUrl: (configData as any).use_dev_url || false,
         timeout: configData.timeout,
         retries: configData.retries
       };
@@ -120,6 +131,8 @@ const getProxyBaseUrl = (): string => {
 const getDefaultConfig = (): ApiConfig => {
   const defaultConfig: ApiConfig = {
     baseUrl: getProxyBaseUrl(),
+    devUrl: '',
+    useDevUrl: false,
     timeout: 30000,
     retries: 3
   };
@@ -152,6 +165,8 @@ export const updateApiConfig = async (config: Partial<ApiConfig>, userId?: strin
       .from('api_configurations')
       .update({
         base_url: newConfig.baseUrl,
+        dev_url: newConfig.devUrl || '',
+        use_dev_url: newConfig.useDevUrl || false,
         timeout: newConfig.timeout,
         retries: newConfig.retries,
         updated_at: new Date().toISOString()
@@ -181,7 +196,7 @@ export const updateApiConfig = async (config: Partial<ApiConfig>, userId?: strin
  */
 export const getApiBaseUrl = async (userId?: string): Promise<string> => {
   const config = await getApiConfig(userId);
-  return config.baseUrl;
+  return getActiveApiUrl(config);
 };
 
 /**
@@ -194,7 +209,7 @@ export class ApiClient {
 
   async get(endpoint: string, options?: RequestInit): Promise<Response> {
     const config = await this.getConfig();
-    const url = `${config.baseUrl}${endpoint}`;
+    const url = `${getActiveApiUrl(config)}${endpoint}`;
     
     return this.fetchWithRetry(url, {
       method: 'GET',
@@ -208,7 +223,7 @@ export class ApiClient {
 
   async post(endpoint: string, data?: any, options?: RequestInit): Promise<Response> {
     const config = await this.getConfig();
-    const url = `${config.baseUrl}${endpoint}`;
+    const url = `${getActiveApiUrl(config)}${endpoint}`;
     
     return this.fetchWithRetry(url, {
       method: 'POST',
@@ -223,7 +238,7 @@ export class ApiClient {
 
   async put(endpoint: string, data?: any, options?: RequestInit): Promise<Response> {
     const config = await this.getConfig();
-    const url = `${config.baseUrl}${endpoint}`;
+    const url = `${getActiveApiUrl(config)}${endpoint}`;
     
     return this.fetchWithRetry(url, {
       method: 'PUT',
@@ -238,7 +253,7 @@ export class ApiClient {
 
   async delete(endpoint: string, options?: RequestInit): Promise<Response> {
     const config = await this.getConfig();
-    const url = `${config.baseUrl}${endpoint}`;
+    const url = `${getActiveApiUrl(config)}${endpoint}`;
     
     return this.fetchWithRetry(url, {
       method: 'DELETE',

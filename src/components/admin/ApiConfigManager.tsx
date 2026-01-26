@@ -3,21 +3,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { getApiConfig, updateApiConfig, clearApiConfigCache } from '@/lib/api-config';
+import { getApiConfig, updateApiConfig, clearApiConfigCache, getActiveApiUrl } from '@/lib/api-config';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useClerkUser } from '@/hooks/useClerkUser';
-import { Loader2, Globe, Settings, RefreshCw } from 'lucide-react';
+import { Loader2, Globe, Settings, RefreshCw, Server, Code } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 const ApiConfigManager: React.FC = () => {
   const [baseUrl, setBaseUrl] = useState('');
+  const [devUrl, setDevUrl] = useState('');
+  const [useDevUrl, setUseDevUrl] = useState(false);
   const [timeout, setTimeout] = useState(30000);
   const [retries, setRetries] = useState(3);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [testingDevConnection, setTestingDevConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'success' | 'error'>('unknown');
+  const [devConnectionStatus, setDevConnectionStatus] = useState<'unknown' | 'success' | 'error'>('unknown');
   
   const { toast } = useToast();
   const { isAdmin, loading: adminLoading } = useAdminRole();
@@ -34,6 +39,8 @@ const ApiConfigManager: React.FC = () => {
       setFetching(true);
       const config = await getApiConfig(user?.id);
       setBaseUrl(config.baseUrl);
+      setDevUrl(config.devUrl || '');
+      setUseDevUrl(config.useDevUrl || false);
       setTimeout(config.timeout);
       setRetries(config.retries);
     } catch (error) {
@@ -75,6 +82,8 @@ const ApiConfigManager: React.FC = () => {
     try {
       const success = await updateApiConfig({
         baseUrl: baseUrl.trim(),
+        devUrl: devUrl.trim(),
+        useDevUrl,
         timeout,
         retries
       }, user?.id);
@@ -85,7 +94,8 @@ const ApiConfigManager: React.FC = () => {
           description: "API configuration updated successfully",
           variant: "default"
         });
-        setConnectionStatus('unknown'); // Reset connection status
+        setConnectionStatus('unknown');
+        setDevConnectionStatus('unknown');
       } else {
         toast({
           title: "Error",
@@ -105,13 +115,17 @@ const ApiConfigManager: React.FC = () => {
     }
   };
 
-  const testConnection = async () => {
-    setTestingConnection(true);
-    setConnectionStatus('unknown');
+  const testConnection = async (url: string, isDev: boolean = false) => {
+    if (isDev) {
+      setTestingDevConnection(true);
+      setDevConnectionStatus('unknown');
+    } else {
+      setTestingConnection(true);
+      setConnectionStatus('unknown');
+    }
 
     try {
-      // Test the connection by making a simple request
-      const response = await fetch(`${baseUrl}/health`, {
+      const response = await fetch(`${url}/health`, {
         method: 'GET',
         headers: {
           'ngrok-skip-browser-warning': 'true'
@@ -119,14 +133,22 @@ const ApiConfigManager: React.FC = () => {
       });
       
       if (response.ok) {
-        setConnectionStatus('success');
+        if (isDev) {
+          setDevConnectionStatus('success');
+        } else {
+          setConnectionStatus('success');
+        }
         toast({
           title: "Connection Successful",
-          description: "API server is responding correctly",
+          description: `${isDev ? 'Development' : 'Production'} API server is responding correctly`,
           variant: "default"
         });
       } else {
-        setConnectionStatus('error');
+        if (isDev) {
+          setDevConnectionStatus('error');
+        } else {
+          setConnectionStatus('error');
+        }
         toast({
           title: "Connection Failed",
           description: `Server responded with status: ${response.status}`,
@@ -134,14 +156,22 @@ const ApiConfigManager: React.FC = () => {
         });
       }
     } catch (error) {
-      setConnectionStatus('error');
+      if (isDev) {
+        setDevConnectionStatus('error');
+      } else {
+        setConnectionStatus('error');
+      }
       toast({
         title: "Connection Failed",
-        description: "Unable to reach the API server",
+        description: `Unable to reach the ${isDev ? 'development' : 'production'} API server`,
         variant: "destructive"
       });
     } finally {
-      setTestingConnection(false);
+      if (isDev) {
+        setTestingDevConnection(false);
+      } else {
+        setTestingConnection(false);
+      }
     }
   };
 
@@ -189,11 +219,9 @@ const ApiConfigManager: React.FC = () => {
             <CardTitle>API Configuration</CardTitle>
           </div>
           <div className="flex items-center gap-2">
-            {connectionStatus !== 'unknown' && (
-              <Badge variant={connectionStatus === 'success' ? 'default' : 'destructive'}>
-                {connectionStatus === 'success' ? 'Connected' : 'Disconnected'}
-              </Badge>
-            )}
+            <Badge variant={useDevUrl ? 'secondary' : 'default'}>
+              {useDevUrl ? 'DEV' : 'PROD'}
+            </Badge>
             <Button
               variant="outline"
               size="sm"
@@ -209,17 +237,97 @@ const ApiConfigManager: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="baseUrl">API Base URL</Label>
-          <Input
-            id="baseUrl"
-            placeholder="http://localhost:3001"
-            value={baseUrl}
-            onChange={(e) => setBaseUrl(e.target.value)}
-            disabled={loading}
+        {/* Environment Toggle */}
+        <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+          <div className="flex items-center gap-3">
+            {useDevUrl ? (
+              <Code className="h-5 w-5 text-orange-500" />
+            ) : (
+              <Server className="h-5 w-5 text-green-500" />
+            )}
+            <div>
+              <Label className="text-base font-medium">
+                Active Environment: {useDevUrl ? 'Development' : 'Production'}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {useDevUrl ? 'Using development URL for all API calls' : 'Using production URL for all API calls'}
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={useDevUrl}
+            onCheckedChange={setUseDevUrl}
+            disabled={loading || !devUrl.trim()}
           />
+        </div>
+
+        {/* Production URL */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Server className="h-4 w-4 text-green-500" />
+            <Label htmlFor="baseUrl">Production API URL</Label>
+            {connectionStatus !== 'unknown' && (
+              <Badge variant={connectionStatus === 'success' ? 'default' : 'destructive'} className="text-xs">
+                {connectionStatus === 'success' ? 'Connected' : 'Error'}
+              </Badge>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              id="baseUrl"
+              placeholder="https://api.example.com"
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.target.value)}
+              disabled={loading}
+              className="flex-1"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => testConnection(baseUrl, false)}
+              disabled={testingConnection || !baseUrl.trim()}
+            >
+              {testingConnection && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              Test
+            </Button>
+          </div>
           <p className="text-sm text-muted-foreground">
-            The base URL of your API server (e.g., http://localhost:3001 or https://api.example.com)
+            Your production API server URL
+          </p>
+        </div>
+
+        {/* Development URL */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Code className="h-4 w-4 text-orange-500" />
+            <Label htmlFor="devUrl">Development API URL</Label>
+            {devConnectionStatus !== 'unknown' && (
+              <Badge variant={devConnectionStatus === 'success' ? 'default' : 'destructive'} className="text-xs">
+                {devConnectionStatus === 'success' ? 'Connected' : 'Error'}
+              </Badge>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              id="devUrl"
+              placeholder="http://localhost:3001 or ngrok URL"
+              value={devUrl}
+              onChange={(e) => setDevUrl(e.target.value)}
+              disabled={loading}
+              className="flex-1"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => testConnection(devUrl, true)}
+              disabled={testingDevConnection || !devUrl.trim()}
+            >
+              {testingDevConnection && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              Test
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Your local development or ngrok tunnel URL (e.g., http://localhost:3001)
           </p>
         </div>
 
@@ -258,15 +366,6 @@ const ApiConfigManager: React.FC = () => {
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Save Configuration
-          </Button>
-          
-          <Button
-            variant="outline"
-            onClick={testConnection}
-            disabled={testingConnection || !baseUrl.trim()}
-          >
-            {testingConnection && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            Test Connection
           </Button>
         </div>
 
