@@ -89,21 +89,34 @@ export const UserPlansManager: React.FC = () => {
       
       setPlanDefinitions(limitsMap);
       
-      // Get set of user IDs with active paid plans
-      const paidPlans = (plansResult.data || []).filter((plan: any) => 
+      // Get all plans from database
+      const allPlans = plansResult.data || [];
+      
+      // Separate paid plans and explicit FREE plans
+      const paidPlans = allPlans.filter((plan: any) => 
         plan.status === 'active' && plan.plan !== 'FREE'
       );
-      const paidUserIds = new Set(paidPlans.map((plan: any) => plan.user_id));
+      const explicitFreePlans = allPlans.filter((plan: any) => 
+        plan.plan === 'FREE'
+      );
       
-      // Create plans array: paid users + free users (those without paid plans)
+      // Get user IDs that have any plan record
+      const usersWithPlans = new Set(allPlans.map((plan: any) => plan.user_id));
+      
+      // Create plans array with emails
       const paidPlansWithEmail = paidPlans.map((plan: any) => ({
         ...plan,
         user_email: emailMap.get(plan.user_id) || plan.user_id
       }));
       
-      // Users without paid plans are implicitly on FREE
-      const freeUsers = allProfiles
-        .filter((profile: any) => !paidUserIds.has(profile.id))
+      const explicitFreePlansWithEmail = explicitFreePlans.map((plan: any) => ({
+        ...plan,
+        user_email: emailMap.get(plan.user_id) || plan.user_id
+      }));
+      
+      // Users without any plan record are implicitly on FREE
+      const implicitFreeUsers = allProfiles
+        .filter((profile: any) => !usersWithPlans.has(profile.id))
         .map((profile: any) => ({
           id: `free-${profile.id}`,
           user_id: profile.id,
@@ -119,7 +132,7 @@ export const UserPlansManager: React.FC = () => {
           user_email: profile.email
         }));
       
-      setPlans([...paidPlansWithEmail, ...freeUsers] as UserPlan[]);
+      setPlans([...paidPlansWithEmail, ...explicitFreePlansWithEmail, ...implicitFreeUsers] as UserPlan[]);
     } catch (error: any) {
       toast({
         title: 'Error',
