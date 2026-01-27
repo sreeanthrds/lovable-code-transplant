@@ -5,19 +5,25 @@ import BacktestReport from '@/components/backtest-report/BacktestReport';
 import BacktestProgress from '@/components/backtest/BacktestProgress';
 import DailyResultsList from '@/components/backtest/DailyResultsList';
 import OverallSummaryCard from '@/components/backtest/OverallSummaryCard';
+import BacktestQuotaBanner from '@/components/backtest/BacktestQuotaBanner';
+import QuotaExhaustedCard from '@/components/backtest/QuotaExhaustedCard';
 import { ViewTradesModalV2 } from '@/components/live-trade/ViewTradesModalV2';
 import { useBacktestSession } from '@/hooks/useBacktestSession';
 import { useClerkUser } from '@/hooks/useClerkUser';
 import { useAdminRole } from '@/hooks/useAdminRole';
+import { useQuota } from '@/hooks/useQuota';
+import { usePlanDefinitions } from '@/hooks/usePlanDefinitions';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const Backtesting = () => {
   const { user } = useClerkUser();
   const { isAdmin } = useAdminRole();
   const { toast } = useToast();
+  const { quotaInfo, loading: quotaLoading, consumeBacktest, refreshQuota } = useQuota();
+  const { getPlanByCode } = usePlanDefinitions();
   
   const {
     session,
@@ -33,11 +39,53 @@ const Backtesting = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalStrategy, setModalStrategy] = useState<any>(null);
+  const [quotaConsumed, setQuotaConsumed] = useState(false);
 
   // Legacy test mode state
   const [legacyMode, setLegacyMode] = useState(false);
   const [legacyTradesData, setLegacyTradesData] = useState<any>(null);
   const [legacyDiagnosticsData, setLegacyDiagnosticsData] = useState<any>(null);
+
+  // Get reset time from plan definitions
+  const currentPlanDef = getPlanByCode(quotaInfo.plan);
+  const resetHour = currentPlanDef?.daily_reset_hour ?? 0;
+  const resetTimezone = currentPlanDef?.reset_timezone ?? 'Asia/Kolkata';
+
+  // Watch for backtest completion and conditionally consume quota
+  useEffect(() => {
+    const handleQuotaConsumption = async () => {
+      if (
+        session?.status === 'completed' &&
+        session.overall_summary &&
+        !quotaConsumed &&
+        !legacyMode
+      ) {
+        const totalTrades = session.overall_summary.total_trades || 0;
+        
+        if (totalTrades > 0) {
+          // Consume quota only if trades were generated
+          const success = await consumeBacktest();
+          if (success) {
+            await refreshQuota();
+            setQuotaConsumed(true);
+            toast({
+              title: 'Backtest counted',
+              description: `${totalTrades} trades generated. 1 backtest consumed from your quota.`,
+            });
+          }
+        } else {
+          // No trades - don't consume quota
+          setQuotaConsumed(true);
+          toast({
+            title: 'No quota consumed',
+            description: 'Backtest produced 0 trades. Your quota remains unchanged.',
+          });
+        }
+      }
+    };
+
+    handleQuotaConsumption();
+  }, [session?.status, session?.overall_summary, quotaConsumed, legacyMode, consumeBacktest, refreshQuota, toast]);
 
   // Handle test strategy - load from static files (legacy mode)
   const handleTestBacktest = async () => {
@@ -155,6 +203,7 @@ const Backtesting = () => {
     setSelectedDate(null);
     setIsModalOpen(false);
     setModalStrategy(null);
+    setQuotaConsumed(false); // Reset quota consumed flag for new backtest
   };
 
   const handleModalClose = () => {
@@ -196,6 +245,9 @@ const Backtesting = () => {
     );
   }
 
+  // Check if quota is exhausted
+  const isQuotaExhausted = !quotaLoading && quotaInfo.backtests.remaining === 0;
+
   return (
     <AppLayout>
       <div className="h-[calc(100vh-4rem)] overflow-auto">
@@ -208,8 +260,25 @@ const Backtesting = () => {
             </p>
           </div>
 
-          {/* Configuration Form */}
-          {!session && (
+          {/* Quota Banner - always visible */}
+          <div className="mb-6">
+            <BacktestQuotaBanner
+              quotaInfo={quotaInfo}
+              resetHour={resetHour}
+              resetTimezone={resetTimezone}
+              loading={quotaLoading}
+            />
+          </div>
+
+          {/* Quota Exhausted Card - blocks form when quota is 0 */}
+          {isQuotaExhausted && !session && (
+            <div className="mb-6">
+              <QuotaExhaustedCard quotaInfo={quotaInfo} />
+            </div>
+          )}
+
+          {/* Configuration Form - hidden when quota exhausted */}
+          {!session && !isQuotaExhausted && (
             <div className="mb-6">
               <BacktestForm 
                 onSubmit={handleBacktestSubmit} 

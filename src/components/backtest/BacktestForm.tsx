@@ -264,14 +264,9 @@ const BacktestForm: React.FC<BacktestFormProps> = ({ onSubmit, isLoading = false
       console.error('Error saving backtest config:', e);
     }
     
-    // Call onSubmit and consume quota on success
+    // Call onSubmit - quota will be consumed AFTER backtest completes with trades
+    // This is handled in Backtesting.tsx based on total_trades > 0
     onSubmit(config);
-    
-    // Consume quota after submission (skip for test strategy)
-    if (config.strategyId !== TEST_STRATEGY_ID) {
-      await consumeBacktest();
-      await refreshQuota();
-    }
   };
 
   const updateConfig = (field: keyof BacktestConfig, value: any) => {
