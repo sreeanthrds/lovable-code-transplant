@@ -1,316 +1,242 @@
 
-# Comprehensive Billing Administration Page with Dynamic Plan Creator
+
+# Backtest Usage Meter Implementation Plan
 
 ## Overview
-This plan creates a complete billing administration system that moves plan definitions from hardcoded TypeScript constants to a database-driven model, enabling admins to create, edit, and manage plans dynamically without code changes.
-
-## Current State Analysis
-
-| Component | Current State | Issue |
-|-----------|---------------|-------|
-| Plan Definitions | Hardcoded in `PLAN_CONFIGS` (`src/types/billing.ts`) | Cannot add/modify plans without code deployment |
-| Usage Metering | Monthly tracking works, daily tracking incomplete | Missing DB columns for daily counters |
-| Enforcement | Logic exists but reads from hardcoded configs | Cannot enforce dynamically created plans |
-| Admin UI | Scattered across Admin tabs (Plans, Billing) | No unified plan management interface |
+Modify the backtest quota system to only consume quota when a backtest produces actual trades (`total_trades > 0`), and enhance the UI to display remaining quota with reset timing.
 
 ---
 
-## Architecture
+## Current State
 
+The quota is currently consumed **immediately** when the user clicks "Start Backtest", regardless of the outcome. This means:
+- A backtest with 0 trades still consumes quota
+- Users cannot "preview" if their strategy produces any trades
+
+---
+
+## Proposed Changes
+
+### 1. Move Quota Consumption to After Completion
+
+**What changes:**
+Instead of consuming quota when the backtest starts, consume it only when the backtest completes AND `total_trades > 0`.
+
+**Files to modify:**
+- `src/pages/Backtesting.tsx` - Add post-completion quota consumption logic
+- `src/components/backtest/BacktestForm.tsx` - Remove immediate `consumeBacktest()` call
+- `src/hooks/useQuota.ts` - Add a new function for conditional consumption
+
+**Logic flow:**
 ```text
-+---------------------------+
-|     Admin Billing Page    |
-|    /app/admin/billing     |
-+---------------------------+
-            |
-            v
-+---------------------------+
-|   Plan Definition CRUD    |
-|  - Create Plan Form       |
-|  - Edit Existing Plans    |
-|  - Archive/Delete Plans   |
-+---------------------------+
-            |
-            v
-+---------------------------+
-|   plan_definitions Table  |
-|   (New Supabase Table)    |
-+---------------------------+
-            |
-            v
-+---------------------------+
-|   usePlanDefinitions()    |
-|   Hook for fetching plans |
-+---------------------------+
-            |
-            v
-+---------------------------+
-|  useQuota() - Updated     |
-|  Reads from DB instead    |
-|  of PLAN_CONFIGS          |
-+---------------------------+
+User clicks "Start Backtest"
+       |
+       v
+Check canRunBacktest() - block if quota = 0
+       |
+       v
+Start backtest (do NOT consume yet)
+       |
+       v
+Poll for status...
+       |
+       v
+Backtest completes with overall_summary
+       |
+       v
+IF overall_summary.total_trades > 0
+   THEN consumeBacktest()
+   Show "1 backtest used" toast
+ELSE
+   Show "No trades generated - quota not consumed" toast
 ```
 
 ---
 
-## Implementation Plan
+### 2. Enhance Quota Display on Backtest Page
 
-### Phase 1: Database Schema
+**What to display:**
+- Remaining backtests (already shown in form, but add to main page header)
+- Reset time with timezone (e.g., "Resets at 12 AM IST")
+- Daily vs Monthly remaining (if applicable)
 
-**Create `plan_definitions` table in Supabase**
+**Files to modify:**
+- `src/pages/Backtesting.tsx` - Add quota info banner at top
+- `src/hooks/usePlanDefinitions.ts` - Fetch `daily_reset_hour` and `reset_timezone`
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID | Primary key |
-| `code` | VARCHAR(50) | Unique plan code (e.g., 'FREE', 'PRO') |
-| `name` | VARCHAR(100) | Display name |
-| `description` | TEXT | Plan description for pricing pages |
-| `tier_level` | INTEGER | Hierarchy for upgrade/downgrade logic |
-| `is_active` | BOOLEAN | Whether plan is available for purchase |
-| `is_public` | BOOLEAN | Show on public pricing page |
-| **Validity** | | |
-| `duration_type` | VARCHAR(20) | 'subscription', 'fixed', 'lifetime' |
-| `duration_days` | INTEGER | For fixed-duration plans (NULL = ongoing) |
-| `trial_days` | INTEGER | Trial period length |
-| `grace_period_days` | INTEGER | Post-expiry access window |
-| **Backtest Limits** | | |
-| `backtests_daily_limit` | INTEGER | Per-day cap (-1 = unlimited) |
-| `backtests_monthly_limit` | INTEGER | Per-month cap (-1 = unlimited) |
-| `backtests_total_limit` | INTEGER | Lifetime cap (-1 = unlimited) |
-| **Live Trading Limits** | | |
-| `live_executions_monthly_limit` | INTEGER | Per-month cap (-1 = unlimited) |
-| **Paper Trading Limits** | | |
-| `paper_trading_daily_limit` | INTEGER | Per-day cap (-1 = unlimited) |
-| `paper_trading_monthly_limit` | INTEGER | Per-month cap (-1 = unlimited) |
-| **Reset Rules** | | |
-| `reset_type` | VARCHAR(20) | 'calendar' (1st of month) or 'rolling' (from purchase) |
-| `daily_reset_hour` | INTEGER | Hour (0-23) for daily reset (default: 0 = midnight) |
-| `reset_timezone` | VARCHAR(50) | Timezone for resets (default: 'Asia/Kolkata') |
-| **Pricing** | | |
-| `price_monthly` | DECIMAL(10,2) | Monthly price |
-| `price_yearly` | DECIMAL(10,2) | Yearly price |
-| `currency` | VARCHAR(3) | Currency code (default: 'INR') |
-| `discount_percentage` | INTEGER | Yearly discount to display |
-| **Features** | | |
-| `can_buy_addons` | BOOLEAN | Allow addon purchases |
-| `feature_flags` | JSONB | Feature toggles (e.g., {"api_access": true}) |
-| `ui_color` | VARCHAR(20) | Badge color variant |
-| `ui_icon` | VARCHAR(50) | Icon name for display |
-| **Metadata** | | |
-| `sort_order` | INTEGER | Display order on pricing page |
-| `created_at` | TIMESTAMPTZ | Creation timestamp |
-| `updated_at` | TIMESTAMPTZ | Last update timestamp |
-| `created_by` | TEXT | Admin who created |
-| `updated_by` | TEXT | Admin who last updated |
-
-**Add daily tracking columns to `user_plans` table**
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `backtests_used_today` | INTEGER | Daily backtest counter |
-| `paper_trading_used_today` | INTEGER | Daily paper trade counter |
-| `usage_reset_date` | DATE | Date when daily counters were last reset |
-| `plan_definition_id` | UUID | FK to plan_definitions (optional, for linking) |
-
----
-
-### Phase 2: New Components
-
-**File Structure**
+**UI component:**
 ```text
-src/
-├── pages/
-│   └── BillingAdmin.tsx              # New dedicated billing admin page
-├── components/
-│   └── billing-admin/
-│       ├── PlanDefinitionsManager.tsx # Main plan CRUD interface
-│       ├── PlanCreatorForm.tsx        # Dynamic plan creation form
-│       ├── PlanEditDialog.tsx         # Edit existing plan dialog
-│       ├── PlanLimitsSection.tsx      # Limits configuration section
-│       ├── PlanPricingSection.tsx     # Pricing configuration section
-│       ├── PlanValiditySection.tsx    # Validity & reset rules section
-│       ├── PlanFeaturesSection.tsx    # Feature flags configuration
-│       ├── PlanPreviewCard.tsx        # Preview how plan will look
-│       └── UserSubscriptionsTable.tsx # Existing user management (moved)
-├── hooks/
-│   └── usePlanDefinitions.ts          # Fetch/CRUD plan definitions
-├── lib/
-│   └── supabase/
-│       └── services/
-│           └── plan-definitions-service.ts  # DB operations
-└── types/
-    └── plan-definitions.ts            # TypeScript interfaces
++--------------------------------------------------+
+| Backtests: 5 remaining | Resets at 12 AM IST     |
+| Plan: FREE | Daily: 2/2 used | [Upgrade Button]  |
++--------------------------------------------------+
 ```
 
 ---
 
-### Phase 3: Component Details
+### 3. Quota Exhausted Enforcement
 
-#### 1. PlanCreatorForm.tsx
-A comprehensive form with collapsible sections:
+**Current behavior:** Already partially implemented in `BacktestForm.tsx`
 
-**Identity Section**
-- Plan Code (uppercase, alphanumeric, unique)
-- Display Name
-- Description (markdown supported)
-- Tier Level (numeric for hierarchy)
-- Active toggle
-- Public (show on pricing page) toggle
+**Enhancements needed:**
+- Add a dedicated "Quota Exhausted" modal/card when quota hits 0
+- Different CTAs based on plan type:
+  - FREE plan: "Upgrade to PRO" button (links to /pricing)
+  - LAUNCH plan: "Upgrade to PRO" button
+  - PRO plan: "Buy Add-ons" button + "Upgrade to Enterprise" option
+  - ENTERPRISE: Should never hit this (unlimited)
 
-**Validity Section**
-- Duration Type dropdown (Subscription / Fixed / Lifetime)
-- Duration in Days (for fixed plans)
-- Trial Period (days)
-- Grace Period (days)
-
-**Limits Section**
-- Backtests: Daily / Monthly / Total (with "Unlimited" toggle each)
-- Live Executions: Monthly limit
-- Paper Trading: Daily / Monthly limits
-- Visual indicator: -1 = Unlimited, 0 = Disabled, N = Limited
-
-**Reset Rules Section**
-- Reset Type: Calendar (resets on 1st) vs Rolling (from subscription start)
-- Daily Reset Hour (0-23)
-- Timezone selector
-
-**Pricing Section**
-- Monthly Price
-- Yearly Price
-- Currency dropdown (INR default)
-- Yearly Discount percentage (auto-calculated or manual)
-- Can Buy Add-ons toggle
-
-**Features Section**
-- Dynamic key-value editor for feature_flags JSONB
-- Predefined toggles: API Access, Priority Support, Custom Reports
-- UI Color picker
-- Icon selector
-
-**Preview Section**
-- Live preview of how the plan card will look on the pricing page
+**Files to modify:**
+- Create new component: `src/components/backtest/QuotaExhaustedCard.tsx`
+- `src/pages/Backtesting.tsx` - Show card when `quotaInfo.backtests.remaining === 0`
 
 ---
 
-#### 2. PlanDefinitionsManager.tsx
-Main interface showing all plans:
-- Table/Grid view of all plan definitions
-- Columns: Name, Code, Tier, Limits Summary, Price, Status, Actions
-- Actions: Edit, Duplicate, Archive, Delete
-- Bulk actions: Activate/Deactivate selected
-- Search and filter by status
+## Technical Implementation Details
 
----
+### Step 1: Remove Immediate Quota Consumption
 
-#### 3. usePlanDefinitions Hook
+**File: `src/components/backtest/BacktestForm.tsx`**
+
+Remove lines 270-274:
 ```typescript
-interface UsePlanDefinitions {
-  plans: PlanDefinition[];
-  loading: boolean;
-  error: Error | null;
-  createPlan: (data: CreatePlanInput) => Promise<PlanDefinition>;
-  updatePlan: (id: string, data: UpdatePlanInput) => Promise<void>;
-  deletePlan: (id: string) => Promise<void>;
-  duplicatePlan: (id: string) => Promise<PlanDefinition>;
-  getPlanByCode: (code: string) => PlanDefinition | undefined;
-  refreshPlans: () => Promise<void>;
+// REMOVE THIS:
+if (config.strategyId !== TEST_STRATEGY_ID) {
+  await consumeBacktest();
+  await refreshQuota();
 }
 ```
 
+The form will still check `canRunBacktest()` before allowing submission, but won't consume until results are in.
+
 ---
 
-### Phase 4: Quota Enforcement Update
+### Step 2: Add Conditional Consumption in Backtesting Page
 
-**Update useQuota.ts to read from database**
+**File: `src/pages/Backtesting.tsx`**
+
+Add effect to watch for backtest completion:
 
 ```typescript
-// Before (hardcoded)
-const config = PLAN_CONFIGS[effectivePlan];
+// Import useQuota
+const { consumeBacktest, refreshQuota, quotaInfo } = useQuota();
 
-// After (database-driven)
-const { getPlanByCode } = usePlanDefinitions();
-const config = getPlanByCode(effectivePlan) || DEFAULT_FREE_CONFIG;
-```
+// Track if quota was consumed for this session
+const [quotaConsumed, setQuotaConsumed] = useState(false);
 
-**Add daily reset logic**
-```typescript
-const shouldResetDailyCounters = (plan: UserPlan): boolean => {
-  const today = new Date().toISOString().split('T')[0];
-  return plan.usage_reset_date !== today;
+// Watch for completion and conditionally consume
+useEffect(() => {
+  if (session?.status === 'completed' && 
+      session.overall_summary && 
+      !quotaConsumed) {
+    
+    if (session.overall_summary.total_trades > 0) {
+      // Consume quota
+      consumeBacktest().then(() => {
+        refreshQuota();
+        setQuotaConsumed(true);
+        toast({
+          title: 'Backtest counted',
+          description: `${session.overall_summary.total_trades} trades generated. 1 backtest consumed.`,
+        });
+      });
+    } else {
+      // No trades - don't consume
+      setQuotaConsumed(true);
+      toast({
+        title: 'No quota consumed',
+        description: 'Backtest produced 0 trades.',
+      });
+    }
+  }
+}, [session?.status, session?.overall_summary, quotaConsumed]);
+
+// Reset quotaConsumed when starting new backtest
+const handleReset = () => {
+  reset();
+  setQuotaConsumed(false);
+  // ... rest of reset logic
 };
-
-// In consumeBacktest():
-if (shouldResetDailyCounters(currentPlan)) {
-  updateData.backtests_used_today = 1;
-  updateData.usage_reset_date = getTodayDateString();
-} else {
-  updateData.backtests_used_today = (currentPlan.backtests_used_today || 0) + 1;
-}
 ```
 
 ---
 
-### Phase 5: Migration Strategy
+### Step 3: Create Quota Info Banner Component
 
-**Seed initial plan_definitions from PLAN_CONFIGS**
-- Create database records matching current hardcoded plans
-- Maintain backward compatibility during transition
-- Gradual deprecation of `PLAN_CONFIGS` constant
+**New file: `src/components/backtest/BacktestQuotaBanner.tsx`**
 
-**Fallback mechanism**
-- If plan_definitions table is empty or unavailable, fall back to PLAN_CONFIGS
-- Ensures zero downtime during migration
+```typescript
+interface BacktestQuotaBannerProps {
+  quotaInfo: QuotaInfo;
+  resetHour: number;
+  resetTimezone: string;
+}
 
----
-
-## Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/pages/BillingAdmin.tsx` | New dedicated admin billing page |
-| `src/components/billing-admin/PlanDefinitionsManager.tsx` | Plan CRUD list/grid |
-| `src/components/billing-admin/PlanCreatorForm.tsx` | Create/edit plan form |
-| `src/components/billing-admin/PlanLimitsSection.tsx` | Limits configuration UI |
-| `src/components/billing-admin/PlanPricingSection.tsx` | Pricing configuration UI |
-| `src/components/billing-admin/PlanValiditySection.tsx` | Validity rules UI |
-| `src/components/billing-admin/PlanPreviewCard.tsx` | Live preview component |
-| `src/hooks/usePlanDefinitions.ts` | Data fetching hook |
-| `src/lib/supabase/services/plan-definitions-service.ts` | Database operations |
-| `src/types/plan-definitions.ts` | TypeScript interfaces |
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/App.tsx` | Add route `/app/billing-admin` |
-| `src/pages/Admin.tsx` | Add link to new billing page |
-| `src/hooks/useQuota.ts` | Read from DB, add daily reset logic |
-| `supabase/migrations/` | Add new migration for `plan_definitions` table |
-
-## Database Migrations Required
-
-1. **Create plan_definitions table** with all columns
-2. **Add daily tracking columns** to user_plans table
-3. **Seed initial data** from current PLAN_CONFIGS
-4. **Create RLS policies** for admin-only access to plan_definitions
+// Display:
+// - Remaining count with badge
+// - Reset time (convert hour to readable format)
+// - Plan name
+// - Upgrade/Add-on button when low
+```
 
 ---
 
-## Security Considerations
+### Step 4: Create Quota Exhausted Card
 
-- Plan definitions table: Admin-only write access via RLS
-- All plan modifications logged with `updated_by` admin ID
-- Soft delete (archive) instead of hard delete for audit trail
-- Validation: Prevent deletion of plans with active subscribers
+**New file: `src/components/backtest/QuotaExhaustedCard.tsx`**
+
+Display when `quotaInfo.backtests.remaining === 0`:
+- For FREE: "Upgrade to unlock more backtests"
+- For paid plans: "Purchase add-ons" or "Upgrade to higher tier"
+
+---
+
+### Step 5: Fetch Reset Time from Database
+
+**File: `src/hooks/usePlanDefinitions.ts`**
+
+Ensure the hook returns `daily_reset_hour` and `reset_timezone` for the user's current plan, so we can display "Resets at X:00 AM/PM [Timezone]".
+
+---
+
+## Database Changes Required
+
+**None** - All required columns already exist:
+- `plan_definitions.daily_reset_hour` (integer, 0-23)
+- `plan_definitions.reset_timezone` (string, e.g., "Asia/Kolkata")
+- `user_plans.backtests_used_today` (integer)
+- `user_plans.usage_reset_date` (date)
+
+---
+
+## Files Summary
+
+| File | Action |
+|------|--------|
+| `src/components/backtest/BacktestForm.tsx` | Remove immediate `consumeBacktest()` call |
+| `src/pages/Backtesting.tsx` | Add completion effect + quota banner |
+| `src/components/backtest/BacktestQuotaBanner.tsx` | **NEW** - Quota display component |
+| `src/components/backtest/QuotaExhaustedCard.tsx` | **NEW** - Exhausted state with CTAs |
+| `src/hooks/useQuota.ts` | Minor: ensure daily tracking works |
+| `src/hooks/usePlanDefinitions.ts` | Ensure reset time fields are exposed |
+
+---
+
+## Edge Cases Handled
+
+1. **User starts backtest but leaves page before completion**: Quota not consumed (safe - user can re-run)
+2. **Backtest fails mid-way**: Quota not consumed (only success with trades counts)
+3. **Test strategy**: Already excluded from quota checks
+4. **Multiple rapid submissions**: `canRunBacktest()` gate prevents over-consumption
 
 ---
 
 ## Testing Checklist
 
-- [ ] Create a new plan via the form
-- [ ] Edit existing plan limits
-- [ ] Verify quota enforcement reads from new table
-- [ ] Test daily reset at midnight
-- [ ] Verify FREE plan users are limited to 2 backtests/day
-- [ ] Test plan hierarchy prevents downgrades
-- [ ] Confirm fallback to PLAN_CONFIGS if DB unavailable
+- [ ] Start backtest with 0 trades result - verify quota NOT consumed
+- [ ] Start backtest with trades - verify quota consumed once
+- [ ] Verify remaining count decrements correctly
+- [ ] Verify FREE user sees "Upgrade" when exhausted
+- [ ] Verify PRO user sees "Buy Add-ons" when exhausted
+- [ ] Verify reset time displays correctly per timezone
+
