@@ -271,22 +271,24 @@ const ApiConfigManager: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Global Production URL - Read Only */}
+        {/* Global Production URL - Editable */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Server className="h-4 w-4 text-green-500" />
-            <Label>Global Production URL</Label>
-            <Badge variant="outline" className="text-xs">Read Only</Badge>
+            <Label htmlFor="globalUrl">Global Production URL</Label>
           </div>
           <div className="flex gap-2">
             <Input
+              id="globalUrl"
+              placeholder="https://api.example.com"
               value={globalBaseUrl}
-              disabled
-              className="flex-1 bg-muted/50"
+              onChange={(e) => setGlobalBaseUrl(e.target.value)}
+              disabled={loading}
+              className="flex-1"
             />
           </div>
           <p className="text-sm text-muted-foreground">
-            This is the production API URL used by all users. Contact a super admin to change this.
+            The production API URL used by all users when not using a local override.
           </p>
         </div>
 
