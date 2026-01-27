@@ -7,11 +7,11 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
 };
 
-// Global configuration user ID constant
-const GLOBAL_CONFIG_USER_ID = '__GLOBAL__';
+// Global configuration user ID constant - MUST match frontend constant in src/lib/api-config.ts
+const GLOBAL_CONFIG_USER_ID = 'default-user';
 
-// Fallback URL if no config found
-const DEFAULT_BACKTEST_URL = Deno.env.get("BACKTEST_API_URL") || "https://www.tradelayout.com";
+// Fallback URL if no config found - use correct API subdomain
+const DEFAULT_BACKTEST_URL = Deno.env.get("BACKTEST_API_URL") || "https://api.tradelayout.com";
 
 // Cache for the global API URL to avoid repeated DB calls
 let cachedGlobalApiUrl: string | null = null;

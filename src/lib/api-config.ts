@@ -147,7 +147,7 @@ async function getUserLocalConfig(client: any, userId: string): Promise<{ localU
 
 // Get the Supabase edge function proxy URL (TradeLayout project)
 const getProxyBaseUrl = (): string => {
-  return 'https://www.tradelayout.com';
+  return 'https://api.tradelayout.com';
 };
 
 const getDefaultConfig = (): ApiConfig => {
