@@ -240,34 +240,37 @@ export const AddonsManager: React.FC = () => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(price);
   };
   
-  const AddonFormFields = () => (
-    <div className="grid gap-4 py-4">
+  const addonFormFields = (
+    <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Code *</Label>
+          <Label htmlFor="addon-code">Code *</Label>
           <Input
+            id="addon-code"
             value={addonForm.code}
-            onChange={(e) => setAddonForm({ ...addonForm, code: e.target.value })}
+            onChange={(e) => setAddonForm(prev => ({ ...prev, code: e.target.value }))}
             placeholder="BACKTEST_10"
             disabled={!!editingAddon}
           />
           <p className="text-xs text-muted-foreground">Will be prefixed with ADDON_</p>
         </div>
         <div className="space-y-2">
-          <Label>Name *</Label>
+          <Label htmlFor="addon-name">Name *</Label>
           <Input
+            id="addon-name"
             value={addonForm.name}
-            onChange={(e) => setAddonForm({ ...addonForm, name: e.target.value })}
+            onChange={(e) => setAddonForm(prev => ({ ...prev, name: e.target.value }))}
             placeholder="10 Extra Backtests"
           />
         </div>
       </div>
       
       <div className="space-y-2">
-        <Label>Description</Label>
+        <Label htmlFor="addon-description">Description</Label>
         <Textarea
+          id="addon-description"
           value={addonForm.description}
-          onChange={(e) => setAddonForm({ ...addonForm, description: e.target.value })}
+          onChange={(e) => setAddonForm(prev => ({ ...prev, description: e.target.value }))}
           placeholder="Additional backtest quota..."
           rows={2}
         />
@@ -278,7 +281,7 @@ export const AddonsManager: React.FC = () => {
           <Label>Duration Type</Label>
           <Select 
             value={addonForm.duration_type} 
-            onValueChange={(v) => setAddonForm({ ...addonForm, duration_type: v as DurationType })}
+            onValueChange={(v) => setAddonForm(prev => ({ ...prev, duration_type: v as DurationType }))}
           >
             <SelectTrigger>
               <SelectValue />
@@ -291,11 +294,12 @@ export const AddonsManager: React.FC = () => {
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Validity (Days)</Label>
+          <Label htmlFor="addon-duration">Validity (Days)</Label>
           <Input
+            id="addon-duration"
             type="number"
             value={addonForm.duration_days}
-            onChange={(e) => setAddonForm({ ...addonForm, duration_days: parseInt(e.target.value) || 30 })}
+            onChange={(e) => setAddonForm(prev => ({ ...prev, duration_days: parseInt(e.target.value) || 30 }))}
             disabled={addonForm.duration_type === 'lifetime'}
           />
         </div>
@@ -305,19 +309,21 @@ export const AddonsManager: React.FC = () => {
         <h4 className="font-medium mb-3">Quota Included</h4>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Backtests (Total)</Label>
+            <Label htmlFor="addon-backtests">Backtests (Total)</Label>
             <Input
+              id="addon-backtests"
               type="number"
               value={addonForm.backtests_total_limit}
-              onChange={(e) => setAddonForm({ ...addonForm, backtests_total_limit: parseInt(e.target.value) || 0 })}
+              onChange={(e) => setAddonForm(prev => ({ ...prev, backtests_total_limit: parseInt(e.target.value) || 0 }))}
             />
           </div>
           <div className="space-y-2">
-            <Label>Live Executions (Monthly)</Label>
+            <Label htmlFor="addon-live">Live Executions (Monthly)</Label>
             <Input
+              id="addon-live"
               type="number"
               value={addonForm.live_executions_monthly_limit}
-              onChange={(e) => setAddonForm({ ...addonForm, live_executions_monthly_limit: parseInt(e.target.value) || 0 })}
+              onChange={(e) => setAddonForm(prev => ({ ...prev, live_executions_monthly_limit: parseInt(e.target.value) || 0 }))}
             />
           </div>
         </div>
@@ -327,16 +333,17 @@ export const AddonsManager: React.FC = () => {
         <h4 className="font-medium mb-3">Pricing</h4>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Price</Label>
+            <Label htmlFor="addon-price">Price</Label>
             <Input
+              id="addon-price"
               type="number"
               value={addonForm.price_monthly}
-              onChange={(e) => setAddonForm({ ...addonForm, price_monthly: parseFloat(e.target.value) || 0 })}
+              onChange={(e) => setAddonForm(prev => ({ ...prev, price_monthly: parseFloat(e.target.value) || 0 }))}
             />
           </div>
           <div className="space-y-2">
             <Label>Currency</Label>
-            <Select value={addonForm.currency} onValueChange={(v) => setAddonForm({ ...addonForm, currency: v })}>
+            <Select value={addonForm.currency} onValueChange={(v) => setAddonForm(prev => ({ ...prev, currency: v }))}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -354,14 +361,14 @@ export const AddonsManager: React.FC = () => {
         <div className="flex items-center gap-2">
           <Switch
             checked={addonForm.is_active}
-            onCheckedChange={(v) => setAddonForm({ ...addonForm, is_active: v })}
+            onCheckedChange={(v) => setAddonForm(prev => ({ ...prev, is_active: v }))}
           />
           <Label>Active</Label>
         </div>
         <div className="flex items-center gap-2">
           <Switch
             checked={addonForm.is_public}
-            onCheckedChange={(v) => setAddonForm({ ...addonForm, is_public: v })}
+            onCheckedChange={(v) => setAddonForm(prev => ({ ...prev, is_public: v }))}
           />
           <Label>Public</Label>
         </div>
@@ -401,7 +408,7 @@ export const AddonsManager: React.FC = () => {
                     Define a purchasable add-on package with quota and pricing
                   </DialogDescription>
                 </DialogHeader>
-                <AddonFormFields />
+                {addonFormFields}
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
                   <Button onClick={handleCreateAddon} disabled={saving}>
@@ -489,7 +496,7 @@ export const AddonsManager: React.FC = () => {
               Modify the add-on configuration
             </DialogDescription>
           </DialogHeader>
-          <AddonFormFields />
+          {addonFormFields}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingAddon(null)}>Cancel</Button>
             <Button onClick={handleUpdateAddon} disabled={saving}>
