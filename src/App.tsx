@@ -21,6 +21,7 @@ import MultiStrategyBacktest from "./pages/MultiStrategyBacktest";
 import Account from "./pages/Account";
 import AdminSetup from "./pages/AdminSetup";
 import Admin from "./pages/Admin";
+import BillingAdmin from "./pages/BillingAdmin";
 import NotFound from "./pages/NotFound";
 import Demo from "./pages/Demo";
 
@@ -81,6 +82,7 @@ const App = () => {
                     <Route path="account" element={<Account />} />
                     <Route path="admin-setup" element={<AdminSetup />} />
                     <Route path="admin" element={<Admin />} />
+                    <Route path="billing-admin" element={<BillingAdmin />} />
                   </Routes>
                 </AuthGuard>
               } />
