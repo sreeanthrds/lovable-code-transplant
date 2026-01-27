@@ -54,8 +54,8 @@ const ImportStrategyButton: React.FC<ImportStrategyButtonProps> = ({ onImportSuc
       
       onImportSuccess?.();
       
-      // Navigate to the new imported strategy
-      navigate(`/strategy?id=${strategyId}&name=${encodeURIComponent(strategyName)}`);
+      // Navigate to the new imported strategy in strategy builder
+      navigate(`/app/strategy-builder?id=${strategyId}&name=${encodeURIComponent(strategyName)}`);
       
     } catch (error: any) {
       console.error('Process import error:', error);
