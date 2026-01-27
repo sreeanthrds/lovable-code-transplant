@@ -127,18 +127,32 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                      </Link>
                     
                     {isAdmin && (
-                      <Link 
-                        to="/app/admin" 
-                        onClick={closeSheet}
-                        className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
-                          location.pathname === '/app/admin' 
-                            ? 'bg-primary/10 text-primary' 
-                            : 'hover:bg-muted text-white/75'
-                        }`}
-                      >
-                        <div className="text-2xl">⚙️</div>
-                        <span className="font-medium">Admin</span>
-                      </Link>
+                      <>
+                        <Link 
+                          to="/app/admin" 
+                          onClick={closeSheet}
+                          className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
+                            location.pathname === '/app/admin' 
+                              ? 'bg-primary/10 text-primary' 
+                              : 'hover:bg-muted text-white/75'
+                          }`}
+                        >
+                          <div className="text-2xl">⚙️</div>
+                          <span className="font-medium">Admin</span>
+                        </Link>
+                        <Link 
+                          to="/app/billing-admin" 
+                          onClick={closeSheet}
+                          className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
+                            location.pathname === '/app/billing-admin' 
+                              ? 'bg-primary/10 text-primary' 
+                              : 'hover:bg-muted text-white/75'
+                          }`}
+                        >
+                          <div className="text-2xl">💳</div>
+                          <span className="font-medium">Billing</span>
+                        </Link>
+                      </>
                     )}
                   </nav>
                   
@@ -199,15 +213,26 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                   )}
                 </Link>
                 {isAdmin && (
-                  <Link to="/app/admin" className={`relative flex items-center gap-2 text-sm font-medium transition-all ${location.pathname === '/app/admin' 
-                    ? 'text-primary' 
-                    : 'text-white/75 hover:text-primary'
-                  }`}>
-                    <span>Admin</span>
-                    {location.pathname === '/app/admin' && (
-                      <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full"></div>
-                    )}
-                  </Link>
+                  <>
+                    <Link to="/app/admin" className={`relative flex items-center gap-2 text-sm font-medium transition-all ${location.pathname === '/app/admin' 
+                      ? 'text-primary' 
+                      : 'text-white/75 hover:text-primary'
+                    }`}>
+                      <span>Admin</span>
+                      {location.pathname === '/app/admin' && (
+                        <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full"></div>
+                      )}
+                    </Link>
+                    <Link to="/app/billing-admin" className={`relative flex items-center gap-2 text-sm font-medium transition-all ${location.pathname === '/app/billing-admin' 
+                      ? 'text-primary' 
+                      : 'text-white/75 hover:text-primary'
+                    }`}>
+                      <span>Billing</span>
+                      {location.pathname === '/app/billing-admin' && (
+                        <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full"></div>
+                      )}
+                    </Link>
+                  </>
                 )}
               </nav>
             </div>
