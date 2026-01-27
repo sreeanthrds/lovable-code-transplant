@@ -114,11 +114,12 @@ async function getUserConfig(client: any, userId: string): Promise<{ localUrl: s
     return null;
   }
 
+  // Query user's own row (not global)
   const { data, error } = await client
     .from('api_configurations')
-    .select('base_url')
+    .select('base_url, headers')
     .eq('user_id', userId)
-    .eq('config_name', 'local')
+    .neq('user_id', GLOBAL_CONFIG_USER_ID)
     .maybeSingle();
 
   if (error) {
@@ -126,11 +127,13 @@ async function getUserConfig(client: any, userId: string): Promise<{ localUrl: s
     return null;
   }
 
-  // If row exists, user has local URL enabled
+  // If row exists with base_url, check headers for toggle state
   if (data?.base_url) {
+    const headers = data.headers as { use_local_url?: boolean } | null;
+    const useLocalUrl = headers?.use_local_url ?? true; // Default true if row exists
     return {
       localUrl: data.base_url,
-      useLocalUrl: true
+      useLocalUrl
     };
   }
 
@@ -233,38 +236,62 @@ export const updateUserLocalUrl = async (
       return false;
     }
 
-    if (useLocalUrl && localUrl.trim()) {
-      // User wants to use local URL - upsert their row
-      // Use 'local' as config_name to distinguish from any other configs
-      const { error } = await client
-        .from('api_configurations')
-        .upsert({
-          user_id: userId,
-          config_name: 'local',
-          base_url: localUrl.trim(),
-          timeout: 30000,
-          retries: 3,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id,config_name'
-        });
+    // First check if user already has a row
+    const { data: existingRow } = await client
+      .from('api_configurations')
+      .select('id')
+      .eq('user_id', userId)
+      .neq('user_id', GLOBAL_CONFIG_USER_ID)
+      .maybeSingle();
 
-      if (error) {
-        console.error('❌ Error upserting user local URL:', error);
-        return false;
+    if (useLocalUrl && localUrl.trim()) {
+      // User wants to use local URL
+      const rowData = {
+        user_id: userId,
+        base_url: localUrl.trim(),
+        headers: { use_local_url: true },
+        timeout: 30000,
+        retries: 3,
+        updated_at: new Date().toISOString()
+      };
+
+      if (existingRow?.id) {
+        // Update existing row
+        const { error } = await client
+          .from('api_configurations')
+          .update(rowData)
+          .eq('id', existingRow.id);
+
+        if (error) {
+          console.error('❌ Error updating user local URL:', error);
+          return false;
+        }
+      } else {
+        // Insert new row - need config_name for insert
+        const { error } = await client
+          .from('api_configurations')
+          .insert({
+            ...rowData,
+            config_name: `local_${userId.substring(0, 8)}`
+          });
+
+        if (error) {
+          console.error('❌ Error inserting user local URL:', error);
+          return false;
+        }
       }
       console.log('✅ User local URL saved:', localUrl);
     } else {
-      // User toggled OFF or cleared URL - delete their local config row
-      const { error } = await client
-        .from('api_configurations')
-        .delete()
-        .eq('user_id', userId)
-        .eq('config_name', 'local');
+      // User toggled OFF or cleared URL - delete their config row
+      if (existingRow?.id) {
+        const { error } = await client
+          .from('api_configurations')
+          .delete()
+          .eq('id', existingRow.id);
 
-      if (error) {
-        console.error('❌ Error deleting user local URL config:', error);
-        // Not a critical error - row might not exist
+        if (error) {
+          console.error('❌ Error deleting user local URL config:', error);
+        }
       }
       console.log('✅ User local URL config removed (using global)');
     }
