@@ -493,7 +493,7 @@ export const AddonsManager: React.FC = () => {
       </CardContent>
       
       {/* Edit Dialog */}
-      <Dialog open={!!editingAddon} onOpenChange={() => setEditingAddon(null)}>
+      <Dialog open={!!editingAddon} onOpenChange={(open) => !open && setEditingAddon(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Add-on</DialogTitle>
