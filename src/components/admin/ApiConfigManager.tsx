@@ -34,6 +34,7 @@ const ApiConfigManager: React.FC = () => {
     try {
       setFetching(true);
       const config = await getApiConfig(user?.id);
+      console.log('📊 Loaded API config:', config);
       setGlobalBaseUrl(config.baseUrl);
       setLocalUrl(config.localUrl || '');
       setUseLocalUrl(config.useLocalUrl || false);
