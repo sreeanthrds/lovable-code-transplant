@@ -19,7 +19,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@clerk/clerk-react';
-import { tradelayoutClient } from '@/lib/supabase/tradelayout-client';
+import { tradelayoutClient, getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
 import { 
   Package, 
   Plus, 
@@ -115,7 +115,9 @@ export const AddonsManager: React.FC = () => {
     
     setSaving(true);
     try {
-      const { error } = await tradelayoutClient
+      // Use authenticated client for RLS-protected write operations
+      const client = await getAuthenticatedTradelayoutClient();
+      const { error } = await client
         .from('plan_definitions' as any)
         .insert({
           code: `ADDON_${addonForm.code.toUpperCase().replace(/[^A-Z0-9_]/g, '')}`,
@@ -168,7 +170,9 @@ export const AddonsManager: React.FC = () => {
     
     setSaving(true);
     try {
-      const { error } = await tradelayoutClient
+      // Use authenticated client for RLS-protected write operations
+      const client = await getAuthenticatedTradelayoutClient();
+      const { error } = await client
         .from('plan_definitions' as any)
         .update({
           name: addonForm.name,
@@ -204,7 +208,9 @@ export const AddonsManager: React.FC = () => {
     if (!confirm(`Are you sure you want to delete "${addon.name}"?`)) return;
     
     try {
-      const { error } = await tradelayoutClient
+      // Use authenticated client for RLS-protected write operations
+      const client = await getAuthenticatedTradelayoutClient();
+      const { error } = await client
         .from('plan_definitions' as any)
         .delete()
         .eq('id', addon.id);
