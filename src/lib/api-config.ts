@@ -255,6 +255,7 @@ export const updateUserLocalUrl = async (
 
     if (useLocalUrl && localUrl.trim()) {
       // User wants to enable local URL
+      console.log('🔧 ENABLING local URL - existingRow:', existingRow);
       if (existingRow?.id) {
         // Update existing row
         const { error } = await client
@@ -272,21 +273,25 @@ export const updateUserLocalUrl = async (
         console.log('✅ Updated existing local URL row');
       } else {
         // Insert new row
-        const { error } = await client
+        const insertPayload = {
+          user_id: localUserId,
+          base_url: localUrl.trim(),
+          config_name: 'local',
+          timeout: 30000,
+          retries: 3
+        };
+        console.log('➕ Inserting new row:', JSON.stringify(insertPayload));
+        
+        const { data: insertedData, error } = await client
           .from('api_configurations')
-          .insert({
-            user_id: localUserId,
-            base_url: localUrl.trim(),
-            config_name: `Local Dev - ${userId.substring(0, 8)}`,
-            timeout: 30000,
-            retries: 3
-          });
+          .insert(insertPayload)
+          .select();
 
         if (error) {
-          console.error('❌ Error inserting local URL:', error);
+          console.error('❌ Error inserting local URL:', JSON.stringify(error, null, 2));
           return false;
         }
-        console.log('✅ Inserted new local URL row');
+        console.log('✅ Inserted new local URL row:', insertedData);
       }
     } else {
       // User wants to disable local URL - delete the row
