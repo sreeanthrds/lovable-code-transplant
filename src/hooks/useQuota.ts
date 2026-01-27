@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useClerkUser } from '@/hooks/useClerkUser';
-import { tradelayoutClient, getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
+import { getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
 import { PLAN_CONFIGS, PlanType, UserPlan } from '@/types/billing';
 
 export interface QuotaCheck {
@@ -337,60 +337,36 @@ export const useQuota = () => {
     };
   }, [quotaInfo, fetchQuotaInfo]);
 
-  // Helper to get today's date string for daily reset check
-  const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
-  // Consume backtest quota via direct database update using upsert
-  // Uses upsert with onConflict to handle both new users and existing users atomically
+  // Consume backtest quota via edge function (uses service role to bypass RLS)
   const consumeBacktest = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
     try {
       await retryWithBackoff(async () => {
-        // Use authenticated client for RLS-protected operations
-        const client = await getAuthenticatedTradelayoutClient();
+        // Call the update-usage edge function which uses service role key
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-usage`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              action: 'backtest',
+            }),
+          }
+        );
+
+        const result = await response.json();
         
-        // First, try to fetch current plan to get existing usage counts
-        const { data: plan, error: fetchError } = await client
-          .from('user_plans' as any)
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle();
-
-        if (fetchError) throw new Error(`Failed to fetch plan: ${fetchError.message}`);
-
-        const currentPlan = plan as any;
-        const today = getTodayDateString();
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to update usage');
+        }
         
-        // Check if we need to reset daily counters
-        const needsDailyReset = currentPlan?.usage_reset_date !== today;
-        const currentDailyUsed = needsDailyReset ? 0 : (currentPlan?.backtests_used_today || 0);
-
-        // Prepare upsert data - this handles both insert and update
-        const upsertData = {
-          user_id: userId,
-          plan: currentPlan?.plan || 'FREE',
-          status: currentPlan?.status || 'active',
-          backtests_used: (currentPlan?.backtests_used || 0) + 1,
-          backtests_used_today: currentDailyUsed + 1,
-          usage_reset_date: today,
-          live_executions_used: currentPlan?.live_executions_used || 0,
-          paper_trading_used: currentPlan?.paper_trading_used || 0,
-          paper_trading_used_today: needsDailyReset ? 0 : (currentPlan?.paper_trading_used_today || 0),
-          addon_backtests: currentPlan?.addon_backtests || 0,
-          addon_live_executions: currentPlan?.addon_live_executions || 0,
-          updated_at: new Date().toISOString(),
-        };
-
-        // Use upsert with onConflict for atomic operation
-        const { error: upsertError } = await client
-          .from('user_plans' as any)
-          .upsert(upsertData, { 
-            onConflict: 'user_id',
-            ignoreDuplicates: false 
-          });
-
-        if (upsertError) throw new Error(`Failed to update usage: ${upsertError.message}`);
+        console.log('[useQuota] Backtest quota consumed successfully via edge function');
       });
 
       await fetchQuotaInfo();
@@ -401,52 +377,34 @@ export const useQuota = () => {
     }
   }, [userId, fetchQuotaInfo]);
 
-  // Consume live execution quota via direct database update using upsert
+  // Consume live execution quota via edge function (uses service role to bypass RLS)
   const consumeLiveExecution = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
     try {
       await retryWithBackoff(async () => {
-        // Use authenticated client for RLS-protected operations
-        const client = await getAuthenticatedTradelayoutClient();
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-usage`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              action: 'live_execution',
+            }),
+          }
+        );
+
+        const result = await response.json();
         
-        const { data: plan, error: fetchError } = await client
-          .from('user_plans' as any)
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle();
-
-        if (fetchError) throw new Error(`Failed to fetch plan: ${fetchError.message}`);
-
-        const currentPlan = plan as any;
-        const today = getTodayDateString();
-        const needsDailyReset = currentPlan?.usage_reset_date !== today;
-
-        // Prepare upsert data
-        const upsertData = {
-          user_id: userId,
-          plan: currentPlan?.plan || 'FREE',
-          status: currentPlan?.status || 'active',
-          backtests_used: currentPlan?.backtests_used || 0,
-          backtests_used_today: needsDailyReset ? 0 : (currentPlan?.backtests_used_today || 0),
-          usage_reset_date: today,
-          live_executions_used: (currentPlan?.live_executions_used || 0) + 1,
-          paper_trading_used: currentPlan?.paper_trading_used || 0,
-          paper_trading_used_today: needsDailyReset ? 0 : (currentPlan?.paper_trading_used_today || 0),
-          addon_backtests: currentPlan?.addon_backtests || 0,
-          addon_live_executions: currentPlan?.addon_live_executions || 0,
-          updated_at: new Date().toISOString(),
-        };
-
-        // Use upsert with onConflict for atomic operation
-        const { error: upsertError } = await client
-          .from('user_plans' as any)
-          .upsert(upsertData, { 
-            onConflict: 'user_id',
-            ignoreDuplicates: false 
-          });
-
-        if (upsertError) throw new Error(`Failed to update usage: ${upsertError.message}`);
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to update usage');
+        }
+        
+        console.log('[useQuota] Live execution quota consumed successfully via edge function');
       });
 
       await fetchQuotaInfo();
@@ -457,52 +415,34 @@ export const useQuota = () => {
     }
   }, [userId, fetchQuotaInfo]);
 
-  // Consume paper trading quota via direct database update using upsert
+  // Consume paper trading quota via edge function (uses service role to bypass RLS)
   const consumePaperTrade = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
     try {
       await retryWithBackoff(async () => {
-        // Use authenticated client for RLS-protected operations
-        const client = await getAuthenticatedTradelayoutClient();
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-usage`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              action: 'paper_trade',
+            }),
+          }
+        );
+
+        const result = await response.json();
         
-        const { data: plan, error: fetchError } = await client
-          .from('user_plans' as any)
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle();
-
-        if (fetchError) throw new Error(`Failed to fetch plan: ${fetchError.message}`);
-
-        const currentPlan = plan as any;
-        const today = getTodayDateString();
-        const needsDailyReset = currentPlan?.usage_reset_date !== today;
-
-        // Prepare upsert data
-        const upsertData = {
-          user_id: userId,
-          plan: currentPlan?.plan || 'FREE',
-          status: currentPlan?.status || 'active',
-          backtests_used: currentPlan?.backtests_used || 0,
-          backtests_used_today: needsDailyReset ? 0 : (currentPlan?.backtests_used_today || 0),
-          usage_reset_date: today,
-          live_executions_used: currentPlan?.live_executions_used || 0,
-          paper_trading_used: (currentPlan?.paper_trading_used || 0) + 1,
-          paper_trading_used_today: (needsDailyReset ? 0 : (currentPlan?.paper_trading_used_today || 0)) + 1,
-          addon_backtests: currentPlan?.addon_backtests || 0,
-          addon_live_executions: currentPlan?.addon_live_executions || 0,
-          updated_at: new Date().toISOString(),
-        };
-
-        // Use upsert with onConflict for atomic operation
-        const { error: upsertError } = await client
-          .from('user_plans' as any)
-          .upsert(upsertData, { 
-            onConflict: 'user_id',
-            ignoreDuplicates: false 
-          });
-
-        if (upsertError) throw new Error(`Failed to update usage: ${upsertError.message}`);
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to update usage');
+        }
+        
+        console.log('[useQuota] Paper trade quota consumed successfully via edge function');
       });
 
       await fetchQuotaInfo();
