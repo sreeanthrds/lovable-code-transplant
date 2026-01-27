@@ -3,6 +3,10 @@ import { useClerkUser } from '@/hooks/useClerkUser';
 import { getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
 import { PLAN_CONFIGS, PlanType, UserPlan } from '@/types/billing';
 
+// TradeLayout Supabase project credentials (for edge function calls)
+const SUPABASE_URL = "https://oonepfqgzpdssfzvokgk.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vbmVwZnFnenBkc3NmenZva2drIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxOTk5MTQsImV4cCI6MjA2NTc3NTkxNH0.lDCxgwj36EniiZthzZxhM_8coXQhXlrvv9UzemyYu6A";
+
 export interface QuotaCheck {
   allowed: boolean;
   reason?: string;
@@ -346,12 +350,12 @@ export const useQuota = () => {
       await retryWithBackoff(async () => {
         // Call the update-usage edge function which uses service role key
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-usage`,
+          `${SUPABASE_URL}/functions/v1/update-usage`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
             },
             body: JSON.stringify({
               user_id: userId,
@@ -384,12 +388,12 @@ export const useQuota = () => {
     try {
       await retryWithBackoff(async () => {
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-usage`,
+          `${SUPABASE_URL}/functions/v1/update-usage`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
             },
             body: JSON.stringify({
               user_id: userId,
@@ -422,12 +426,12 @@ export const useQuota = () => {
     try {
       await retryWithBackoff(async () => {
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-usage`,
+          `${SUPABASE_URL}/functions/v1/update-usage`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
             },
             body: JSON.stringify({
               user_id: userId,
