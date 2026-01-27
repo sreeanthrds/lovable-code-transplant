@@ -147,9 +147,8 @@ export const AddonsManager: React.FC = () => {
           feature_flags: {},
           ui_color: addonForm.ui_color,
           ui_icon: 'package',
-          sort_order: 100,
-          created_by: adminUser.id,
-          updated_by: adminUser.id
+          sort_order: 100
+          // Note: created_by/updated_by expect UUID format, skipping for Clerk user IDs
         });
       
       if (error) throw error;
@@ -187,8 +186,8 @@ export const AddonsManager: React.FC = () => {
           price_yearly: addonForm.price_monthly * 10,
           currency: addonForm.currency,
           ui_color: addonForm.ui_color,
-          updated_by: adminUser.id,
           updated_at: new Date().toISOString()
+          // Note: updated_by expects UUID format, skipping for Clerk user IDs
         })
         .eq('id', editingAddon.id);
       
