@@ -8,9 +8,6 @@ const TRADELAYOUT_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 // Global configuration user ID constant - matches existing data in table
 const GLOBAL_CONFIG_USER_ID = 'default-user';
 
-// Local URL config prefix to identify local override rows
-const LOCAL_CONFIG_PREFIX = 'local_';
-
 /**
  * API Configuration Service
  * Manages dynamic API URLs using Supabase database storage
@@ -119,16 +116,14 @@ async function getGlobalConfig(client: any): Promise<ApiConfig | null> {
 
 /**
  * Get user-specific local URL configuration
- * Looks for a row with user_id = 'local_{userId}'
- * If this row exists, user has a local override enabled
+ * Looks for a row with user_id = actual userId (e.g., 'user_2yfjTGEKjL7XkklQyBaMP6SN2Lc')
+ * If this row exists and has a base_url, user has a local override enabled
  */
 async function getUserLocalConfig(client: any, userId: string): Promise<{ localUrl: string; useLocalUrl: boolean } | null> {
-  const localUserId = `${LOCAL_CONFIG_PREFIX}${userId}`;
-  
   const { data, error } = await client
     .from('api_configurations')
     .select('base_url')
-    .eq('user_id', localUserId)
+    .eq('user_id', userId)
     .maybeSingle();
 
   if (error) {
@@ -224,11 +219,11 @@ export const getApiConfig = async (userId?: string): Promise<ApiConfig> => {
  * Update user's local URL settings (for admin users only)
  * 
  * Data model:
- * - user_id = 'local_{userId}' for the user's local override
+ * - user_id = actual user ID (e.g., 'user_2yfjTGEKjL7XkklQyBaMP6SN2Lc')
  * - base_url = the local/ngrok URL
  * 
- * When enabled: upsert a row with user_id = 'local_{userId}'
- * When disabled: delete the row with user_id = 'local_{userId}'
+ * When enabled: upsert a row with user_id = userId
+ * When disabled: clear the base_url or delete the row
  */
 export const updateUserLocalUrl = async (
   localUrl: string, 
@@ -237,15 +232,14 @@ export const updateUserLocalUrl = async (
 ): Promise<boolean> => {
   try {
     const client = await getAuthenticatedClient();
-    const localUserId = `${LOCAL_CONFIG_PREFIX}${userId}`;
 
-    console.log('📝 Updating local URL config:', { localUserId, localUrl, useLocalUrl });
+    console.log('📝 Updating local URL config:', { userId, localUrl, useLocalUrl });
 
-    // Check if user already has a local config row
+    // Check if user already has a config row
     const { data: existingRow, error: queryError } = await client
       .from('api_configurations')
       .select('id')
-      .eq('user_id', localUserId)
+      .eq('user_id', userId)
       .maybeSingle();
 
     if (queryError) {
@@ -272,10 +266,9 @@ export const updateUserLocalUrl = async (
         }
         console.log('✅ Updated existing local URL row');
       } else {
-        // Insert new row
-        // Note: config_name is in TS types but NOT in actual DB, using 'as any'
+        // Insert new row with actual user ID
         const insertPayload = {
-          user_id: localUserId,
+          user_id: userId,
           base_url: localUrl.trim(),
           timeout: 30000,
           retries: 3
@@ -294,20 +287,23 @@ export const updateUserLocalUrl = async (
         console.log('✅ Inserted new local URL row:', insertedData);
       }
     } else {
-      // User wants to disable local URL - delete the row
+      // User wants to disable local URL - update to empty or delete
       if (existingRow?.id) {
         const { error } = await client
           .from('api_configurations')
-          .delete()
+          .update({
+            base_url: '',
+            updated_at: new Date().toISOString()
+          })
           .eq('id', existingRow.id);
 
         if (error) {
-          console.error('❌ Error deleting local URL row:', error);
+          console.error('❌ Error clearing local URL:', error);
           return false;
         }
-        console.log('✅ Deleted local URL row');
+        console.log('✅ Cleared local URL');
       } else {
-        console.log('✅ No local URL row to delete');
+        console.log('✅ No local URL row to clear');
       }
     }
 
