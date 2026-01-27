@@ -1,222 +1,316 @@
 
-# Plan: User-Specific API URL Toggle for Admin Users
+# Comprehensive Billing Administration Page with Dynamic Plan Creator
 
 ## Overview
-This plan consolidates the Supabase projects and implements a user-specific API URL switching feature for admin users. Each admin can toggle between the global production URL and their own local development URL without affecting other users.
+This plan creates a complete billing administration system that moves plan definitions from hardcoded TypeScript constants to a database-driven model, enabling admins to create, edit, and manage plans dynamically without code changes.
+
+## Current State Analysis
+
+| Component | Current State | Issue |
+|-----------|---------------|-------|
+| Plan Definitions | Hardcoded in `PLAN_CONFIGS` (`src/types/billing.ts`) | Cannot add/modify plans without code deployment |
+| Usage Metering | Monthly tracking works, daily tracking incomplete | Missing DB columns for daily counters |
+| Enforcement | Logic exists but reads from hardcoded configs | Cannot enforce dynamically created plans |
+| Admin UI | Scattered across Admin tabs (Plans, Billing) | No unified plan management interface |
 
 ---
 
-## Part 1: Consolidate Supabase Projects
-
-### Step 1.1: Update Environment Variables
-**File: `.env`**
-- Replace the secondary project credentials with the primary project credentials
-- Update `VITE_SUPABASE_PROJECT_ID`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY` to point to `oonepfqgzpdssfzvokgk`
-
-### Step 1.2: Update Auto-Generated Client (Optional)
-**File: `src/integrations/supabase/client.ts`**
-- After `.env` is updated, this file will automatically use the correct project
-- Add a comment noting it now points to the consolidated TradeLayout database
-
----
-
-## Part 2: Database Schema Changes
-
-### Step 2.1: Add Columns to `api_configurations` Table
-Run this migration in Supabase SQL Editor:
-
-```sql
--- Add columns for user-specific local URL override
-ALTER TABLE public.api_configurations 
-ADD COLUMN IF NOT EXISTS local_url TEXT DEFAULT '',
-ADD COLUMN IF NOT EXISTS use_local_url BOOLEAN DEFAULT false;
-
--- Migrate existing dev_url data to local_url (if any)
-UPDATE public.api_configurations 
-SET local_url = dev_url, use_local_url = use_dev_url
-WHERE dev_url IS NOT NULL AND dev_url != '';
-```
-
-### Step 2.2: Create Global Configuration Row
-Ensure a single global configuration exists that all non-admin users (and admins not using local mode) will use:
-
-```sql
--- Insert global configuration (if not exists)
-INSERT INTO public.api_configurations (user_id, base_url, config_name, timeout, retries)
-VALUES ('__GLOBAL__', 'https://api.tradelayout.com', 'Global Production', 30000, 3)
-ON CONFLICT (user_id) DO NOTHING;
-```
-
----
-
-## Part 3: Update API Config Service
-
-### Step 3.1: Update TypeScript Interface
-**File: `src/lib/api-config.ts`**
-
-```typescript
-interface ApiConfig {
-  baseUrl: string;      // Global production URL (read-only for regular users)
-  localUrl: string;     // User-specific local URL (only for admins)
-  useLocalUrl: boolean; // Toggle for admin users
-  timeout: number;
-  retries: number;
-}
-```
-
-### Step 3.2: Update URL Resolution Logic
-**File: `src/lib/api-config.ts`**
-
-Modify `getActiveApiUrl` to:
-1. Check if user is admin AND has `useLocalUrl = true`
-2. If yes, return their `localUrl`
-3. Otherwise, return global `baseUrl`
-
-```typescript
-export const getActiveApiUrl = (config: ApiConfig, isAdmin: boolean): string => {
-  if (isAdmin && config.useLocalUrl && config.localUrl) {
-    return config.localUrl;
-  }
-  return config.baseUrl;
-};
-```
-
-### Step 3.3: Update `getApiConfig` Function
-- For admin users: Fetch their user-specific row first
-- For non-admin users: Always fetch the global configuration row
-- Fallback: Return default production URL
-
-### Step 3.4: Update `updateApiConfig` Function
-- Admin users can only update their `localUrl` and `use_local_url` fields
-- Global `baseUrl` changes require a separate admin function (protected)
-
----
-
-## Part 4: Redesign Admin UI
-
-### Step 4.1: Update ApiConfigManager Component
-**File: `src/components/admin/ApiConfigManager.tsx`**
-
-**New UI Design:**
+## Architecture
 
 ```text
-+--------------------------------------------------+
-|  API Configuration                                |
-|  ------------------------------------------------ |
-|                                                   |
-|  [Global Production URL - Read Only]              |
-|  https://api.tradelayout.com                      |
-|                                                   |
-|  ------------------------------------------------ |
-|                                                   |
-|  Use Local Development Server                     |
-|  [ OFF ]========[ ON ]                            |
-|                                                   |
-|  (When toggled ON, show input field below)        |
-|                                                   |
-|  Your Local URL:                                  |
-|  [http://localhost:3001_____________] [Test]      |
-|                                                   |
-|  [Save Configuration]                             |
-+--------------------------------------------------+
++---------------------------+
+|     Admin Billing Page    |
+|    /app/admin/billing     |
++---------------------------+
+            |
+            v
++---------------------------+
+|   Plan Definition CRUD    |
+|  - Create Plan Form       |
+|  - Edit Existing Plans    |
+|  - Archive/Delete Plans   |
++---------------------------+
+            |
+            v
++---------------------------+
+|   plan_definitions Table  |
+|   (New Supabase Table)    |
++---------------------------+
+            |
+            v
++---------------------------+
+|   usePlanDefinitions()    |
+|   Hook for fetching plans |
++---------------------------+
+            |
+            v
++---------------------------+
+|  useQuota() - Updated     |
+|  Reads from DB instead    |
+|  of PLAN_CONFIGS          |
++---------------------------+
 ```
-
-**Component Changes:**
-1. Display global `baseUrl` as read-only (not editable)
-2. Show toggle switch labeled "Use Local Development Server"
-3. When toggle is ON, show input field for `localUrl`
-4. Include "Test Connection" button for the local URL
-5. Show current active URL status badge (PROD or LOCAL)
-
-### Step 4.2: Remove Dev URL Fields
-- Remove the separate "Development API URL" section
-- Replace with the toggle-based approach described above
-- Remove `devUrl` and `useDevUrl` state variables
-- Use `localUrl` and `useLocalUrl` instead
 
 ---
 
-## Part 5: Update API Client
+## Implementation Plan
 
-### Step 5.1: Pass Admin Status to URL Resolution
-**File: `src/lib/api-config.ts`**
+### Phase 1: Database Schema
 
-The `ApiClient` class needs to know if the current user is an admin:
+**Create `plan_definitions` table in Supabase**
 
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `code` | VARCHAR(50) | Unique plan code (e.g., 'FREE', 'PRO') |
+| `name` | VARCHAR(100) | Display name |
+| `description` | TEXT | Plan description for pricing pages |
+| `tier_level` | INTEGER | Hierarchy for upgrade/downgrade logic |
+| `is_active` | BOOLEAN | Whether plan is available for purchase |
+| `is_public` | BOOLEAN | Show on public pricing page |
+| **Validity** | | |
+| `duration_type` | VARCHAR(20) | 'subscription', 'fixed', 'lifetime' |
+| `duration_days` | INTEGER | For fixed-duration plans (NULL = ongoing) |
+| `trial_days` | INTEGER | Trial period length |
+| `grace_period_days` | INTEGER | Post-expiry access window |
+| **Backtest Limits** | | |
+| `backtests_daily_limit` | INTEGER | Per-day cap (-1 = unlimited) |
+| `backtests_monthly_limit` | INTEGER | Per-month cap (-1 = unlimited) |
+| `backtests_total_limit` | INTEGER | Lifetime cap (-1 = unlimited) |
+| **Live Trading Limits** | | |
+| `live_executions_monthly_limit` | INTEGER | Per-month cap (-1 = unlimited) |
+| **Paper Trading Limits** | | |
+| `paper_trading_daily_limit` | INTEGER | Per-day cap (-1 = unlimited) |
+| `paper_trading_monthly_limit` | INTEGER | Per-month cap (-1 = unlimited) |
+| **Reset Rules** | | |
+| `reset_type` | VARCHAR(20) | 'calendar' (1st of month) or 'rolling' (from purchase) |
+| `daily_reset_hour` | INTEGER | Hour (0-23) for daily reset (default: 0 = midnight) |
+| `reset_timezone` | VARCHAR(50) | Timezone for resets (default: 'Asia/Kolkata') |
+| **Pricing** | | |
+| `price_monthly` | DECIMAL(10,2) | Monthly price |
+| `price_yearly` | DECIMAL(10,2) | Yearly price |
+| `currency` | VARCHAR(3) | Currency code (default: 'INR') |
+| `discount_percentage` | INTEGER | Yearly discount to display |
+| **Features** | | |
+| `can_buy_addons` | BOOLEAN | Allow addon purchases |
+| `feature_flags` | JSONB | Feature toggles (e.g., {"api_access": true}) |
+| `ui_color` | VARCHAR(20) | Badge color variant |
+| `ui_icon` | VARCHAR(50) | Icon name for display |
+| **Metadata** | | |
+| `sort_order` | INTEGER | Display order on pricing page |
+| `created_at` | TIMESTAMPTZ | Creation timestamp |
+| `updated_at` | TIMESTAMPTZ | Last update timestamp |
+| `created_by` | TEXT | Admin who created |
+| `updated_by` | TEXT | Admin who last updated |
+
+**Add daily tracking columns to `user_plans` table**
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `backtests_used_today` | INTEGER | Daily backtest counter |
+| `paper_trading_used_today` | INTEGER | Daily paper trade counter |
+| `usage_reset_date` | DATE | Date when daily counters were last reset |
+| `plan_definition_id` | UUID | FK to plan_definitions (optional, for linking) |
+
+---
+
+### Phase 2: New Components
+
+**File Structure**
+```text
+src/
+├── pages/
+│   └── BillingAdmin.tsx              # New dedicated billing admin page
+├── components/
+│   └── billing-admin/
+│       ├── PlanDefinitionsManager.tsx # Main plan CRUD interface
+│       ├── PlanCreatorForm.tsx        # Dynamic plan creation form
+│       ├── PlanEditDialog.tsx         # Edit existing plan dialog
+│       ├── PlanLimitsSection.tsx      # Limits configuration section
+│       ├── PlanPricingSection.tsx     # Pricing configuration section
+│       ├── PlanValiditySection.tsx    # Validity & reset rules section
+│       ├── PlanFeaturesSection.tsx    # Feature flags configuration
+│       ├── PlanPreviewCard.tsx        # Preview how plan will look
+│       └── UserSubscriptionsTable.tsx # Existing user management (moved)
+├── hooks/
+│   └── usePlanDefinitions.ts          # Fetch/CRUD plan definitions
+├── lib/
+│   └── supabase/
+│       └── services/
+│           └── plan-definitions-service.ts  # DB operations
+└── types/
+    └── plan-definitions.ts            # TypeScript interfaces
+```
+
+---
+
+### Phase 3: Component Details
+
+#### 1. PlanCreatorForm.tsx
+A comprehensive form with collapsible sections:
+
+**Identity Section**
+- Plan Code (uppercase, alphanumeric, unique)
+- Display Name
+- Description (markdown supported)
+- Tier Level (numeric for hierarchy)
+- Active toggle
+- Public (show on pricing page) toggle
+
+**Validity Section**
+- Duration Type dropdown (Subscription / Fixed / Lifetime)
+- Duration in Days (for fixed plans)
+- Trial Period (days)
+- Grace Period (days)
+
+**Limits Section**
+- Backtests: Daily / Monthly / Total (with "Unlimited" toggle each)
+- Live Executions: Monthly limit
+- Paper Trading: Daily / Monthly limits
+- Visual indicator: -1 = Unlimited, 0 = Disabled, N = Limited
+
+**Reset Rules Section**
+- Reset Type: Calendar (resets on 1st) vs Rolling (from subscription start)
+- Daily Reset Hour (0-23)
+- Timezone selector
+
+**Pricing Section**
+- Monthly Price
+- Yearly Price
+- Currency dropdown (INR default)
+- Yearly Discount percentage (auto-calculated or manual)
+- Can Buy Add-ons toggle
+
+**Features Section**
+- Dynamic key-value editor for feature_flags JSONB
+- Predefined toggles: API Access, Priority Support, Custom Reports
+- UI Color picker
+- Icon selector
+
+**Preview Section**
+- Live preview of how the plan card will look on the pricing page
+
+---
+
+#### 2. PlanDefinitionsManager.tsx
+Main interface showing all plans:
+- Table/Grid view of all plan definitions
+- Columns: Name, Code, Tier, Limits Summary, Price, Status, Actions
+- Actions: Edit, Duplicate, Archive, Delete
+- Bulk actions: Activate/Deactivate selected
+- Search and filter by status
+
+---
+
+#### 3. usePlanDefinitions Hook
 ```typescript
-export class ApiClient {
-  private userId?: string;
-  private isAdmin: boolean = false;
-
-  setContext(userId?: string, isAdmin: boolean = false) {
-    this.userId = userId;
-    this.isAdmin = isAdmin;
-  }
-
-  private async getConfig(): Promise<ApiConfig> {
-    return await getApiConfig(this.userId);
-  }
-
-  async get(endpoint: string, options?: RequestInit): Promise<Response> {
-    const config = await this.getConfig();
-    const url = `${getActiveApiUrl(config, this.isAdmin)}${endpoint}`;
-    // ... rest of implementation
-  }
+interface UsePlanDefinitions {
+  plans: PlanDefinition[];
+  loading: boolean;
+  error: Error | null;
+  createPlan: (data: CreatePlanInput) => Promise<PlanDefinition>;
+  updatePlan: (id: string, data: UpdatePlanInput) => Promise<void>;
+  deletePlan: (id: string) => Promise<void>;
+  duplicatePlan: (id: string) => Promise<PlanDefinition>;
+  getPlanByCode: (code: string) => PlanDefinition | undefined;
+  refreshPlans: () => Promise<void>;
 }
 ```
 
-### Step 5.2: Initialize Client with User Context
-Update places where `apiClient` is used to set the user context:
+---
+
+### Phase 4: Quota Enforcement Update
+
+**Update useQuota.ts to read from database**
 
 ```typescript
-// In a component or hook
-const { user } = useClerkUser();
-const { isAdmin } = useAdminRole();
+// Before (hardcoded)
+const config = PLAN_CONFIGS[effectivePlan];
 
-useEffect(() => {
-  apiClient.setContext(user?.id, isAdmin);
-}, [user?.id, isAdmin]);
+// After (database-driven)
+const { getPlanByCode } = usePlanDefinitions();
+const config = getPlanByCode(effectivePlan) || DEFAULT_FREE_CONFIG;
+```
+
+**Add daily reset logic**
+```typescript
+const shouldResetDailyCounters = (plan: UserPlan): boolean => {
+  const today = new Date().toISOString().split('T')[0];
+  return plan.usage_reset_date !== today;
+};
+
+// In consumeBacktest():
+if (shouldResetDailyCounters(currentPlan)) {
+  updateData.backtests_used_today = 1;
+  updateData.usage_reset_date = getTodayDateString();
+} else {
+  updateData.backtests_used_today = (currentPlan.backtests_used_today || 0) + 1;
+}
 ```
 
 ---
 
-## Part 6: Edge Function Updates
+### Phase 5: Migration Strategy
 
-### Step 6.1: Update backtest-proxy
-**File: `supabase/functions/backtest-proxy/index.ts`**
+**Seed initial plan_definitions from PLAN_CONFIGS**
+- Create database records matching current hardcoded plans
+- Maintain backward compatibility during transition
+- Gradual deprecation of `PLAN_CONFIGS` constant
 
-Update the `getBacktestApiUrl` function to:
-1. Check if the requesting user (from header) is an admin
-2. Check if they have a local URL configured with `use_local_url = true`
-3. Return appropriate URL based on user context
+**Fallback mechanism**
+- If plan_definitions table is empty or unavailable, fall back to PLAN_CONFIGS
+- Ensures zero downtime during migration
 
 ---
 
-## Summary of Files to Modify
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/pages/BillingAdmin.tsx` | New dedicated admin billing page |
+| `src/components/billing-admin/PlanDefinitionsManager.tsx` | Plan CRUD list/grid |
+| `src/components/billing-admin/PlanCreatorForm.tsx` | Create/edit plan form |
+| `src/components/billing-admin/PlanLimitsSection.tsx` | Limits configuration UI |
+| `src/components/billing-admin/PlanPricingSection.tsx` | Pricing configuration UI |
+| `src/components/billing-admin/PlanValiditySection.tsx` | Validity rules UI |
+| `src/components/billing-admin/PlanPreviewCard.tsx` | Live preview component |
+| `src/hooks/usePlanDefinitions.ts` | Data fetching hook |
+| `src/lib/supabase/services/plan-definitions-service.ts` | Database operations |
+| `src/types/plan-definitions.ts` | TypeScript interfaces |
+
+## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `.env` | Update to primary Supabase project credentials |
-| `src/lib/api-config.ts` | Update interface, URL resolution logic, add admin context |
-| `src/components/admin/ApiConfigManager.tsx` | Redesign UI with toggle approach |
-| `src/integrations/supabase/types.ts` | Update types for new columns (generated) |
-| `supabase/functions/backtest-proxy/index.ts` | Update to respect user-specific URLs |
+| `src/App.tsx` | Add route `/app/billing-admin` |
+| `src/pages/Admin.tsx` | Add link to new billing page |
+| `src/hooks/useQuota.ts` | Read from DB, add daily reset logic |
+| `supabase/migrations/` | Add new migration for `plan_definitions` table |
 
-## Database Migration Required
+## Database Migrations Required
 
-```sql
--- Run in Supabase SQL Editor
-ALTER TABLE public.api_configurations 
-ADD COLUMN IF NOT EXISTS local_url TEXT DEFAULT '',
-ADD COLUMN IF NOT EXISTS use_local_url BOOLEAN DEFAULT false;
-```
+1. **Create plan_definitions table** with all columns
+2. **Add daily tracking columns** to user_plans table
+3. **Seed initial data** from current PLAN_CONFIGS
+4. **Create RLS policies** for admin-only access to plan_definitions
 
 ---
 
-## Technical Notes
+## Security Considerations
 
-1. **Caching**: The current 5-minute cache in `api-config.ts` will need to be user-specific to avoid serving stale URLs when admins toggle between modes.
+- Plan definitions table: Admin-only write access via RLS
+- All plan modifications logged with `updated_by` admin ID
+- Soft delete (archive) instead of hard delete for audit trail
+- Validation: Prevent deletion of plans with active subscribers
 
-2. **Security**: The production URL should be protected - only super-admins should be able to modify it. Regular admins can only modify their own local URL.
+---
 
-3. **Fallback**: If an admin's local URL is unreachable, consider adding a fallback mechanism to automatically switch back to production.
+## Testing Checklist
+
+- [ ] Create a new plan via the form
+- [ ] Edit existing plan limits
+- [ ] Verify quota enforcement reads from new table
+- [ ] Test daily reset at midnight
+- [ ] Verify FREE plan users are limited to 2 backtests/day
+- [ ] Test plan hierarchy prevents downgrades
+- [ ] Confirm fallback to PLAN_CONFIGS if DB unavailable
