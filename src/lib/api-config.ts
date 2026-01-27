@@ -5,23 +5,30 @@ import type { Database } from '@/integrations/supabase/types';
 const TRADELAYOUT_URL = "https://oonepfqgzpdssfzvokgk.supabase.co";
 const TRADELAYOUT_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vbmVwZnFnenBkc3NmenZva2drIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxOTk5MTQsImV4cCI6MjA2NTc3NTkxNH0.lDCxgwj36EniiZthzZxhM_8coXQhXlrvv9UzemyYu6A";
 
-// Global configuration user ID constant
-const GLOBAL_CONFIG_USER_ID = '__GLOBAL__';
+// Global configuration user ID constant - matches existing data in table
+const GLOBAL_CONFIG_USER_ID = 'default-user';
+
+// Local URL config prefix to identify local override rows
+const LOCAL_CONFIG_PREFIX = 'local_';
 
 /**
  * API Configuration Service
  * Manages dynamic API URLs using Supabase database storage
  * Works with Clerk authentication by accepting user ID as parameter
  * 
+ * Data Model:
+ * - Global production URL: user_id = 'default-user' (shared by all users)
+ * - User's local URL: user_id = 'local_{userId}' (admin-specific override)
+ * 
  * URL Resolution:
- * - Admins with useLocalUrl=true -> use their localUrl
- * - Everyone else -> use global baseUrl
+ * - Admins with local override row -> use their localUrl
+ * - Everyone else -> use global baseUrl from 'default-user' row
  */
 
 interface ApiConfig {
-  baseUrl: string;      // Global production URL
-  localUrl: string;     // User-specific local development URL (stored in user's own row as base_url)
-  useLocalUrl: boolean; // Toggle for admin users (stored in user's own row as use_dev_url)
+  baseUrl: string;      // Global production URL (from 'default-user' row)
+  localUrl: string;     // User-specific local URL (from 'local_{userId}' row)
+  useLocalUrl: boolean; // True if user has a local override row
   timeout: number;
   retries: number;
 }
@@ -82,6 +89,7 @@ async function getAuthenticatedClient() {
 
 /**
  * Get global API configuration (used as the production URL for all users)
+ * Reads from row with user_id = 'default-user'
  */
 async function getGlobalConfig(client: any): Promise<ApiConfig | null> {
   const { data, error } = await client
@@ -90,7 +98,13 @@ async function getGlobalConfig(client: any): Promise<ApiConfig | null> {
     .eq('user_id', GLOBAL_CONFIG_USER_ID)
     .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
+    console.error('Error fetching global config:', error);
+    return null;
+  }
+
+  if (!data) {
+    console.log('No global config found for user_id:', GLOBAL_CONFIG_USER_ID);
     return null;
   }
 
@@ -98,42 +112,35 @@ async function getGlobalConfig(client: any): Promise<ApiConfig | null> {
     baseUrl: data.base_url,
     localUrl: '',
     useLocalUrl: false,
-    timeout: data.timeout,
-    retries: data.retries
+    timeout: data.timeout || 30000,
+    retries: data.retries || 3
   };
 }
 
 /**
- * Get user-specific API configuration (for admin's local URL settings)
- * Each user has their own row with config_name = 'local'
- * If the row exists, user is using local URL. If not, using global.
+ * Get user-specific local URL configuration
+ * Looks for a row with user_id = 'local_{userId}'
+ * If this row exists, user has a local override enabled
  */
-async function getUserConfig(client: any, userId: string): Promise<{ localUrl: string; useLocalUrl: boolean } | null> {
-  // Skip global config
-  if (userId === GLOBAL_CONFIG_USER_ID) {
-    return null;
-  }
-
-  // Query user's own row (not global)
+async function getUserLocalConfig(client: any, userId: string): Promise<{ localUrl: string; useLocalUrl: boolean } | null> {
+  const localUserId = `${LOCAL_CONFIG_PREFIX}${userId}`;
+  
   const { data, error } = await client
     .from('api_configurations')
-    .select('base_url, headers')
-    .eq('user_id', userId)
-    .neq('user_id', GLOBAL_CONFIG_USER_ID)
+    .select('base_url')
+    .eq('user_id', localUserId)
     .maybeSingle();
 
   if (error) {
-    console.error('Error fetching user config:', error);
+    console.error('Error fetching user local config:', error);
     return null;
   }
 
-  // If row exists with base_url, check headers for toggle state
+  // If row exists with base_url, user has local URL enabled
   if (data?.base_url) {
-    const headers = data.headers as { use_local_url?: boolean } | null;
-    const useLocalUrl = headers?.use_local_url ?? true; // Default true if row exists
     return {
       localUrl: data.base_url,
-      useLocalUrl
+      useLocalUrl: true
     };
   }
 
@@ -189,10 +196,10 @@ export const getApiConfig = async (userId?: string): Promise<ApiConfig> => {
     let useLocalUrl = false;
     
     if (userId) {
-      const userConfig = await getUserConfig(client, userId);
-      if (userConfig) {
-        localUrl = userConfig.localUrl;
-        useLocalUrl = userConfig.useLocalUrl;
+      const userLocalConfig = await getUserLocalConfig(client, userId);
+      if (userLocalConfig) {
+        localUrl = userLocalConfig.localUrl;
+        useLocalUrl = userLocalConfig.useLocalUrl;
       }
     }
 
@@ -215,12 +222,13 @@ export const getApiConfig = async (userId?: string): Promise<ApiConfig> => {
 
 /**
  * Update user's local URL settings (for admin users only)
- * Simple approach: Each admin user gets their own row with:
- * - user_id = admin's user ID
- * - base_url = their local URL
- * - config_name = 'local' to distinguish from global
  * 
- * Global production URL has user_id = '__GLOBAL__' and config_name = 'default'
+ * Data model:
+ * - user_id = 'local_{userId}' for the user's local override
+ * - base_url = the local/ngrok URL
+ * 
+ * When enabled: upsert a row with user_id = 'local_{userId}'
+ * When disabled: delete the row with user_id = 'local_{userId}'
  */
 export const updateUserLocalUrl = async (
   localUrl: string, 
@@ -229,60 +237,59 @@ export const updateUserLocalUrl = async (
 ): Promise<boolean> => {
   try {
     const client = await getAuthenticatedClient();
+    const localUserId = `${LOCAL_CONFIG_PREFIX}${userId}`;
 
-    // Skip if this is global config
-    if (userId === GLOBAL_CONFIG_USER_ID) {
-      console.error('❌ Cannot update global config with this function');
+    console.log('📝 Updating local URL config:', { localUserId, localUrl, useLocalUrl });
+
+    // Check if user already has a local config row
+    const { data: existingRow, error: queryError } = await client
+      .from('api_configurations')
+      .select('id')
+      .eq('user_id', localUserId)
+      .maybeSingle();
+
+    if (queryError) {
+      console.error('❌ Error querying existing config:', queryError);
       return false;
     }
 
-    // First check if user already has a row
-    const { data: existingRow } = await client
-      .from('api_configurations')
-      .select('id')
-      .eq('user_id', userId)
-      .neq('user_id', GLOBAL_CONFIG_USER_ID)
-      .maybeSingle();
-
     if (useLocalUrl && localUrl.trim()) {
-      // User wants to use local URL
-      const rowData = {
-        user_id: userId,
-        base_url: localUrl.trim(),
-        headers: { use_local_url: true },
-        timeout: 30000,
-        retries: 3,
-        updated_at: new Date().toISOString()
-      };
-
+      // User wants to enable local URL
       if (existingRow?.id) {
         // Update existing row
         const { error } = await client
           .from('api_configurations')
-          .update(rowData)
+          .update({
+            base_url: localUrl.trim(),
+            updated_at: new Date().toISOString()
+          })
           .eq('id', existingRow.id);
 
         if (error) {
-          console.error('❌ Error updating user local URL:', error);
+          console.error('❌ Error updating local URL:', error);
           return false;
         }
+        console.log('✅ Updated existing local URL row');
       } else {
-        // Insert new row - need config_name for insert
+        // Insert new row
         const { error } = await client
           .from('api_configurations')
           .insert({
-            ...rowData,
-            config_name: `local_${userId.substring(0, 8)}`
+            user_id: localUserId,
+            base_url: localUrl.trim(),
+            config_name: `Local Dev - ${userId.substring(0, 8)}`,
+            timeout: 30000,
+            retries: 3
           });
 
         if (error) {
-          console.error('❌ Error inserting user local URL:', error);
+          console.error('❌ Error inserting local URL:', error);
           return false;
         }
+        console.log('✅ Inserted new local URL row');
       }
-      console.log('✅ User local URL saved:', localUrl);
     } else {
-      // User toggled OFF or cleared URL - delete their config row
+      // User wants to disable local URL - delete the row
       if (existingRow?.id) {
         const { error } = await client
           .from('api_configurations')
@@ -290,10 +297,13 @@ export const updateUserLocalUrl = async (
           .eq('id', existingRow.id);
 
         if (error) {
-          console.error('❌ Error deleting user local URL config:', error);
+          console.error('❌ Error deleting local URL row:', error);
+          return false;
         }
+        console.log('✅ Deleted local URL row');
+      } else {
+        console.log('✅ No local URL row to delete');
       }
-      console.log('✅ User local URL config removed (using global)');
     }
 
     // Clear user's cache
