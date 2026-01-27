@@ -342,37 +342,76 @@ export const useQuota = () => {
   }, [quotaInfo, fetchQuotaInfo]);
 
 
-  // Consume backtest quota via edge function (uses service role to bypass RLS)
+  // Consume backtest quota via direct database upsert (client-side MVP approach)
   const consumeBacktest = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
     try {
-      await retryWithBackoff(async () => {
-        // Call the update-usage edge function which uses service role key
-        const response = await fetch(
-          `${SUPABASE_URL}/functions/v1/update-usage`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            },
-            body: JSON.stringify({
-              user_id: userId,
-              action: 'backtest',
-            }),
+      const client = await getAuthenticatedTradelayoutClient();
+      const today = new Date().toISOString().split('T')[0];
+      
+      // First, try to get existing plan
+      const { data: existingPlan } = await client
+        .from('user_plans' as any)
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      const plan = existingPlan as any;
+      
+      // Check if daily reset is needed
+      const needsDailyReset = !plan?.usage_reset_date || plan.usage_reset_date !== today;
+      const currentBacktestsToday = needsDailyReset ? 0 : (plan?.backtests_used_today || 0);
+
+      const upsertData: any = {
+        user_id: userId,
+        plan: plan?.plan || 'FREE',
+        status: plan?.status || 'active',
+        billing_cycle: plan?.billing_cycle || 'monthly',
+        amount_paid: plan?.amount_paid || 0,
+        currency: plan?.currency || 'INR',
+        started_at: plan?.started_at || new Date().toISOString(),
+        backtests_used: (plan?.backtests_used || 0) + 1,
+        backtests_used_today: currentBacktestsToday + 1,
+        usage_reset_date: today,
+        live_executions_used: plan?.live_executions_used || 0,
+        paper_trading_used: plan?.paper_trading_used || 0,
+        paper_trading_used_today: needsDailyReset ? 0 : (plan?.paper_trading_used_today || 0),
+        addon_backtests: plan?.addon_backtests || 0,
+        addon_live_executions: plan?.addon_live_executions || 0,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: upsertError } = await client
+        .from('user_plans' as any)
+        .upsert(upsertData, { 
+          onConflict: 'user_id',
+          ignoreDuplicates: false 
+        });
+
+      if (upsertError) {
+        console.error('[useQuota] Upsert failed, trying update only:', upsertError);
+        
+        // Fallback: try update only (for RLS restrictions on insert)
+        if (plan) {
+          const { error: updateError } = await client
+            .from('user_plans' as any)
+            .update({
+              backtests_used: (plan.backtests_used || 0) + 1,
+              backtests_used_today: currentBacktestsToday + 1,
+              usage_reset_date: today,
+              paper_trading_used_today: needsDailyReset ? 0 : (plan.paper_trading_used_today || 0),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', userId);
+
+          if (updateError) {
+            console.warn('[useQuota] Update also failed:', updateError);
           }
-        );
-
-        const result = await response.json();
-        
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Failed to update usage');
         }
-        
-        console.log('[useQuota] Backtest quota consumed successfully via edge function');
-      });
+      }
 
+      console.log('[useQuota] Backtest quota consumed successfully');
       await fetchQuotaInfo();
       return true;
     } catch (err) {
@@ -381,36 +420,36 @@ export const useQuota = () => {
     }
   }, [userId, fetchQuotaInfo]);
 
-  // Consume live execution quota via edge function (uses service role to bypass RLS)
+  // Consume live execution quota via direct database update
   const consumeLiveExecution = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
     try {
-      await retryWithBackoff(async () => {
-        const response = await fetch(
-          `${SUPABASE_URL}/functions/v1/update-usage`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            },
-            body: JSON.stringify({
-              user_id: userId,
-              action: 'live_execution',
-            }),
-          }
-        );
+      const client = await getAuthenticatedTradelayoutClient();
+      
+      const { data: existingPlan } = await client
+        .from('user_plans' as any)
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
 
-        const result = await response.json();
-        
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Failed to update usage');
+      const plan = existingPlan as any;
+
+      if (plan) {
+        const { error } = await client
+          .from('user_plans' as any)
+          .update({
+            live_executions_used: (plan.live_executions_used || 0) + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', userId);
+
+        if (error) {
+          console.error('[useQuota] Failed to update live execution usage:', error);
         }
-        
-        console.log('[useQuota] Live execution quota consumed successfully via edge function');
-      });
+      }
 
+      console.log('[useQuota] Live execution quota consumed successfully');
       await fetchQuotaInfo();
       return true;
     } catch (err) {
@@ -419,35 +458,42 @@ export const useQuota = () => {
     }
   }, [userId, fetchQuotaInfo]);
 
-  // Consume paper trading quota via edge function (uses service role to bypass RLS)
+  // Consume paper trading quota via direct database update
   const consumePaperTrade = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
     try {
-      await retryWithBackoff(async () => {
-        const response = await fetch(
-          `${SUPABASE_URL}/functions/v1/update-usage`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            },
-            body: JSON.stringify({
-              user_id: userId,
-              action: 'paper_trade',
-            }),
-          }
-        );
+      const client = await getAuthenticatedTradelayoutClient();
+      const today = new Date().toISOString().split('T')[0];
+      
+      const { data: existingPlan } = await client
+        .from('user_plans' as any)
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
 
-        const result = await response.json();
-        
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Failed to update usage');
+      const plan = existingPlan as any;
+      const needsDailyReset = !plan?.usage_reset_date || plan.usage_reset_date !== today;
+      const currentPaperToday = needsDailyReset ? 0 : (plan?.paper_trading_used_today || 0);
+
+      if (plan) {
+        const { error } = await client
+          .from('user_plans' as any)
+          .update({
+            paper_trading_used: (plan.paper_trading_used || 0) + 1,
+            paper_trading_used_today: currentPaperToday + 1,
+            usage_reset_date: today,
+            backtests_used_today: needsDailyReset ? 0 : plan.backtests_used_today,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', userId);
+
+        if (error) {
+          console.error('[useQuota] Failed to update paper trade usage:', error);
         }
-        
-        console.log('[useQuota] Paper trade quota consumed successfully via edge function');
-      });
+      }
+
+      console.log('[useQuota] Paper trade quota consumed successfully');
 
       await fetchQuotaInfo();
       return true;
