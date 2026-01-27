@@ -40,6 +40,8 @@ interface PlanLimits {
   paper_trading_daily_limit: number;
   paper_trading_monthly_limit: number;
   live_executions_monthly_limit: number;
+  daily_reset_hour: number;
+  reset_timezone: string;
 }
 
 const PLAN_TABS = ['FREE', 'LAUNCH', 'PRO', 'ENTERPRISE'] as const;
@@ -61,7 +63,7 @@ export const UserPlansManager: React.FC = () => {
       // Fetch user plans, plan definitions, and all user profiles in parallel
       const [plansResult, definitionsResult, profilesResult] = await Promise.all([
         tradelayoutClient.from('user_plans' as any).select('*').order('updated_at', { ascending: false }),
-        tradelayoutClient.from('plan_definitions' as any).select('code, backtests_daily_limit, backtests_monthly_limit, paper_trading_daily_limit, paper_trading_monthly_limit, live_executions_monthly_limit'),
+        tradelayoutClient.from('plan_definitions' as any).select('code, backtests_daily_limit, backtests_monthly_limit, paper_trading_daily_limit, paper_trading_monthly_limit, live_executions_monthly_limit, daily_reset_hour, reset_timezone'),
         tradelayoutClient.from('user_profiles' as any).select('id, email, first_name, last_name')
       ]);
       
@@ -83,7 +85,9 @@ export const UserPlansManager: React.FC = () => {
           backtests_monthly_limit: def.backtests_monthly_limit,
           paper_trading_daily_limit: def.paper_trading_daily_limit,
           paper_trading_monthly_limit: def.paper_trading_monthly_limit,
-          live_executions_monthly_limit: def.live_executions_monthly_limit
+          live_executions_monthly_limit: def.live_executions_monthly_limit,
+          daily_reset_hour: def.daily_reset_hour ?? 0,
+          reset_timezone: def.reset_timezone ?? 'Asia/Kolkata'
         };
       });
       
@@ -187,7 +191,9 @@ export const UserPlansManager: React.FC = () => {
       backtests_monthly_limit: -1,
       paper_trading_daily_limit: -1,
       paper_trading_monthly_limit: -1,
-      live_executions_monthly_limit: -1
+      live_executions_monthly_limit: -1,
+      daily_reset_hour: 0,
+      reset_timezone: 'Asia/Kolkata'
     };
   };
 
@@ -256,7 +262,10 @@ export const UserPlansManager: React.FC = () => {
                     {formatLimit(plan.live_executions_used || 0, limits.live_executions_monthly_limit)}
                   </TableCell>
                   <TableCell className="text-center text-sm">
-                    12 AM Daily
+                    <div className="flex flex-col items-center">
+                      <span>{limits.daily_reset_hour === 0 ? '12 AM' : limits.daily_reset_hour === 12 ? '12 PM' : limits.daily_reset_hour > 12 ? `${limits.daily_reset_hour - 12} PM` : `${limits.daily_reset_hour} AM`}</span>
+                      <span className="text-xs text-muted-foreground">{limits.reset_timezone}</span>
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm">
                     {getValidTill(plan)}
