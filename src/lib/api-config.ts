@@ -105,31 +105,38 @@ async function getGlobalConfig(client: any): Promise<ApiConfig | null> {
 
 /**
  * Get user-specific API configuration (for admin's local URL settings)
- * Each user has their own row where:
- * - base_url = their local/dev URL
- * - headers.use_local_url = toggle to enable local mode (stored in headers JSON)
+ * Each user has their own row with config_name = 'local'
+ * If the row exists, user is using local URL. If not, using global.
  */
 async function getUserConfig(client: any, userId: string): Promise<{ localUrl: string; useLocalUrl: boolean } | null> {
-  const { data, error } = await client
-    .from('api_configurations')
-    .select('base_url, headers')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (error || !data) {
-    return null;
-  }
-
   // Skip global config
   if (userId === GLOBAL_CONFIG_USER_ID) {
     return null;
   }
 
-  const headers = data.headers as { use_local_url?: boolean } | null;
-  
+  const { data, error } = await client
+    .from('api_configurations')
+    .select('base_url')
+    .eq('user_id', userId)
+    .eq('config_name', 'local')
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching user config:', error);
+    return null;
+  }
+
+  // If row exists, user has local URL enabled
+  if (data?.base_url) {
+    return {
+      localUrl: data.base_url,
+      useLocalUrl: true
+    };
+  }
+
   return {
-    localUrl: data.base_url || '',
-    useLocalUrl: headers?.use_local_url || false
+    localUrl: '',
+    useLocalUrl: false
   };
 }
 
@@ -205,8 +212,12 @@ export const getApiConfig = async (userId?: string): Promise<ApiConfig> => {
 
 /**
  * Update user's local URL settings (for admin users only)
- * Uses existing columns: base_url for the local URL, headers.use_local_url for the toggle
- * Each admin user gets their own row in the table
+ * Simple approach: Each admin user gets their own row with:
+ * - user_id = admin's user ID
+ * - base_url = their local URL
+ * - config_name = 'local' to distinguish from global
+ * 
+ * Global production URL has user_id = '__GLOBAL__' and config_name = 'default'
  */
 export const updateUserLocalUrl = async (
   localUrl: string, 
@@ -216,57 +227,51 @@ export const updateUserLocalUrl = async (
   try {
     const client = await getAuthenticatedClient();
 
-    // Check if user config exists (not the global one)
-    const { data: existingConfig } = await client
-      .from('api_configurations')
-      .select('id')
-      .eq('user_id', userId)
-      .maybeSingle();
-
     // Skip if this is global config
     if (userId === GLOBAL_CONFIG_USER_ID) {
       console.error('❌ Cannot update global config with this function');
       return false;
     }
 
-    if (existingConfig) {
-      // Update existing user config
+    if (useLocalUrl && localUrl.trim()) {
+      // User wants to use local URL - upsert their row
+      // Use 'local' as config_name to distinguish from any other configs
       const { error } = await client
         .from('api_configurations')
-        .update({
-          base_url: localUrl,
-          headers: { use_local_url: useLocalUrl },
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error('❌ Error updating user local URL:', error);
-        return false;
-      }
-    } else {
-      // Create new user config row
-      const { error } = await client
-        .from('api_configurations')
-        .insert({
+        .upsert({
           user_id: userId,
-          base_url: localUrl,
-          headers: { use_local_url: useLocalUrl },
-          config_name: 'default',
+          config_name: 'local',
+          base_url: localUrl.trim(),
           timeout: 30000,
-          retries: 3
+          retries: 3,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,config_name'
         });
 
       if (error) {
-        console.error('❌ Error creating user config:', error);
+        console.error('❌ Error upserting user local URL:', error);
         return false;
       }
+      console.log('✅ User local URL saved:', localUrl);
+    } else {
+      // User toggled OFF or cleared URL - delete their local config row
+      const { error } = await client
+        .from('api_configurations')
+        .delete()
+        .eq('user_id', userId)
+        .eq('config_name', 'local');
+
+      if (error) {
+        console.error('❌ Error deleting user local URL config:', error);
+        // Not a critical error - row might not exist
+      }
+      console.log('✅ User local URL config removed (using global)');
     }
 
     // Clear user's cache
     configCache.delete(userId);
     
-    console.log('✅ User local URL updated successfully');
     return true;
 
   } catch (error) {
