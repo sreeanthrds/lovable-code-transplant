@@ -13,7 +13,7 @@ import {
   LogIn
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useClerkUser } from '@/hooks/useClerkUser';
+import { useAppAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import AuthModal from '../auth/AuthModal';
 import userTradingDoodle from '@/assets/user-trading-doodle.png';
@@ -35,7 +35,7 @@ interface BenefitProps {
 }
 
 const BenefitCard = ({ icon, title, description, delay, link, color }: BenefitProps) => {
-  const { isAuthenticated } = useClerkUser();
+  const { isAuthenticated } = useAppAuth();
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; mode: 'signin' | 'signup' }>({
     isOpen: false,
     mode: 'signin'
@@ -88,7 +88,7 @@ const BenefitCard = ({ icon, title, description, delay, link, color }: BenefitPr
 };
 
 const Benefits = () => {
-  const { isAuthenticated } = useClerkUser();
+  const { isAuthenticated } = useAppAuth();
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; mode: 'signin' | 'signup' }>({
     isOpen: false,
     mode: 'signin'

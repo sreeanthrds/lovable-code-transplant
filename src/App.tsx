@@ -23,6 +23,7 @@ import AdminSetup from "./pages/AdminSetup";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import Demo from "./pages/Demo";
+import Auth from "./pages/Auth";
 
 import ColorPalette from "./pages/ColorPalette";
 import PitchDeck from "./pages/PitchDeck";
@@ -57,6 +58,7 @@ const App = () => {
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/documentation" element={<Documentation />} />
               <Route path="/demo" element={<Demo />} />
+              <Route path="/auth" element={<Auth />} />
               
               <Route path="/pitch" element={<PitchDeck />} />
               <Route path="/color-palette" element={<ColorPalette />} />

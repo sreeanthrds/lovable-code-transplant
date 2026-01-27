@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useClerkUser } from '@/hooks/useClerkUser';
+import { useAppAuth } from '@/contexts/AuthContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { getApiConfig, getActiveApiUrl, apiClient } from '@/lib/api-config';
 
@@ -16,7 +16,7 @@ interface ApiConfig {
  * Automatically configures the API client with user context
  */
 export const useApiConfig = () => {
-  const { user } = useClerkUser();
+  const { user } = useAppAuth();
   const { isAdmin } = useAdminRole();
   const [config, setConfig] = useState<ApiConfig | null>(null);
   const [activeUrl, setActiveUrl] = useState<string>('');

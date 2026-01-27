@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useAppAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { adminService, UserProfile } from '@/lib/supabase/services/admin-service';
@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Users, Mail, Phone, Calendar } from 'lucide-react';
 
 const UserAnalytics: React.FC = () => {
-  const { user } = useUser();
+  const { user } = useAppAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();

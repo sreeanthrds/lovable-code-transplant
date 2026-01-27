@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useAppAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -10,7 +10,7 @@ import { PLAN_CONFIGS } from '@/types/billing';
 import { format } from 'date-fns';
 
 const UserPaymentHistoryTab: React.FC = () => {
-  const { user } = useUser();
+  const { user } = useAppAuth();
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState<PaymentHistory[]>([]);
 

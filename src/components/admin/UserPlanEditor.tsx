@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useAppAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,7 +34,7 @@ const UserPlanEditor: React.FC<UserPlanEditorProps> = ({
   currentPlan,
   onPlanUpdated,
 }) => {
-  const { user: adminUser } = useUser();
+  const { user: adminUser } = useAppAuth();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   
