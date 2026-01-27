@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useAppAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Shield, Upload, Database } from 'lucide-react';
@@ -12,7 +12,7 @@ import { DecryptedResult } from './decryption/DecryptedResult';
 import { DecryptionInstructions } from './decryption/DecryptionInstructions';
 
 const StrategyDecryption: React.FC = () => {
-  const { user } = useUser();
+  const { user } = useAppAuth();
   const { isAdmin } = useAdminRole();
   const [encryptedData, setEncryptedData] = useState('');
   const [decryptedData, setDecryptedData] = useState('');

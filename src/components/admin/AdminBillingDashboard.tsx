@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useAppAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,7 @@ import { UserPlan, PLAN_CONFIGS, PlanType, PlanStatusType } from '@/types/billin
 import { format } from 'date-fns';
 
 const AdminBillingDashboard: React.FC = () => {
-  const { user: adminUser } = useUser();
+  const { user: adminUser } = useAppAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<UserWithPlan[]>([]);

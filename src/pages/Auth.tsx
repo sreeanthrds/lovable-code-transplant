@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { useAppAuth } from '@/contexts/AuthContext';
 import { 
   signInWithPhoneOtp, 
   signInWithEmailOtp, 
@@ -14,19 +16,16 @@ import {
   verifyEmailOtp
 } from '@/lib/supabase/auth';
 import { Phone, Mail, Loader2, ArrowLeft, Chrome } from 'lucide-react';
-
-interface AuthModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  mode: 'signin' | 'signup';
-  onModeSwitch?: (mode: 'signin' | 'signup') => void;
-}
+import Logo from '@/components/ui/logo';
 
 type AuthStep = 'input' | 'verify';
 type AuthMethod = 'phone' | 'email';
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode }) => {
+const AuthPage: React.FC = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAuthenticated, isLoaded } = useAppAuth();
+
   const [authMethod, setAuthMethod] = useState<AuthMethod>('phone');
   const [step, setStep] = useState<AuthStep>('input');
   const [loading, setLoading] = useState(false);
@@ -36,16 +35,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode }) => {
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
 
-  const resetState = () => {
-    setStep('input');
-    setOtp('');
-    setLoading(false);
-  };
-
-  const handleClose = () => {
-    resetState();
-    onClose();
-  };
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isLoaded && isAuthenticated) {
+      navigate('/app/strategies');
+    }
+  }, [isAuthenticated, isLoaded, navigate]);
 
   const handleSendOtp = async () => {
     setLoading(true);
@@ -98,7 +93,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode }) => {
           title: 'Success',
           description: 'You have been signed in successfully!',
         });
-        handleClose();
+        navigate('/app/strategies');
       } else {
         toast({
           title: 'Verification Failed',
@@ -139,32 +134,39 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode }) => {
     setOtp('');
   };
 
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {mode === 'signin' ? 'Sign In' : 'Sign Up'}
-          </DialogTitle>
-          <DialogDescription>
-            {mode === 'signin' 
-              ? 'Welcome back! Sign in to access your account.' 
-              : 'Create an account to start building trading strategies.'}
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="py-4 space-y-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <Logo />
+          </div>
+          <CardTitle className="text-2xl">Welcome to TradeLayout</CardTitle>
+          <CardDescription>
+            Sign in to your account or create a new one
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
           {/* OAuth Section */}
           <Button
             variant="outline"
-            className="w-full h-11"
+            className="w-full h-12 text-base"
             onClick={handleGoogleSignIn}
             disabled={loading}
           >
             {loading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
             ) : (
-              <Chrome className="h-4 w-4 mr-2" />
+              <Chrome className="h-5 w-5 mr-2" />
             )}
             Continue with Google
           </Button>
@@ -197,22 +199,27 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode }) => {
               {step === 'input' ? (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="modal-phone">Phone Number</Label>
+                    <Label htmlFor="phone">Phone Number</Label>
                     <Input
-                      id="modal-phone"
+                      id="phone"
                       type="tel"
                       placeholder="+91 9876543210"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       disabled={loading}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Include country code (e.g., +91 for India)
+                    </p>
                   </div>
                   <Button
                     className="w-full"
                     onClick={handleSendOtp}
                     disabled={loading || phone.length < 10}
                   >
-                    {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
                     Send OTP
                   </Button>
                 </div>
@@ -228,9 +235,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode }) => {
                     Back
                   </Button>
                   <div className="space-y-2">
-                    <Label htmlFor="modal-phone-otp">Verification Code</Label>
+                    <Label htmlFor="phone-otp">Verification Code</Label>
                     <Input
-                      id="modal-phone-otp"
+                      id="phone-otp"
                       type="text"
                       placeholder="Enter 6-digit code"
                       value={otp}
@@ -238,13 +245,18 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode }) => {
                       disabled={loading}
                       maxLength={6}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Enter the code sent to {phone}
+                    </p>
                   </div>
                   <Button
                     className="w-full"
                     onClick={handleVerifyOtp}
                     disabled={loading || otp.length !== 6}
                   >
-                    {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
                     Verify & Sign In
                   </Button>
                 </div>
@@ -255,9 +267,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode }) => {
               {step === 'input' ? (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="modal-email">Email Address</Label>
+                    <Label htmlFor="email">Email Address</Label>
                     <Input
-                      id="modal-email"
+                      id="email"
                       type="email"
                       placeholder="you@example.com"
                       value={email}
@@ -270,7 +282,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode }) => {
                     onClick={handleSendOtp}
                     disabled={loading || !email.includes('@')}
                   >
-                    {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
                     Send OTP
                   </Button>
                 </div>
@@ -286,9 +300,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode }) => {
                     Back
                   </Button>
                   <div className="space-y-2">
-                    <Label htmlFor="modal-email-otp">Verification Code</Label>
+                    <Label htmlFor="email-otp">Verification Code</Label>
                     <Input
-                      id="modal-email-otp"
+                      id="email-otp"
                       type="text"
                       placeholder="Enter 6-digit code"
                       value={otp}
@@ -296,23 +310,32 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode }) => {
                       disabled={loading}
                       maxLength={6}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Enter the code sent to {email}
+                    </p>
                   </div>
                   <Button
                     className="w-full"
                     onClick={handleVerifyOtp}
                     disabled={loading || otp.length !== 6}
                   >
-                    {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
                     Verify & Sign In
                   </Button>
                 </div>
               )}
             </TabsContent>
           </Tabs>
-        </div>
-      </DialogContent>
-    </Dialog>
+
+          <p className="text-xs text-center text-muted-foreground">
+            By signing in, you agree to our Terms of Service and Privacy Policy.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
-export default AuthModal;
+export default AuthPage;

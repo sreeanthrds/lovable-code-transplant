@@ -3,14 +3,12 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Play, Sparkles, Loader2 } from 'lucide-react';
 import { useAppAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
 import AuthModal from '../auth/AuthModal';
 import { initiatePayment } from '@/lib/services/payment-service';
 import { toast } from '@/hooks/use-toast';
 
 const HeroSection = () => {
-  const { isAuthenticated } = useAppAuth();
-  const { user } = useUser();
+  const { isAuthenticated, user } = useAppAuth();
   const navigate = useNavigate();
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; mode: 'signin' | 'signup' }>({
     isOpen: false,
@@ -45,9 +43,9 @@ const HeroSection = () => {
     
     try {
       await initiatePayment(
-        user.id,
-        user.emailAddresses[0]?.emailAddress || '',
-        user.fullName || user.firstName || 'User',
+        user?.id || '',
+        user?.email || '',
+        user?.fullName || user?.firstName || 'User',
         'LAUNCH',
         'monthly',
         () => {

@@ -3,7 +3,7 @@
 // Fetches plan, usage, and payment data
 // ============================================
 import { useState, useEffect, useCallback } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useAppAuth } from '@/contexts/AuthContext';
 import { tradelayoutClient } from '@/lib/supabase/tradelayout-client';
 import { getUserPaymentHistory } from '@/lib/services/payment-service';
 import type { BillingSummary, PaymentRecord, PlanInfo, UsageQuotas, AddOns, PlanType } from '@/types/billing';
@@ -23,14 +23,14 @@ interface UserPlanRow {
 }
 
 export const useBilling = () => {
-  const { user } = useUser();
+  const { userId } = useAppAuth();
   const [summary, setSummary] = useState<BillingSummary | null>(null);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchBillingData = useCallback(async () => {
-    if (!user?.id) {
+    if (!userId) {
       setLoading(false);
       return;
     }
@@ -43,7 +43,7 @@ export const useBilling = () => {
       const { data: planData, error: planError } = await tradelayoutClient
         .from('user_plans' as any)
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(1)
@@ -107,7 +107,7 @@ export const useBilling = () => {
       };
 
       // Fetch payment history
-      const paymentHistory = await getUserPaymentHistory(user.id);
+      const paymentHistory = await getUserPaymentHistory(userId);
       const formattedPayments: PaymentRecord[] = paymentHistory.map(p => ({
         payment_id: p.payment_id,
         order_id: p.order_id,
@@ -146,7 +146,7 @@ export const useBilling = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [userId]);
 
   useEffect(() => {
     fetchBillingData();

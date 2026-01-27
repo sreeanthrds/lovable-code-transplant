@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useAppAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,7 +43,7 @@ interface UserRole {
 }
 
 const UserManagementForm: React.FC = () => {
-  const { user } = useUser();
+  const { user } = useAppAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [userActivities, setUserActivities] = useState<UserActivity[]>([]);
@@ -116,42 +116,7 @@ const UserManagementForm: React.FC = () => {
     }
   };
 
-  const syncClerkUsers = async () => {
-    setSyncing(true);
-    try {
-      console.log('Starting user sync from Clerk...');
-      
-      const { data, error } = await supabase.functions.invoke('sync-clerk-users', {
-        method: 'POST'
-      });
-
-      if (error) {
-        console.error('Sync error:', error);
-        toast({
-          title: "Sync Error",
-          description: error.message || "Failed to sync users from Clerk",
-          variant: "destructive"
-        });
-      } else {
-        console.log('Sync completed:', data);
-        toast({
-          title: "Sync Completed",
-          description: `${data.results?.created || 0} users created, ${data.results?.updated || 0} users updated`,
-        });
-        // Reload the user list
-        loadData();
-      }
-    } catch (error: any) {
-      console.error('Sync function error:', error);
-      toast({
-        title: "Sync Error",
-        description: error.message || "Failed to sync users from Clerk",
-        variant: "destructive"
-      });
-    } finally {
-      setSyncing(false);
-    }
-  };
+  // Sync function removed - Supabase Auth handles user management directly
 
   const updateUserProfile = async (userId: string, updates: Partial<UserProfile>) => {
     try {
@@ -344,16 +309,16 @@ const UserManagementForm: React.FC = () => {
           {/* Sync Button and Search */}
           <div className="flex gap-4 mb-6">
             <Button 
-              onClick={syncClerkUsers} 
-              disabled={syncing}
+              onClick={loadData} 
+              disabled={loading}
               className="flex items-center gap-2"
             >
-              {syncing ? (
+              {loading ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
               ) : (
-                <Download className="w-4 h-4" />
+                <RefreshCw className="w-4 h-4" />
               )}
-              {syncing ? 'Syncing...' : 'Sync from Clerk'}
+              {loading ? 'Loading...' : 'Refresh'}
             </Button>
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
