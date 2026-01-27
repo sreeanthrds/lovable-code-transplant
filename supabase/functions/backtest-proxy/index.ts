@@ -7,56 +7,120 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
 };
 
-// Fallback URL if no config found
-const DEFAULT_BACKTEST_URL = Deno.env.get("BACKTEST_API_URL") || "https://eb47765da84c.ngrok-free.app";
+// Global configuration user ID constant
+const GLOBAL_CONFIG_USER_ID = '__GLOBAL__';
 
-// Cache for the API URL to avoid repeated DB calls
-let cachedApiUrl: string | null = null;
-let cacheExpiry = 0;
+// Fallback URL if no config found
+const DEFAULT_BACKTEST_URL = Deno.env.get("BACKTEST_API_URL") || "https://www.tradelayout.com";
+
+// Cache for the global API URL to avoid repeated DB calls
+let cachedGlobalApiUrl: string | null = null;
+let globalCacheExpiry = 0;
 const CACHE_DURATION = 60 * 1000; // 1 minute cache
 
-async function getBacktestApiUrl(userId?: string): Promise<string> {
+// User-specific cache
+const userUrlCache = new Map<string, { url: string; expiry: number }>();
+
+/**
+ * Get the global production API URL
+ */
+async function getGlobalApiUrl(supabase: any): Promise<string> {
   const now = Date.now();
   
   // Return cached URL if still valid
-  if (cachedApiUrl && now < cacheExpiry) {
-    return cachedApiUrl;
+  if (cachedGlobalApiUrl && now < globalCacheExpiry) {
+    return cachedGlobalApiUrl;
   }
 
   try {
-    // Use service role key to bypass RLS
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    // Try to get the most recent API configuration
     const { data, error } = await supabase
       .from('api_configurations')
       .select('base_url')
-      .order('updated_at', { ascending: false })
-      .limit(1)
+      .eq('user_id', GLOBAL_CONFIG_USER_ID)
       .maybeSingle();
 
     if (error) {
-      console.error('[backtest-proxy] Error fetching API config:', error);
+      console.error('[backtest-proxy] Error fetching global API config:', error);
       return DEFAULT_BACKTEST_URL;
     }
 
     if (data?.base_url) {
-      console.log('[backtest-proxy] Using API URL from database:', data.base_url);
-      cachedApiUrl = data.base_url;
-      cacheExpiry = now + CACHE_DURATION;
+      console.log('[backtest-proxy] Using global API URL:', data.base_url);
+      cachedGlobalApiUrl = data.base_url;
+      globalCacheExpiry = now + CACHE_DURATION;
       return data.base_url;
     }
 
-    console.log('[backtest-proxy] No API config found, using default:', DEFAULT_BACKTEST_URL);
+    console.log('[backtest-proxy] No global config found, using default:', DEFAULT_BACKTEST_URL);
     return DEFAULT_BACKTEST_URL;
 
   } catch (error) {
-    console.error('[backtest-proxy] Error getting API URL:', error);
+    console.error('[backtest-proxy] Error getting global API URL:', error);
     return DEFAULT_BACKTEST_URL;
   }
+}
+
+/**
+ * Get user-specific local URL if they have one configured and enabled
+ */
+async function getUserLocalUrl(supabase: any, userId: string): Promise<string | null> {
+  const now = Date.now();
+  
+  // Check user cache
+  const cached = userUrlCache.get(userId);
+  if (cached && now < cached.expiry) {
+    return cached.url || null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('api_configurations')
+      .select('local_url, use_local_url')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[backtest-proxy] Error fetching user API config:', error);
+      return null;
+    }
+
+    if (data?.use_local_url && data?.local_url) {
+      console.log('[backtest-proxy] User has local URL enabled:', data.local_url);
+      userUrlCache.set(userId, { url: data.local_url, expiry: now + CACHE_DURATION });
+      return data.local_url;
+    }
+
+    // Cache that user doesn't have local URL
+    userUrlCache.set(userId, { url: '', expiry: now + CACHE_DURATION });
+    return null;
+
+  } catch (error) {
+    console.error('[backtest-proxy] Error getting user local URL:', error);
+    return null;
+  }
+}
+
+/**
+ * Get the appropriate API URL for the request
+ * Priority: User local URL (if enabled) > Global production URL > Default fallback
+ */
+async function getBacktestApiUrl(userId?: string): Promise<string> {
+  // Use service role key to bypass RLS
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  );
+
+  // If user ID provided, check for their local URL first
+  if (userId) {
+    const userLocalUrl = await getUserLocalUrl(supabase, userId);
+    if (userLocalUrl) {
+      return userLocalUrl;
+    }
+  }
+
+  // Fall back to global production URL
+  return await getGlobalApiUrl(supabase);
 }
 
 serve(async (req) => {
@@ -71,7 +135,7 @@ serve(async (req) => {
     // Get user ID from header if provided
     const userId = req.headers.get('x-user-id') || undefined;
     
-    // Get the backtest API URL from database
+    // Get the backtest API URL based on user context
     const BACKTEST_API_BASE = await getBacktestApiUrl(userId);
     
     // Extract path after 'backtest-proxy'
@@ -80,6 +144,7 @@ serve(async (req) => {
     const targetUrl = `${BACKTEST_API_BASE}${path}${url.search}`;
 
     console.log(`[backtest-proxy] ${req.method} ${url.pathname}`);
+    console.log(`[backtest-proxy] User ID: ${userId || 'anonymous'}`);
     console.log(`[backtest-proxy] Target URL: ${targetUrl}`);
 
     const headers: Record<string, string> = {

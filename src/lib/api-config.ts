@@ -5,30 +5,40 @@ import type { Database } from '@/integrations/supabase/types';
 const TRADELAYOUT_URL = "https://oonepfqgzpdssfzvokgk.supabase.co";
 const TRADELAYOUT_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vbmVwZnFnenBkc3NmenZva2drIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxOTk5MTQsImV4cCI6MjA2NTc3NTkxNH0.lDCxgwj36EniiZthzZxhM_8coXQhXlrvv9UzemyYu6A";
 
+// Global configuration user ID constant
+const GLOBAL_CONFIG_USER_ID = '__GLOBAL__';
+
 /**
  * API Configuration Service
  * Manages dynamic API URLs using Supabase database storage
  * Works with Clerk authentication by accepting user ID as parameter
+ * 
+ * URL Resolution:
+ * - Admins with useLocalUrl=true -> use their localUrl
+ * - Everyone else -> use global baseUrl
  */
 
 interface ApiConfig {
-  baseUrl: string;
-  devUrl: string;
-  useDevUrl: boolean;
+  baseUrl: string;      // Global production URL (read-only for regular admins)
+  localUrl: string;     // User-specific local development URL (only for admins)
+  useLocalUrl: boolean; // Toggle for admin users to switch to their local URL
   timeout: number;
   retries: number;
 }
 
 /**
- * Get the active API URL based on configuration
+ * Get the active API URL based on configuration and admin status
  */
-export const getActiveApiUrl = (config: ApiConfig): string => {
-  return config.useDevUrl && config.devUrl ? config.devUrl : config.baseUrl;
+export const getActiveApiUrl = (config: ApiConfig, isAdmin: boolean = false): string => {
+  // Admin users can use their local URL if enabled
+  if (isAdmin && config.useLocalUrl && config.localUrl) {
+    return config.localUrl;
+  }
+  return config.baseUrl;
 };
 
-// Cache configuration for 5 minutes
-let cachedConfig: ApiConfig | null = null;
-let configExpiry = 0;
+// Cache configuration with user-specific keys
+const configCache = new Map<string, { config: ApiConfig; expiry: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 /**
@@ -71,50 +81,111 @@ async function getAuthenticatedClient() {
 }
 
 /**
+ * Get global API configuration (used as the production URL for all users)
+ */
+async function getGlobalConfig(client: any): Promise<ApiConfig | null> {
+  const { data, error } = await client
+    .from('api_configurations')
+    .select('*')
+    .eq('user_id', GLOBAL_CONFIG_USER_ID)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return {
+    baseUrl: data.base_url,
+    localUrl: '',
+    useLocalUrl: false,
+    timeout: data.timeout,
+    retries: data.retries
+  };
+}
+
+/**
+ * Get user-specific API configuration (for admin's local URL settings)
+ */
+async function getUserConfig(client: any, userId: string): Promise<{ localUrl: string; useLocalUrl: boolean } | null> {
+  const { data, error } = await client
+    .from('api_configurations')
+    .select('local_url, use_local_url')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return {
+    localUrl: (data as any).local_url || '',
+    useLocalUrl: (data as any).use_local_url || false
+  };
+}
+
+// Get the Supabase edge function proxy URL (TradeLayout project)
+const getProxyBaseUrl = (): string => {
+  return 'https://www.tradelayout.com';
+};
+
+const getDefaultConfig = (): ApiConfig => {
+  return {
+    baseUrl: getProxyBaseUrl(),
+    localUrl: '',
+    useLocalUrl: false,
+    timeout: 30000,
+    retries: 3
+  };
+};
+
+/**
  * Get API configuration from Supabase database
+ * Combines global config (for baseUrl) with user-specific config (for localUrl)
  */
 export const getApiConfig = async (userId?: string): Promise<ApiConfig> => {
   const now = Date.now();
+  const cacheKey = userId || 'anonymous';
   
   // Return cached config if still valid
-  if (cachedConfig && now < configExpiry) {
-    return cachedConfig;
+  const cached = configCache.get(cacheKey);
+  if (cached && now < cached.expiry) {
+    return cached.config;
   }
 
   try {
-    if (!userId) {
-      return getDefaultConfig();
-    }
-
-    // Use authenticated client with Clerk JWT for RLS
     const client = await getAuthenticatedClient();
-
-    const { data: configData, error } = await client
-      .from('api_configurations')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (error) {
-      console.error('❌ Error fetching API config:', error);
-      return getDefaultConfig();
+    
+    // Always get the global config for the production baseUrl
+    const globalConfig = await getGlobalConfig(client);
+    
+    if (!globalConfig) {
+      const defaultConfig = getDefaultConfig();
+      configCache.set(cacheKey, { config: defaultConfig, expiry: now + CACHE_DURATION });
+      return defaultConfig;
     }
 
-    if (configData) {
-      const config: ApiConfig = {
-        baseUrl: configData.base_url,
-        devUrl: (configData as any).dev_url || '',
-        useDevUrl: (configData as any).use_dev_url || false,
-        timeout: configData.timeout,
-        retries: configData.retries
-      };
-      
-      cachedConfig = config;
-      configExpiry = now + CACHE_DURATION;
-      return config;
+    // If user is logged in, get their local URL settings
+    let localUrl = '';
+    let useLocalUrl = false;
+    
+    if (userId) {
+      const userConfig = await getUserConfig(client, userId);
+      if (userConfig) {
+        localUrl = userConfig.localUrl;
+        useLocalUrl = userConfig.useLocalUrl;
+      }
     }
 
-    return getDefaultConfig();
+    const config: ApiConfig = {
+      baseUrl: globalConfig.baseUrl,
+      localUrl,
+      useLocalUrl,
+      timeout: globalConfig.timeout,
+      retries: globalConfig.retries
+    };
+
+    configCache.set(cacheKey, { config, expiry: now + CACHE_DURATION });
+    return config;
 
   } catch (error) {
     console.error('❌ Error fetching API config:', error);
@@ -122,94 +193,181 @@ export const getApiConfig = async (userId?: string): Promise<ApiConfig> => {
   }
 };
 
-// Get the Supabase edge function proxy URL (TradeLayout project)
-const getProxyBaseUrl = (): string => {
-  // Using the configured domain with IP mapping
-  return 'https://www.tradelayout.com';
-};
-
-const getDefaultConfig = (): ApiConfig => {
-  const defaultConfig: ApiConfig = {
-    baseUrl: getProxyBaseUrl(),
-    devUrl: '',
-    useDevUrl: false,
-    timeout: 30000,
-    retries: 3
-  };
-
-  cachedConfig = defaultConfig;
-  configExpiry = Date.now() + CACHE_DURATION;
-  return defaultConfig;
-};
-
 /**
- * Update API configuration in Supabase database
- * Uses direct database operations with authenticated client (no edge function needed)
+ * Update user's local URL settings (for admin users only)
  */
-export const updateApiConfig = async (config: Partial<ApiConfig>, userId?: string): Promise<boolean> => {
+export const updateUserLocalUrl = async (
+  localUrl: string, 
+  useLocalUrl: boolean, 
+  userId: string
+): Promise<boolean> => {
   try {
-    if (!userId) {
-      console.error('❌ No user ID provided for API config update');
-      return false;
-    }
-
-    // Get current config to merge with new values
-    const currentConfig = await getApiConfig(userId);
-    const newConfig = { ...currentConfig, ...config };
-
-    // Use authenticated client with Clerk JWT for RLS
     const client = await getAuthenticatedClient();
 
-    // Update existing configuration (TradeLayout schema uses user_id as unique key)
-    const { error } = await client
+    // Check if user config exists
+    const { data: existingConfig } = await client
       .from('api_configurations')
-      .update({
-        base_url: newConfig.baseUrl,
-        dev_url: newConfig.devUrl || '',
-        use_dev_url: newConfig.useDevUrl || false,
-        timeout: newConfig.timeout,
-        retries: newConfig.retries,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId);
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-    if (error) {
-      console.error('❌ Error updating API config:', error);
-      return false;
+    if (existingConfig) {
+      // Update existing config
+      const { error } = await client
+        .from('api_configurations')
+        .update({
+          local_url: localUrl,
+          use_local_url: useLocalUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('❌ Error updating user local URL:', error);
+        return false;
+      }
+    } else {
+      // Create new user config with default values and local URL
+      const { error } = await client
+        .from('api_configurations')
+        .insert({
+          user_id: userId,
+          base_url: getProxyBaseUrl(),
+          local_url: localUrl,
+          use_local_url: useLocalUrl,
+          config_name: 'User Config',
+          timeout: 30000,
+          retries: 3
+        });
+
+      if (error) {
+        console.error('❌ Error creating user config:', error);
+        return false;
+      }
     }
 
-    // Clear cache to force refresh
-    cachedConfig = newConfig;
-    configExpiry = Date.now() + CACHE_DURATION;
-
-    console.log('✅ API configuration updated successfully');
+    // Clear user's cache
+    configCache.delete(userId);
+    
+    console.log('✅ User local URL updated successfully');
     return true;
 
   } catch (error) {
-    console.error('❌ Error updating API config:', error);
+    console.error('❌ Error updating user local URL:', error);
     return false;
   }
 };
 
 /**
- * Get the current API base URL
+ * Update global production URL (for super admin only)
  */
-export const getApiBaseUrl = async (userId?: string): Promise<string> => {
-  const config = await getApiConfig(userId);
-  return getActiveApiUrl(config);
+export const updateGlobalProductionUrl = async (baseUrl: string): Promise<boolean> => {
+  try {
+    const client = await getAuthenticatedClient();
+
+    // Check if global config exists
+    const { data: existingConfig } = await client
+      .from('api_configurations')
+      .select('id')
+      .eq('user_id', GLOBAL_CONFIG_USER_ID)
+      .maybeSingle();
+
+    if (existingConfig) {
+      // Update existing global config
+      const { error } = await client
+        .from('api_configurations')
+        .update({
+          base_url: baseUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', GLOBAL_CONFIG_USER_ID);
+
+      if (error) {
+        console.error('❌ Error updating global production URL:', error);
+        return false;
+      }
+    } else {
+      // Create global config
+      const { error } = await client
+        .from('api_configurations')
+        .insert({
+          user_id: GLOBAL_CONFIG_USER_ID,
+          base_url: baseUrl,
+          config_name: 'Global Production',
+          timeout: 30000,
+          retries: 3
+        });
+
+      if (error) {
+        console.error('❌ Error creating global config:', error);
+        return false;
+      }
+    }
+
+    // Clear all caches since global URL affects everyone
+    configCache.clear();
+    
+    console.log('✅ Global production URL updated successfully');
+    return true;
+
+  } catch (error) {
+    console.error('❌ Error updating global production URL:', error);
+    return false;
+  }
 };
 
 /**
- * HTTP client with dynamic configuration
+ * Legacy function - kept for backward compatibility
+ * @deprecated Use updateUserLocalUrl or updateGlobalProductionUrl instead
+ */
+export const updateApiConfig = async (config: Partial<ApiConfig>, userId?: string): Promise<boolean> => {
+  if (!userId) {
+    console.error('❌ No user ID provided for API config update');
+    return false;
+  }
+
+  // If updating local URL settings
+  if (config.localUrl !== undefined || config.useLocalUrl !== undefined) {
+    return updateUserLocalUrl(
+      config.localUrl || '',
+      config.useLocalUrl || false,
+      userId
+    );
+  }
+
+  return false;
+};
+
+/**
+ * Get the current API base URL
+ */
+export const getApiBaseUrl = async (userId?: string, isAdmin: boolean = false): Promise<string> => {
+  const config = await getApiConfig(userId);
+  return getActiveApiUrl(config, isAdmin);
+};
+
+/**
+ * HTTP client with dynamic configuration and admin context
  */
 export class ApiClient {
+  private userId?: string;
+  private isAdmin: boolean = false;
+
+  /**
+   * Set user context for URL resolution
+   */
+  setContext(userId?: string, isAdmin: boolean = false) {
+    this.userId = userId;
+    this.isAdmin = isAdmin;
+  }
+
   private async getConfig(): Promise<ApiConfig> {
-    return await getApiConfig();
+    return await getApiConfig(this.userId);
   }
 
   async get(endpoint: string, options?: RequestInit): Promise<Response> {
     const config = await this.getConfig();
-    const url = `${getActiveApiUrl(config)}${endpoint}`;
+    const url = `${getActiveApiUrl(config, this.isAdmin)}${endpoint}`;
     
     return this.fetchWithRetry(url, {
       method: 'GET',
@@ -223,7 +381,7 @@ export class ApiClient {
 
   async post(endpoint: string, data?: any, options?: RequestInit): Promise<Response> {
     const config = await this.getConfig();
-    const url = `${getActiveApiUrl(config)}${endpoint}`;
+    const url = `${getActiveApiUrl(config, this.isAdmin)}${endpoint}`;
     
     return this.fetchWithRetry(url, {
       method: 'POST',
@@ -238,7 +396,7 @@ export class ApiClient {
 
   async put(endpoint: string, data?: any, options?: RequestInit): Promise<Response> {
     const config = await this.getConfig();
-    const url = `${getActiveApiUrl(config)}${endpoint}`;
+    const url = `${getActiveApiUrl(config, this.isAdmin)}${endpoint}`;
     
     return this.fetchWithRetry(url, {
       method: 'PUT',
@@ -253,7 +411,7 @@ export class ApiClient {
 
   async delete(endpoint: string, options?: RequestInit): Promise<Response> {
     const config = await this.getConfig();
-    const url = `${getActiveApiUrl(config)}${endpoint}`;
+    const url = `${getActiveApiUrl(config, this.isAdmin)}${endpoint}`;
     
     return this.fetchWithRetry(url, {
       method: 'DELETE',
@@ -309,9 +467,15 @@ export class ApiClient {
 export const apiClient = new ApiClient();
 
 /**
- * Clear API configuration cache
+ * Clear API configuration cache for a specific user or all users
  */
-export const clearApiConfigCache = (): void => {
-  cachedConfig = null;
-  configExpiry = 0;
+export const clearApiConfigCache = (userId?: string): void => {
+  if (userId) {
+    configCache.delete(userId);
+  } else {
+    configCache.clear();
+  }
 };
+
+// Export the global config user ID for reference
+export { GLOBAL_CONFIG_USER_ID };
