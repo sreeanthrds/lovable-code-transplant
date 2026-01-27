@@ -14,7 +14,7 @@ const navItems = [
   { label: 'Build Strategy', href: '#build-strategy', isScroll: true },
   { label: 'Why Visual', href: '#why-visual', isScroll: true },
   { label: 'Pricing', href: '#pricing', isScroll: true },
-  { label: 'Blog', href: '/blog' },
+  
 ];
 
 const WebsiteNavbar = () => {
