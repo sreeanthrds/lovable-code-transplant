@@ -47,8 +47,11 @@ export const ImportConfirmationDialog: React.FC<ImportConfirmationDialogProps> =
 
   const handleConfirm = () => {
     if (isValidName) {
-      onConfirm(newName.trim());
       onClose();
+      // Small delay to ensure dialog closes before navigation
+      setTimeout(() => {
+        onConfirm(newName.trim());
+      }, 100);
     }
   };
 
