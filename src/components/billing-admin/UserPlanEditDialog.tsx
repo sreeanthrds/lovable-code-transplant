@@ -94,14 +94,17 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
       }
       
       if (isImplicitFree) {
-        // Insert a new user_plans record for this free user
+        // Upsert a user_plans record for this free user (insert or update if exists)
         const { error } = await (authClient as any)
           .from('user_plans')
-          .insert({
+          .upsert({
             user_id: plan.user_id,
             plan: 'FREE',
             status: 'active',
             ...updateData,
+          }, { 
+            onConflict: 'user_id',
+            ignoreDuplicates: false 
           });
         
         if (error) throw error;
