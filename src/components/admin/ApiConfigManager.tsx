@@ -5,24 +5,20 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { getApiConfig, updateApiConfig, clearApiConfigCache, getActiveApiUrl } from '@/lib/api-config';
+import { getApiConfig, updateUserLocalUrl, clearApiConfigCache, getActiveApiUrl } from '@/lib/api-config';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useClerkUser } from '@/hooks/useClerkUser';
 import { Loader2, Globe, Settings, RefreshCw, Server, Code } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 const ApiConfigManager: React.FC = () => {
-  const [baseUrl, setBaseUrl] = useState('');
-  const [devUrl, setDevUrl] = useState('');
-  const [useDevUrl, setUseDevUrl] = useState(false);
-  const [timeout, setTimeout] = useState(30000);
-  const [retries, setRetries] = useState(3);
+  const [globalBaseUrl, setGlobalBaseUrl] = useState('');
+  const [localUrl, setLocalUrl] = useState('');
+  const [useLocalUrl, setUseLocalUrl] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
-  const [testingConnection, setTestingConnection] = useState(false);
-  const [testingDevConnection, setTestingDevConnection] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'success' | 'error'>('unknown');
-  const [devConnectionStatus, setDevConnectionStatus] = useState<'unknown' | 'success' | 'error'>('unknown');
+  const [testingLocalConnection, setTestingLocalConnection] = useState(false);
+  const [localConnectionStatus, setLocalConnectionStatus] = useState<'unknown' | 'success' | 'error'>('unknown');
   
   const { toast } = useToast();
   const { isAdmin, loading: adminLoading } = useAdminRole();
@@ -38,11 +34,9 @@ const ApiConfigManager: React.FC = () => {
     try {
       setFetching(true);
       const config = await getApiConfig(user?.id);
-      setBaseUrl(config.baseUrl);
-      setDevUrl(config.devUrl || '');
-      setUseDevUrl(config.useDevUrl || false);
-      setTimeout(config.timeout);
-      setRetries(config.retries);
+      setGlobalBaseUrl(config.baseUrl);
+      setLocalUrl(config.localUrl || '');
+      setUseLocalUrl(config.useLocalUrl || false);
     } catch (error) {
       console.error('Error loading API config:', error);
       toast({
@@ -55,51 +49,41 @@ const ApiConfigManager: React.FC = () => {
     }
   };
 
-  const handleSaveConfig = async () => {
-    if (!baseUrl.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid base URL",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Basic URL validation
-    try {
-      new URL(baseUrl);
-    } catch {
-      toast({
-        title: "Error",
-        description: "Please enter a valid URL (e.g., http://localhost:3001)",
-        variant: "destructive"
-      });
-      return;
+  const handleSaveLocalConfig = async () => {
+    // Validate local URL if toggle is enabled
+    if (useLocalUrl && localUrl.trim()) {
+      try {
+        new URL(localUrl);
+      } catch {
+        toast({
+          title: "Error",
+          description: "Please enter a valid URL (e.g., http://localhost:3001)",
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
     setLoading(true);
 
     try {
-      const success = await updateApiConfig({
-        baseUrl: baseUrl.trim(),
-        devUrl: devUrl.trim(),
-        useDevUrl,
-        timeout,
-        retries
-      }, user?.id);
+      const success = await updateUserLocalUrl(
+        localUrl.trim(),
+        useLocalUrl,
+        user?.id || ''
+      );
 
       if (success) {
         toast({
           title: "Success",
-          description: "API configuration updated successfully",
+          description: "Your local API configuration updated successfully",
           variant: "default"
         });
-        setConnectionStatus('unknown');
-        setDevConnectionStatus('unknown');
+        setLocalConnectionStatus('unknown');
       } else {
         toast({
           title: "Error",
-          description: "Failed to update API configuration",
+          description: "Failed to update local API configuration",
           variant: "destructive"
         });
       }
@@ -115,22 +99,9 @@ const ApiConfigManager: React.FC = () => {
     }
   };
 
-  const testConnection = async (url: string, isDev: boolean = false) => {
-    if (isDev) {
-      setTestingDevConnection(true);
-      setDevConnectionStatus('unknown');
-    } else {
-      setTestingConnection(true);
-      setConnectionStatus('unknown');
-    }
-
-    const setStatus = (status: 'success' | 'error') => {
-      if (isDev) {
-        setDevConnectionStatus(status);
-      } else {
-        setConnectionStatus(status);
-      }
-    };
+  const testConnection = async (url: string) => {
+    setTestingLocalConnection(true);
+    setLocalConnectionStatus('unknown');
 
     const endpointsToTry = ['/health', '/api/health', '/ping', '/'];
 
@@ -154,12 +125,11 @@ const ApiConfigManager: React.FC = () => {
           
           clearTimeout(timeoutId);
 
-          // Any response (even 404) means server is reachable
           if (response.ok || response.status < 500) {
-            setStatus('success');
+            setLocalConnectionStatus('success');
             toast({
               title: "Connection Successful",
-              description: `${isDev ? 'Development' : 'Production'} API server is reachable`,
+              description: "Local development server is reachable",
               variant: "default"
             });
             succeeded = true;
@@ -167,12 +137,11 @@ const ApiConfigManager: React.FC = () => {
           }
         } catch (e) {
           lastError = e as Error;
-          // Continue trying other endpoints
         }
       }
 
       if (!succeeded) {
-        // If all endpoints failed, check if it's a CORS issue by trying no-cors
+        // Try no-cors as fallback
         try {
           const controller = new AbortController();
           const timeoutId = window.setTimeout(() => controller.abort(), 10000);
@@ -188,11 +157,10 @@ const ApiConfigManager: React.FC = () => {
 
           clearTimeout(timeoutId);
 
-          // no-cors request succeeded (opaque response) - server is likely reachable
-          setStatus('success');
+          setLocalConnectionStatus('success');
           toast({
             title: "Connection Likely Successful",
-            description: `${isDev ? 'Development' : 'Production'} server responded (CORS may block full verification)`,
+            description: "Local server responded (CORS may block full verification)",
             variant: "default"
           });
           succeeded = true;
@@ -202,10 +170,10 @@ const ApiConfigManager: React.FC = () => {
       }
 
       if (!succeeded) {
-        setStatus('error');
+        setLocalConnectionStatus('error');
         const errorMessage = lastError?.name === 'AbortError' 
           ? 'Connection timed out' 
-          : `Unable to reach the ${isDev ? 'development' : 'production'} API server`;
+          : 'Unable to reach the local development server';
         toast({
           title: "Connection Failed",
           description: errorMessage,
@@ -213,23 +181,19 @@ const ApiConfigManager: React.FC = () => {
         });
       }
     } catch (error) {
-      setStatus('error');
+      setLocalConnectionStatus('error');
       toast({
         title: "Connection Failed",
-        description: `Unable to reach the ${isDev ? 'development' : 'production'} API server`,
+        description: "Unable to reach the local development server",
         variant: "destructive"
       });
     } finally {
-      if (isDev) {
-        setTestingDevConnection(false);
-      } else {
-        setTestingConnection(false);
-      }
+      setTestingLocalConnection(false);
     }
   };
 
   const refreshConfig = async () => {
-    clearApiConfigCache();
+    clearApiConfigCache(user?.id);
     await loadCurrentConfig();
     toast({
       title: "Refreshed",
@@ -237,6 +201,23 @@ const ApiConfigManager: React.FC = () => {
       variant: "default"
     });
   };
+
+  const handleToggleChange = (checked: boolean) => {
+    setUseLocalUrl(checked);
+    // If turning off, we should still save (so user goes back to production)
+    // If turning on but no URL, remind user to enter one
+    if (checked && !localUrl.trim()) {
+      toast({
+        title: "Enter Local URL",
+        description: "Please enter your local development URL below",
+        variant: "default"
+      });
+    }
+  };
+
+  // Get active URL for display
+  const activeUrl = useLocalUrl && localUrl ? localUrl : globalBaseUrl;
+  const isUsingLocal = useLocalUrl && localUrl;
 
   if (adminLoading || fetching) {
     return (
@@ -272,8 +253,8 @@ const ApiConfigManager: React.FC = () => {
             <CardTitle>API Configuration</CardTitle>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant={useDevUrl ? 'secondary' : 'default'}>
-              {useDevUrl ? 'DEV' : 'PROD'}
+            <Badge variant={isUsingLocal ? 'secondary' : 'default'}>
+              {isUsingLocal ? 'LOCAL' : 'PROD'}
             </Badge>
             <Button
               variant="outline"
@@ -286,151 +267,124 @@ const ApiConfigManager: React.FC = () => {
           </div>
         </div>
         <CardDescription>
-          Configure the dynamic API server URL and connection settings
+          Configure your local development API URL. Other users will continue using the production URL.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Environment Toggle */}
+        {/* Global Production URL - Read Only */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Server className="h-4 w-4 text-green-500" />
+            <Label>Global Production URL</Label>
+            <Badge variant="outline" className="text-xs">Read Only</Badge>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              value={globalBaseUrl}
+              disabled
+              className="flex-1 bg-muted/50"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            This is the production API URL used by all users. Contact a super admin to change this.
+          </p>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-border" />
+
+        {/* Local Development Toggle */}
         <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
           <div className="flex items-center gap-3">
-            {useDevUrl ? (
+            {isUsingLocal ? (
               <Code className="h-5 w-5 text-orange-500" />
             ) : (
               <Server className="h-5 w-5 text-green-500" />
             )}
             <div>
               <Label className="text-base font-medium">
-                Active Environment: {useDevUrl ? 'Development' : 'Production'}
+                Use Local Development Server
               </Label>
               <p className="text-sm text-muted-foreground">
-                {useDevUrl ? 'Using development URL for all API calls' : 'Using production URL for all API calls'}
+                {isUsingLocal 
+                  ? 'API calls from YOUR session will use your local URL' 
+                  : 'API calls are using the global production URL'}
               </p>
             </div>
           </div>
           <Switch
-            checked={useDevUrl}
-            onCheckedChange={setUseDevUrl}
-            disabled={loading || !devUrl.trim()}
+            checked={useLocalUrl}
+            onCheckedChange={handleToggleChange}
+            disabled={loading}
           />
         </div>
 
-        {/* Production URL */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Server className="h-4 w-4 text-green-500" />
-            <Label htmlFor="baseUrl">Production API URL</Label>
-            {connectionStatus !== 'unknown' && (
-              <Badge variant={connectionStatus === 'success' ? 'default' : 'destructive'} className="text-xs">
-                {connectionStatus === 'success' ? 'Connected' : 'Error'}
-              </Badge>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Input
-              id="baseUrl"
-              placeholder="https://api.example.com"
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              disabled={loading}
-              className="flex-1"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => testConnection(baseUrl, false)}
-              disabled={testingConnection || !baseUrl.trim()}
-            >
-              {testingConnection && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-              Test
-            </Button>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Your production API server URL
-          </p>
-        </div>
-
-        {/* Development URL */}
-        <div className="space-y-2">
+        {/* Local URL Input - Always visible but highlighted when toggle is on */}
+        <div className={`space-y-2 p-4 rounded-lg border ${useLocalUrl ? 'border-orange-500/50 bg-orange-500/5' : 'border-border'}`}>
           <div className="flex items-center gap-2">
             <Code className="h-4 w-4 text-orange-500" />
-            <Label htmlFor="devUrl">Development API URL</Label>
-            {devConnectionStatus !== 'unknown' && (
-              <Badge variant={devConnectionStatus === 'success' ? 'default' : 'destructive'} className="text-xs">
-                {devConnectionStatus === 'success' ? 'Connected' : 'Error'}
+            <Label htmlFor="localUrl">Your Local Development URL</Label>
+            {localConnectionStatus !== 'unknown' && (
+              <Badge variant={localConnectionStatus === 'success' ? 'default' : 'destructive'} className="text-xs">
+                {localConnectionStatus === 'success' ? 'Connected' : 'Error'}
               </Badge>
             )}
           </div>
           <div className="flex gap-2">
             <Input
-              id="devUrl"
+              id="localUrl"
               placeholder="http://localhost:3001 or ngrok URL"
-              value={devUrl}
-              onChange={(e) => setDevUrl(e.target.value)}
+              value={localUrl}
+              onChange={(e) => setLocalUrl(e.target.value)}
               disabled={loading}
               className="flex-1"
             />
             <Button
               variant="outline"
               size="sm"
-              onClick={() => testConnection(devUrl, true)}
-              disabled={testingDevConnection || !devUrl.trim()}
+              onClick={() => testConnection(localUrl)}
+              disabled={testingLocalConnection || !localUrl.trim()}
             >
-              {testingDevConnection && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              {testingLocalConnection && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
               Test
             </Button>
           </div>
           <p className="text-sm text-muted-foreground">
-            Your local development or ngrok tunnel URL (e.g., http://localhost:3001)
+            Your local development or ngrok tunnel URL. Only affects YOUR session.
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="timeout">Timeout (ms)</Label>
-            <Input
-              id="timeout"
-              type="number"
-              value={timeout}
-              onChange={(e) => setTimeout(Number(e.target.value))}
-              disabled={loading}
-              min={1000}
-              max={120000}
-            />
+        {/* Active URL Display */}
+        <div className="p-4 rounded-lg bg-muted/50 border">
+          <div className="flex items-center gap-2 mb-2">
+            <Globe className="h-4 w-4" />
+            <span className="font-medium">Active API URL for Your Session</span>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="retries">Max Retries</Label>
-            <Input
-              id="retries"
-              type="number"
-              value={retries}
-              onChange={(e) => setRetries(Number(e.target.value))}
-              disabled={loading}
-              min={0}
-              max={10}
-            />
-          </div>
+          <code className="text-sm bg-background px-2 py-1 rounded border break-all">
+            {activeUrl}
+          </code>
         </div>
 
+        {/* Save Button */}
         <div className="flex gap-3">
           <Button
-            onClick={handleSaveConfig}
-            disabled={loading || !baseUrl.trim()}
+            onClick={handleSaveLocalConfig}
+            disabled={loading}
             className="flex-1"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            Save Configuration
+            Save My Configuration
           </Button>
         </div>
 
         <div className="bg-muted/50 p-4 rounded-lg">
-          <h4 className="font-medium mb-2">Usage Example:</h4>
-          <code className="text-sm">
-            {`import { apiClient } from '@/lib/api-config';
-
-// Use the configured API client
-const response = await apiClient.get('/api/data');
-const data = await apiClient.post('/api/submit', { key: 'value' });`}
-          </code>
+          <h4 className="font-medium mb-2">How it works:</h4>
+          <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+            <li>Toggle ON to use your local development server</li>
+            <li>Your local URL is private to your session only</li>
+            <li>Other users will continue using the production URL</li>
+            <li>Toggle OFF to switch back to production</li>
+          </ul>
         </div>
       </CardContent>
     </Card>
