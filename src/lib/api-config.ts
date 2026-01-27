@@ -107,23 +107,29 @@ async function getGlobalConfig(client: any): Promise<ApiConfig | null> {
  * Get user-specific API configuration (for admin's local URL settings)
  * Each user has their own row where:
  * - base_url = their local/dev URL
- * - use_dev_url = toggle to enable local mode
+ * - headers.use_local_url = toggle to enable local mode (stored in headers JSON)
  */
 async function getUserConfig(client: any, userId: string): Promise<{ localUrl: string; useLocalUrl: boolean } | null> {
   const { data, error } = await client
     .from('api_configurations')
-    .select('base_url, use_dev_url')
+    .select('base_url, headers')
     .eq('user_id', userId)
-    .neq('user_id', GLOBAL_CONFIG_USER_ID)
     .maybeSingle();
 
   if (error || !data) {
     return null;
   }
 
+  // Skip global config
+  if (userId === GLOBAL_CONFIG_USER_ID) {
+    return null;
+  }
+
+  const headers = data.headers as { use_local_url?: boolean } | null;
+  
   return {
     localUrl: data.base_url || '',
-    useLocalUrl: data.use_dev_url || false
+    useLocalUrl: headers?.use_local_url || false
   };
 }
 
@@ -199,7 +205,7 @@ export const getApiConfig = async (userId?: string): Promise<ApiConfig> => {
 
 /**
  * Update user's local URL settings (for admin users only)
- * Uses existing columns: base_url for the local URL, use_dev_url for the toggle
+ * Uses existing columns: base_url for the local URL, headers.use_local_url for the toggle
  * Each admin user gets their own row in the table
  */
 export const updateUserLocalUrl = async (
@@ -215,16 +221,21 @@ export const updateUserLocalUrl = async (
       .from('api_configurations')
       .select('id')
       .eq('user_id', userId)
-      .neq('user_id', GLOBAL_CONFIG_USER_ID)
       .maybeSingle();
 
+    // Skip if this is global config
+    if (userId === GLOBAL_CONFIG_USER_ID) {
+      console.error('❌ Cannot update global config with this function');
+      return false;
+    }
+
     if (existingConfig) {
-      // Update existing user config - use base_url for local URL, use_dev_url for toggle
+      // Update existing user config
       const { error } = await client
         .from('api_configurations')
         .update({
           base_url: localUrl,
-          use_dev_url: useLocalUrl,
+          headers: { use_local_url: useLocalUrl },
           updated_at: new Date().toISOString()
         })
         .eq('user_id', userId);
@@ -240,7 +251,7 @@ export const updateUserLocalUrl = async (
         .insert({
           user_id: userId,
           base_url: localUrl,
-          use_dev_url: useLocalUrl,
+          headers: { use_local_url: useLocalUrl },
           config_name: 'default',
           timeout: 30000,
           retries: 3
