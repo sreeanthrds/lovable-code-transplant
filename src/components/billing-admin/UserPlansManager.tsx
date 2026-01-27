@@ -73,13 +73,34 @@ export const UserPlansManager: React.FC = () => {
   const fetchPlans = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await tradelayoutClient
+      // Fetch user plans
+      const { data: plansData, error: plansError } = await tradelayoutClient
         .from('user_plans' as any)
         .select('*')
         .order('updated_at', { ascending: false });
       
-      if (error) throw error;
-      setPlans((data as unknown as UserPlan[]) || []);
+      if (plansError) throw plansError;
+      
+      // Fetch user profiles to get emails
+      const { data: profilesData, error: profilesError } = await tradelayoutClient
+        .from('user_profiles' as any)
+        .select('id, email, first_name, last_name');
+      
+      if (profilesError) throw profilesError;
+      
+      // Create a lookup map for emails
+      const emailMap = new Map<string, string>();
+      (profilesData || []).forEach((profile: any) => {
+        emailMap.set(profile.id, profile.email);
+      });
+      
+      // Merge email into plans
+      const plansWithEmail = (plansData || []).map((plan: any) => ({
+        ...plan,
+        user_email: emailMap.get(plan.user_id) || plan.user_id
+      }));
+      
+      setPlans(plansWithEmail as UserPlan[]);
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -190,6 +211,7 @@ export const UserPlansManager: React.FC = () => {
   const filteredPlans = plans.filter(plan => {
     const query = searchQuery.toLowerCase();
     return (
+      plan.user_email?.toLowerCase().includes(query) ||
       plan.user_id?.toLowerCase().includes(query) ||
       plan.plan?.toLowerCase().includes(query) ||
       plan.status?.toLowerCase().includes(query)
@@ -238,7 +260,7 @@ export const UserPlansManager: React.FC = () => {
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by user ID, plan, or status..."
+            placeholder="Search by email, plan, or status..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -249,7 +271,7 @@ export const UserPlansManager: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>User ID</TableHead>
+                <TableHead>User Email</TableHead>
                 <TableHead>Plan</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-center">Backtests (Today/Total)</TableHead>
@@ -276,8 +298,8 @@ export const UserPlansManager: React.FC = () => {
               ) : (
                 filteredPlans.map((plan) => (
                   <TableRow key={plan.user_id}>
-                    <TableCell className="font-mono text-xs max-w-[120px] truncate" title={plan.user_id}>
-                      {plan.user_id.slice(0, 8)}...
+                    <TableCell className="text-sm max-w-[200px] truncate" title={plan.user_email || plan.user_id}>
+                      {plan.user_email || plan.user_id}
                     </TableCell>
                     <TableCell>
                       <Badge variant={getPlanVariant(plan.plan)}>{plan.plan}</Badge>
