@@ -78,6 +78,21 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
       // Check if this is an implicit free user (id starts with "free-")
       const isImplicitFree = plan.id.startsWith('free-');
       
+      // Prepare update data - only include admin_notes if it has content
+      const updateData: Record<string, any> = {
+        backtests_used_today: formData.backtests_used_today,
+        backtests_used: formData.backtests_used,
+        paper_trading_used_today: formData.paper_trading_used_today,
+        paper_trading_used: formData.paper_trading_used,
+        live_executions_used: formData.live_executions_used,
+        updated_at: new Date().toISOString(),
+      };
+      
+      // Only include admin_notes if it has content (column may not exist yet)
+      if (formData.admin_notes) {
+        updateData.admin_notes = formData.admin_notes;
+      }
+      
       if (isImplicitFree) {
         // Insert a new user_plans record for this free user
         const { error } = await (authClient as any)
@@ -86,8 +101,7 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
             user_id: plan.user_id,
             plan: 'FREE',
             status: 'active',
-            ...formData,
-            updated_at: new Date().toISOString(),
+            ...updateData,
           });
         
         if (error) throw error;
@@ -95,10 +109,7 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
         // Update existing record
         const { error } = await (authClient as any)
           .from('user_plans')
-          .update({
-            ...formData,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq('id', plan.id);
         
         if (error) throw error;
