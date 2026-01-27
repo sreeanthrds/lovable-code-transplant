@@ -13,7 +13,10 @@ const ENCRYPTION_KEY = "TradeLoyout2024Strategy";
 export const encryptStrategyData = (data: any): string => {
   try {
     const jsonString = JSON.stringify(data);
-    const base64 = btoa(jsonString);
+    // Use TextEncoder to handle Unicode characters properly
+    const utf8Bytes = new TextEncoder().encode(jsonString);
+    const binaryString = Array.from(utf8Bytes).map(b => String.fromCharCode(b)).join('');
+    const base64 = btoa(binaryString);
     
     // Apply character shifting for additional obfuscation
     let encrypted = '';
@@ -54,9 +57,14 @@ export const decryptStrategyData = (encryptedData: string): any => {
     }
     console.log('🔓 Decrypted length:', decrypted.length);
     
-    // Decode base64 to get original JSON
+    // Decode base64 to get original JSON with proper Unicode handling
     console.log('🔓 Step 3: Final base64 decoding...');
-    const jsonString = atob(decrypted);
+    const binaryString = atob(decrypted);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const jsonString = new TextDecoder().decode(bytes);
     console.log('🔓 JSON string length:', jsonString.length);
     console.log('🔓 First 200 chars of JSON:', jsonString.substring(0, 200));
     
