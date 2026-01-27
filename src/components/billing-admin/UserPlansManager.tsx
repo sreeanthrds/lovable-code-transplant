@@ -7,10 +7,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { tradelayoutClient } from '@/lib/supabase/tradelayout-client';
+import { UserPlanEditDialog } from './UserPlanEditDialog';
 import { 
   Search, 
   RefreshCw, 
-  Users
+  Users,
+  Pencil
 } from 'lucide-react';
 
 interface UserPlan {
@@ -49,6 +51,8 @@ export const UserPlansManager: React.FC = () => {
   const [planDefinitions, setPlanDefinitions] = useState<Record<string, PlanLimits>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingPlan, setEditingPlan] = useState<UserPlan | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('FREE');
   
   const fetchPlans = useCallback(async () => {
@@ -190,18 +194,19 @@ export const UserPlansManager: React.FC = () => {
               <TableHead className="text-center">Live Executions</TableHead>
               <TableHead className="text-center">Reset By</TableHead>
               <TableHead>Valid Till</TableHead>
+              <TableHead className="text-center">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-8">
                   <RefreshCw className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                 </TableCell>
               </TableRow>
             ) : filteredPlans.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   No users found on {planType} plan
                 </TableCell>
               </TableRow>
@@ -242,6 +247,18 @@ export const UserPlansManager: React.FC = () => {
                   </TableCell>
                   <TableCell className="text-sm">
                     {getValidTill(plan)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setEditingPlan(plan);
+                        setEditDialogOpen(true);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
@@ -300,6 +317,13 @@ export const UserPlansManager: React.FC = () => {
             </TabsContent>
           ))}
         </Tabs>
+        
+        <UserPlanEditDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          plan={editingPlan}
+          onSuccess={fetchPlans}
+        />
       </CardContent>
     </Card>
   );
