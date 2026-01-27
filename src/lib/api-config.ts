@@ -19,9 +19,9 @@ const GLOBAL_CONFIG_USER_ID = '__GLOBAL__';
  */
 
 interface ApiConfig {
-  baseUrl: string;      // Global production URL (read-only for regular admins)
-  localUrl: string;     // User-specific local development URL (only for admins)
-  useLocalUrl: boolean; // Toggle for admin users to switch to their local URL
+  baseUrl: string;      // Global production URL
+  localUrl: string;     // User-specific local development URL (stored in user's own row as base_url)
+  useLocalUrl: boolean; // Toggle for admin users (stored in user's own row as use_dev_url)
   timeout: number;
   retries: number;
 }
@@ -105,12 +105,16 @@ async function getGlobalConfig(client: any): Promise<ApiConfig | null> {
 
 /**
  * Get user-specific API configuration (for admin's local URL settings)
+ * Each user has their own row where:
+ * - base_url = their local/dev URL
+ * - use_dev_url = toggle to enable local mode
  */
 async function getUserConfig(client: any, userId: string): Promise<{ localUrl: string; useLocalUrl: boolean } | null> {
   const { data, error } = await client
     .from('api_configurations')
-    .select('local_url, use_local_url')
+    .select('base_url, use_dev_url')
     .eq('user_id', userId)
+    .neq('user_id', GLOBAL_CONFIG_USER_ID)
     .maybeSingle();
 
   if (error || !data) {
@@ -118,8 +122,8 @@ async function getUserConfig(client: any, userId: string): Promise<{ localUrl: s
   }
 
   return {
-    localUrl: (data as any).local_url || '',
-    useLocalUrl: (data as any).use_local_url || false
+    localUrl: data.base_url || '',
+    useLocalUrl: data.use_dev_url || false
   };
 }
 
@@ -195,6 +199,8 @@ export const getApiConfig = async (userId?: string): Promise<ApiConfig> => {
 
 /**
  * Update user's local URL settings (for admin users only)
+ * Uses existing columns: base_url for the local URL, use_dev_url for the toggle
+ * Each admin user gets their own row in the table
  */
 export const updateUserLocalUrl = async (
   localUrl: string, 
@@ -204,20 +210,21 @@ export const updateUserLocalUrl = async (
   try {
     const client = await getAuthenticatedClient();
 
-    // Check if user config exists
+    // Check if user config exists (not the global one)
     const { data: existingConfig } = await client
       .from('api_configurations')
       .select('id')
       .eq('user_id', userId)
+      .neq('user_id', GLOBAL_CONFIG_USER_ID)
       .maybeSingle();
 
     if (existingConfig) {
-      // Update existing config
+      // Update existing user config - use base_url for local URL, use_dev_url for toggle
       const { error } = await client
         .from('api_configurations')
         .update({
-          local_url: localUrl,
-          use_local_url: useLocalUrl,
+          base_url: localUrl,
+          use_dev_url: useLocalUrl,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', userId);
@@ -227,15 +234,14 @@ export const updateUserLocalUrl = async (
         return false;
       }
     } else {
-      // Create new user config with default values and local URL
+      // Create new user config row
       const { error } = await client
         .from('api_configurations')
         .insert({
           user_id: userId,
-          base_url: getProxyBaseUrl(),
-          local_url: localUrl,
-          use_local_url: useLocalUrl,
-          config_name: 'User Config',
+          base_url: localUrl,
+          use_dev_url: useLocalUrl,
+          config_name: 'default',
           timeout: 30000,
           retries: 3
         });

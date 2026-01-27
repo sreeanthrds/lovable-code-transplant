@@ -62,6 +62,7 @@ async function getGlobalApiUrl(supabase: any): Promise<string> {
 
 /**
  * Get user-specific local URL if they have one configured and enabled
+ * Uses existing columns: base_url for the local URL, use_dev_url for the toggle
  */
 async function getUserLocalUrl(supabase: any, userId: string): Promise<string | null> {
   const now = Date.now();
@@ -73,10 +74,12 @@ async function getUserLocalUrl(supabase: any, userId: string): Promise<string | 
   }
 
   try {
+    // Get user's own row (not the global one)
     const { data, error } = await supabase
       .from('api_configurations')
-      .select('local_url, use_local_url')
+      .select('base_url, use_dev_url')
       .eq('user_id', userId)
+      .neq('user_id', GLOBAL_CONFIG_USER_ID)
       .maybeSingle();
 
     if (error) {
@@ -84,13 +87,14 @@ async function getUserLocalUrl(supabase: any, userId: string): Promise<string | 
       return null;
     }
 
-    if (data?.use_local_url && data?.local_url) {
-      console.log('[backtest-proxy] User has local URL enabled:', data.local_url);
-      userUrlCache.set(userId, { url: data.local_url, expiry: now + CACHE_DURATION });
-      return data.local_url;
+    // User's row: base_url = their local URL, use_dev_url = toggle
+    if (data?.use_dev_url && data?.base_url) {
+      console.log('[backtest-proxy] User has local URL enabled:', data.base_url);
+      userUrlCache.set(userId, { url: data.base_url, expiry: now + CACHE_DURATION });
+      return data.base_url;
     }
 
-    // Cache that user doesn't have local URL
+    // Cache that user doesn't have local URL enabled
     userUrlCache.set(userId, { url: '', expiry: now + CACHE_DURATION });
     return null;
 
