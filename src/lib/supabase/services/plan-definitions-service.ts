@@ -1,4 +1,4 @@
-import { tradelayoutClient as supabase } from '@/lib/supabase/tradelayout-client';
+import { tradelayoutClient as supabase, getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
 import type { PlanDefinition, CreatePlanInput, UpdatePlanInput } from '@/types/plan-definitions';
 
 // Note: Table "plan_definitions" needs to be created via migration
@@ -154,20 +154,25 @@ export const planDefinitionsService = {
     try {
       console.log('✏️ Updating plan:', id);
       
+      // Use authenticated client for write operations
+      const authClient = await getAuthenticatedTradelayoutClient();
+      
       const updateData: Record<string, any> = {
         ...input,
-        updated_by: adminId || null,
         updated_at: new Date().toISOString(),
       };
 
-      // Remove undefined values
+      // Remove undefined values and excluded fields
       Object.keys(updateData).forEach(key => {
         if (updateData[key] === undefined) {
           delete updateData[key];
         }
       });
+      // Remove created_by/updated_by to avoid UUID type mismatch with Clerk string IDs
+      delete updateData.created_by;
+      delete updateData.updated_by;
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await (authClient as any)
         .from('plan_definitions')
         .update(updateData)
         .eq('id', id)
