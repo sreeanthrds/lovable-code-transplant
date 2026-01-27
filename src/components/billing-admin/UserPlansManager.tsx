@@ -54,7 +54,7 @@ export const UserPlansManager: React.FC = () => {
   const fetchPlans = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch user plans and plan definitions in parallel
+      // Fetch user plans, plan definitions, and all user profiles in parallel
       const [plansResult, definitionsResult, profilesResult] = await Promise.all([
         tradelayoutClient.from('user_plans' as any).select('*').order('updated_at', { ascending: false }),
         tradelayoutClient.from('plan_definitions' as any).select('code, backtests_daily_limit, backtests_monthly_limit, paper_trading_daily_limit, paper_trading_monthly_limit, live_executions_monthly_limit'),
@@ -67,7 +67,8 @@ export const UserPlansManager: React.FC = () => {
       
       // Create lookup maps
       const emailMap = new Map<string, string>();
-      (profilesResult.data || []).forEach((profile: any) => {
+      const allProfiles = profilesResult.data || [];
+      allProfiles.forEach((profile: any) => {
         emailMap.set(profile.id, profile.email);
       });
       
@@ -84,13 +85,37 @@ export const UserPlansManager: React.FC = () => {
       
       setPlanDefinitions(limitsMap);
       
-      // Merge email into plans
-      const plansWithEmail = (plansResult.data || []).map((plan: any) => ({
+      // Get set of user IDs with active paid plans
+      const paidPlans = (plansResult.data || []).filter((plan: any) => 
+        plan.status === 'active' && plan.plan !== 'FREE'
+      );
+      const paidUserIds = new Set(paidPlans.map((plan: any) => plan.user_id));
+      
+      // Create plans array: paid users + free users (those without paid plans)
+      const paidPlansWithEmail = paidPlans.map((plan: any) => ({
         ...plan,
         user_email: emailMap.get(plan.user_id) || plan.user_id
       }));
       
-      setPlans(plansWithEmail as UserPlan[]);
+      // Users without paid plans are implicitly on FREE
+      const freeUsers = allProfiles
+        .filter((profile: any) => !paidUserIds.has(profile.id))
+        .map((profile: any) => ({
+          id: `free-${profile.id}`,
+          user_id: profile.id,
+          plan: 'FREE',
+          status: 'active',
+          backtests_used: 0,
+          backtests_used_today: 0,
+          live_executions_used: 0,
+          paper_trading_used: 0,
+          paper_trading_used_today: 0,
+          addon_backtests: 0,
+          addon_live_executions: 0,
+          user_email: profile.email
+        }));
+      
+      setPlans([...paidPlansWithEmail, ...freeUsers] as UserPlan[]);
     } catch (error: any) {
       toast({
         title: 'Error',
