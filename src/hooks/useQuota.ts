@@ -132,6 +132,14 @@ export const useQuota = () => {
 
       setUserPlan(plan);
 
+      // Check if daily reset is needed (compare usage_reset_date with today)
+      const today = new Date().toISOString().split('T')[0];
+      const needsDailyReset = !plan?.usage_reset_date || plan.usage_reset_date !== today;
+      
+      // If date changed, treat daily counters as 0 for display purposes
+      const effectiveBacktestsToday = needsDailyReset ? 0 : (plan?.backtests_used_today || 0);
+      const effectivePaperTradingToday = needsDailyReset ? 0 : (plan?.paper_trading_used_today || 0);
+
       // Calculate remaining quotas
       const backtestsMonthlyRemaining = config.backtests_monthly_limit === -1 
         ? Infinity 
@@ -139,7 +147,7 @@ export const useQuota = () => {
       
       const backtestsDailyRemaining = config.backtests_daily_limit === -1 
         ? Infinity 
-        : Math.max(0, config.backtests_daily_limit - (plan?.backtests_used_today || 0));
+        : Math.max(0, config.backtests_daily_limit - effectiveBacktestsToday);
 
       const backtestsAddonRemaining = plan?.addon_backtests || 0;
       
@@ -161,7 +169,7 @@ export const useQuota = () => {
 
       const paperDailyRemaining = config.paper_trading_daily_limit === -1 
         ? Infinity 
-        : Math.max(0, config.paper_trading_daily_limit - (plan?.paper_trading_used_today || 0));
+        : Math.max(0, config.paper_trading_daily_limit - effectivePaperTradingToday);
       const paperMonthlyRemaining = config.paper_trading_monthly_limit === -1 
         ? Infinity 
         : Math.max(0, config.paper_trading_monthly_limit - (plan?.paper_trading_used || 0));
@@ -172,7 +180,7 @@ export const useQuota = () => {
 
       setQuotaInfo({
         backtests: {
-          dailyUsed: plan?.backtests_used_today || 0,
+          dailyUsed: effectiveBacktestsToday,
           dailyLimit: config.backtests_daily_limit,
           monthlyUsed: plan?.backtests_used || 0,
           monthlyLimit: config.backtests_monthly_limit,
@@ -186,7 +194,7 @@ export const useQuota = () => {
           remaining: liveRemaining === Infinity ? -1 : liveRemaining,
         },
         paperTrading: {
-          dailyUsed: plan?.paper_trading_used_today || 0,
+          dailyUsed: effectivePaperTradingToday,
           dailyLimit: config.paper_trading_daily_limit,
           monthlyUsed: plan?.paper_trading_used || 0,
           monthlyLimit: config.paper_trading_monthly_limit,
