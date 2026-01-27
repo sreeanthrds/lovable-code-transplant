@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { tradelayoutClient } from '@/lib/supabase/tradelayout-client';
+import { tradelayoutClient, getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
 import { useUser } from '@clerk/clerk-react';
 
 interface PlanData {
@@ -38,8 +38,9 @@ export const usePlan = () => {
     
     console.log('🔍 usePlan: Fetching plan from Supabase for user:', user.id);
     try {
-      // Use TradeLayout client for user_plans table
-      const { data, error } = await tradelayoutClient
+      // Use authenticated client for RLS-protected queries
+      const client = await getAuthenticatedTradelayoutClient();
+      const { data, error } = await client
         .from('user_plans' as any)
         .select('plan, status, expires_at')
         .eq('user_id', user.id)

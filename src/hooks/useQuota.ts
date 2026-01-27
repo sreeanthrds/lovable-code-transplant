@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useClerkUser } from '@/hooks/useClerkUser';
-import { tradelayoutClient } from '@/lib/supabase/tradelayout-client';
+import { tradelayoutClient, getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
 import { PLAN_CONFIGS, PlanType, UserPlan } from '@/types/billing';
 
 export interface QuotaCheck {
@@ -104,7 +104,9 @@ export const useQuota = () => {
     }
 
     try {
-      const { data, error } = await tradelayoutClient
+      // Use authenticated client for RLS-protected queries
+      const client = await getAuthenticatedTradelayoutClient();
+      const { data, error } = await client
         .from('user_plans' as any)
         .select('*')
         .eq('user_id', userId)
@@ -345,8 +347,11 @@ export const useQuota = () => {
 
     try {
       await retryWithBackoff(async () => {
+        // Use authenticated client for RLS-protected operations
+        const client = await getAuthenticatedTradelayoutClient();
+        
         // Fetch current plan
-        const { data: plan, error: fetchError } = await tradelayoutClient
+        const { data: plan, error: fetchError } = await client
           .from('user_plans' as any)
           .select('*')
           .eq('user_id', userId)
@@ -363,7 +368,7 @@ export const useQuota = () => {
         };
 
         if (currentPlan) {
-          const { error: updateError } = await tradelayoutClient
+          const { error: updateError } = await client
             .from('user_plans' as any)
             .update(updateData)
             .eq('user_id', userId);
@@ -371,7 +376,7 @@ export const useQuota = () => {
           if (updateError) throw new Error(`Failed to update usage: ${updateError.message}`);
         } else {
           // Create FREE plan if none exists
-          const { error: insertError } = await tradelayoutClient
+          const { error: insertError } = await client
             .from('user_plans' as any)
             .insert({
               user_id: userId,
@@ -401,7 +406,10 @@ export const useQuota = () => {
 
     try {
       await retryWithBackoff(async () => {
-        const { data: plan, error: fetchError } = await tradelayoutClient
+        // Use authenticated client for RLS-protected operations
+        const client = await getAuthenticatedTradelayoutClient();
+        
+        const { data: plan, error: fetchError } = await client
           .from('user_plans' as any)
           .select('*')
           .eq('user_id', userId)
@@ -417,14 +425,14 @@ export const useQuota = () => {
         };
 
         if (currentPlan) {
-          const { error: updateError } = await tradelayoutClient
+          const { error: updateError } = await client
             .from('user_plans' as any)
             .update(updateData)
             .eq('user_id', userId);
 
           if (updateError) throw new Error(`Failed to update usage: ${updateError.message}`);
         } else {
-          const { error: insertError } = await tradelayoutClient
+          const { error: insertError } = await client
             .from('user_plans' as any)
             .insert({
               user_id: userId,
@@ -452,7 +460,10 @@ export const useQuota = () => {
 
     try {
       await retryWithBackoff(async () => {
-        const { data: plan, error: fetchError } = await tradelayoutClient
+        // Use authenticated client for RLS-protected operations
+        const client = await getAuthenticatedTradelayoutClient();
+        
+        const { data: plan, error: fetchError } = await client
           .from('user_plans' as any)
           .select('*')
           .eq('user_id', userId)
@@ -468,14 +479,14 @@ export const useQuota = () => {
         };
 
         if (currentPlan) {
-          const { error: updateError } = await tradelayoutClient
+          const { error: updateError } = await client
             .from('user_plans' as any)
             .update(updateData)
             .eq('user_id', userId);
 
           if (updateError) throw new Error(`Failed to update usage: ${updateError.message}`);
         } else {
-          const { error: insertError } = await tradelayoutClient
+          const { error: insertError } = await client
             .from('user_plans' as any)
             .insert({
               user_id: userId,
