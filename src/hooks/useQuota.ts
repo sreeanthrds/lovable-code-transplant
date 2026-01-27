@@ -340,8 +340,8 @@ export const useQuota = () => {
   // Helper to get today's date string for daily reset check
   const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
-  // Consume backtest quota via direct database update
-  // NOTE: Only uses columns that exist in the database (backtests_used, not daily tracking)
+  // Consume backtest quota via direct database update using upsert
+  // Uses upsert with onConflict to handle both new users and existing users atomically
   const consumeBacktest = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
@@ -350,7 +350,7 @@ export const useQuota = () => {
         // Use authenticated client for RLS-protected operations
         const client = await getAuthenticatedTradelayoutClient();
         
-        // Fetch current plan
+        // First, try to fetch current plan to get existing usage counts
         const { data: plan, error: fetchError } = await client
           .from('user_plans' as any)
           .select('*')
@@ -360,36 +360,37 @@ export const useQuota = () => {
         if (fetchError) throw new Error(`Failed to fetch plan: ${fetchError.message}`);
 
         const currentPlan = plan as any;
+        const today = getTodayDateString();
+        
+        // Check if we need to reset daily counters
+        const needsDailyReset = currentPlan?.usage_reset_date !== today;
+        const currentDailyUsed = needsDailyReset ? 0 : (currentPlan?.backtests_used_today || 0);
 
-        // Update plan with incremented usage (only using existing columns)
-        const updateData = {
+        // Prepare upsert data - this handles both insert and update
+        const upsertData = {
+          user_id: userId,
+          plan: currentPlan?.plan || 'FREE',
+          status: currentPlan?.status || 'active',
           backtests_used: (currentPlan?.backtests_used || 0) + 1,
+          backtests_used_today: currentDailyUsed + 1,
+          usage_reset_date: today,
+          live_executions_used: currentPlan?.live_executions_used || 0,
+          paper_trading_used: currentPlan?.paper_trading_used || 0,
+          paper_trading_used_today: needsDailyReset ? 0 : (currentPlan?.paper_trading_used_today || 0),
+          addon_backtests: currentPlan?.addon_backtests || 0,
+          addon_live_executions: currentPlan?.addon_live_executions || 0,
           updated_at: new Date().toISOString(),
         };
 
-        if (currentPlan) {
-          const { error: updateError } = await client
-            .from('user_plans' as any)
-            .update(updateData)
-            .eq('user_id', userId);
+        // Use upsert with onConflict for atomic operation
+        const { error: upsertError } = await client
+          .from('user_plans' as any)
+          .upsert(upsertData, { 
+            onConflict: 'user_id',
+            ignoreDuplicates: false 
+          });
 
-          if (updateError) throw new Error(`Failed to update usage: ${updateError.message}`);
-        } else {
-          // Create FREE plan if none exists
-          const { error: insertError } = await client
-            .from('user_plans' as any)
-            .insert({
-              user_id: userId,
-              plan: 'FREE',
-              status: 'active',
-              backtests_used: 1,
-              live_executions_used: 0,
-              paper_trading_used: 0,
-              updated_at: new Date().toISOString(),
-            });
-
-          if (insertError) throw new Error(`Failed to create plan: ${insertError.message}`);
-        }
+        if (upsertError) throw new Error(`Failed to update usage: ${upsertError.message}`);
       });
 
       await fetchQuotaInfo();
@@ -400,7 +401,7 @@ export const useQuota = () => {
     }
   }, [userId, fetchQuotaInfo]);
 
-  // Consume live execution quota via direct database update
+  // Consume live execution quota via direct database update using upsert
   const consumeLiveExecution = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
@@ -418,31 +419,34 @@ export const useQuota = () => {
         if (fetchError) throw new Error(`Failed to fetch plan: ${fetchError.message}`);
 
         const currentPlan = plan as any;
+        const today = getTodayDateString();
+        const needsDailyReset = currentPlan?.usage_reset_date !== today;
 
-        const updateData = {
+        // Prepare upsert data
+        const upsertData = {
+          user_id: userId,
+          plan: currentPlan?.plan || 'FREE',
+          status: currentPlan?.status || 'active',
+          backtests_used: currentPlan?.backtests_used || 0,
+          backtests_used_today: needsDailyReset ? 0 : (currentPlan?.backtests_used_today || 0),
+          usage_reset_date: today,
           live_executions_used: (currentPlan?.live_executions_used || 0) + 1,
+          paper_trading_used: currentPlan?.paper_trading_used || 0,
+          paper_trading_used_today: needsDailyReset ? 0 : (currentPlan?.paper_trading_used_today || 0),
+          addon_backtests: currentPlan?.addon_backtests || 0,
+          addon_live_executions: currentPlan?.addon_live_executions || 0,
           updated_at: new Date().toISOString(),
         };
 
-        if (currentPlan) {
-          const { error: updateError } = await client
-            .from('user_plans' as any)
-            .update(updateData)
-            .eq('user_id', userId);
+        // Use upsert with onConflict for atomic operation
+        const { error: upsertError } = await client
+          .from('user_plans' as any)
+          .upsert(upsertData, { 
+            onConflict: 'user_id',
+            ignoreDuplicates: false 
+          });
 
-          if (updateError) throw new Error(`Failed to update usage: ${updateError.message}`);
-        } else {
-          const { error: insertError } = await client
-            .from('user_plans' as any)
-            .insert({
-              user_id: userId,
-              plan: 'FREE',
-              status: 'active',
-              ...updateData,
-            });
-
-          if (insertError) throw new Error(`Failed to create plan: ${insertError.message}`);
-        }
+        if (upsertError) throw new Error(`Failed to update usage: ${upsertError.message}`);
       });
 
       await fetchQuotaInfo();
@@ -453,8 +457,7 @@ export const useQuota = () => {
     }
   }, [userId, fetchQuotaInfo]);
 
-  // Consume paper trading quota via direct database update
-  // NOTE: Only uses columns that exist in the database (paper_trading_used, not daily tracking)
+  // Consume paper trading quota via direct database update using upsert
   const consumePaperTrade = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
 
@@ -472,34 +475,34 @@ export const useQuota = () => {
         if (fetchError) throw new Error(`Failed to fetch plan: ${fetchError.message}`);
 
         const currentPlan = plan as any;
+        const today = getTodayDateString();
+        const needsDailyReset = currentPlan?.usage_reset_date !== today;
 
-        const updateData = {
+        // Prepare upsert data
+        const upsertData = {
+          user_id: userId,
+          plan: currentPlan?.plan || 'FREE',
+          status: currentPlan?.status || 'active',
+          backtests_used: currentPlan?.backtests_used || 0,
+          backtests_used_today: needsDailyReset ? 0 : (currentPlan?.backtests_used_today || 0),
+          usage_reset_date: today,
+          live_executions_used: currentPlan?.live_executions_used || 0,
           paper_trading_used: (currentPlan?.paper_trading_used || 0) + 1,
+          paper_trading_used_today: (needsDailyReset ? 0 : (currentPlan?.paper_trading_used_today || 0)) + 1,
+          addon_backtests: currentPlan?.addon_backtests || 0,
+          addon_live_executions: currentPlan?.addon_live_executions || 0,
           updated_at: new Date().toISOString(),
         };
 
-        if (currentPlan) {
-          const { error: updateError } = await client
-            .from('user_plans' as any)
-            .update(updateData)
-            .eq('user_id', userId);
+        // Use upsert with onConflict for atomic operation
+        const { error: upsertError } = await client
+          .from('user_plans' as any)
+          .upsert(upsertData, { 
+            onConflict: 'user_id',
+            ignoreDuplicates: false 
+          });
 
-          if (updateError) throw new Error(`Failed to update usage: ${updateError.message}`);
-        } else {
-          const { error: insertError } = await client
-            .from('user_plans' as any)
-            .insert({
-              user_id: userId,
-              plan: 'FREE',
-              status: 'active',
-              backtests_used: 0,
-              live_executions_used: 0,
-              paper_trading_used: 1,
-              updated_at: new Date().toISOString(),
-            });
-
-          if (insertError) throw new Error(`Failed to create plan: ${insertError.message}`);
-        }
+        if (upsertError) throw new Error(`Failed to update usage: ${upsertError.message}`);
       });
 
       await fetchQuotaInfo();
