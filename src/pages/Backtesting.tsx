@@ -8,6 +8,7 @@ import OverallSummaryCard from '@/components/backtest/OverallSummaryCard';
 import { ViewTradesModalV2 } from '@/components/live-trade/ViewTradesModalV2';
 import { useBacktestSession } from '@/hooks/useBacktestSession';
 import { useClerkUser } from '@/hooks/useClerkUser';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import { Loader2, ArrowLeft } from 'lucide-react';
 
 const Backtesting = () => {
   const { user } = useClerkUser();
+  const { isAdmin } = useAdminRole();
   const { toast } = useToast();
   
   const {
@@ -25,7 +27,7 @@ const Backtesting = () => {
     loadDayDetail,
     reset,
     getDailyResultsArray,
-  } = useBacktestSession({ userId: user?.id });
+  } = useBacktestSession({ userId: user?.id, isAdmin });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
