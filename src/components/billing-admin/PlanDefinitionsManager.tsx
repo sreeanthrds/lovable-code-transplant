@@ -359,40 +359,51 @@ export function PlanDefinitionsManager() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" disabled={isUsingFallback}>
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setEditingPlan(plan)}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            setDuplicateDialogPlan(plan);
-                            setNewDuplicateCode(`${plan.code}_COPY`);
-                          }}
-                        >
-                          <Copy className="h-4 w-4 mr-2" />
-                          Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleArchive(plan)}>
-                          <Archive className="h-4 w-4 mr-2" />
-                          Archive
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeleteDialogPlan(plan)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditingPlan(plan)}
+                        disabled={isUsingFallback}
+                        title={isUsingFallback ? "Run database migration to enable editing" : "Edit plan"}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" disabled={isUsingFallback}>
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-popover z-50">
+                          <DropdownMenuItem onClick={() => setEditingPlan(plan)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setDuplicateDialogPlan(plan);
+                              setNewDuplicateCode(`${plan.code}_COPY`);
+                            }}
+                          >
+                            <Copy className="h-4 w-4 mr-2" />
+                            Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleArchive(plan)}>
+                            <Archive className="h-4 w-4 mr-2" />
+                            Archive
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setDeleteDialogPlan(plan)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
