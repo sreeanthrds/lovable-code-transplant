@@ -23,7 +23,7 @@ import AdminSetup from "./pages/AdminSetup";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import Demo from "./pages/Demo";
-import Blog from "./pages/Blog";
+
 import ColorPalette from "./pages/ColorPalette";
 import PitchDeck from "./pages/PitchDeck";
 import Dashboard from "./pages/Dashboard";
@@ -57,7 +57,7 @@ const App = () => {
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/documentation" element={<Documentation />} />
               <Route path="/demo" element={<Demo />} />
-              <Route path="/blog" element={<Blog />} />
+              
               <Route path="/pitch" element={<PitchDeck />} />
               <Route path="/color-palette" element={<ColorPalette />} />
               {/* OAuth callback routes */}
