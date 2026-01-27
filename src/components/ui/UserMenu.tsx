@@ -1,6 +1,6 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAppAuth } from '@/contexts/AuthContext';
+import { Link } from 'react-router-dom';
+import { useClerk, useUser } from '@clerk/clerk-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +12,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   User, 
+  CreditCard, 
   BarChart3, 
   Receipt, 
   Settings, 
@@ -26,19 +27,14 @@ interface UserMenuProps {
 }
 
 const UserMenu: React.FC<UserMenuProps> = ({ showPlanBadge = true }) => {
-  const { user, signOut } = useAppAuth();
+  const { user } = useUser();
+  const { signOut } = useClerk();
   const { planData, loading: planLoading } = usePlan();
-  const navigate = useNavigate();
 
   if (!user) return null;
 
-  const getInitials = (name: string | null | undefined) => {
-    if (!name) {
-      // Use email or phone as fallback
-      if (user.email) return user.email[0].toUpperCase();
-      if (user.phone) return 'P';
-      return 'U';
-    }
+  const getInitials = (name: string | null) => {
+    if (!name) return 'U';
     return name
       .split(' ')
       .map((n) => n[0])
@@ -70,21 +66,13 @@ const UserMenu: React.FC<UserMenuProps> = ({ showPlanBadge = true }) => {
     }
   };
 
-  const displayName = user.fullName || user.email || user.phone || 'User';
-  const displayEmail = user.email || user.phone || '';
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-  };
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="flex items-center gap-2 outline-none focus:ring-2 focus:ring-primary/20 rounded-full p-0.5 transition-all hover:opacity-80">
           <div className="relative">
             <Avatar className="h-9 w-9 border-2 border-border">
-              <AvatarImage src={user.imageUrl} alt={displayName} />
+              <AvatarImage src={user.imageUrl} alt={user.fullName || 'User'} />
               <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                 {getInitials(user.fullName)}
               </AvatarFallback>
@@ -104,13 +92,13 @@ const UserMenu: React.FC<UserMenuProps> = ({ showPlanBadge = true }) => {
         <DropdownMenuLabel className="p-3">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={user.imageUrl} alt={displayName} />
+              <AvatarImage src={user.imageUrl} alt={user.fullName || 'User'} />
               <AvatarFallback>{getInitials(user.fullName)}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
-              <span className="font-semibold text-sm">{displayName}</span>
+              <span className="font-semibold text-sm">{user.fullName || 'User'}</span>
               <span className="text-xs text-muted-foreground truncate max-w-[150px]">
-                {displayEmail}
+                {user.primaryEmailAddress?.emailAddress}
               </span>
             </div>
           </div>
@@ -177,7 +165,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ showPlanBadge = true }) => {
 
         <DropdownMenuItem 
           className="p-3 cursor-pointer text-destructive focus:text-destructive"
-          onClick={handleSignOut}
+          onClick={() => signOut({ redirectUrl: '/' })}
         >
           <LogOut className="mr-3 h-4 w-4" />
           <span>Sign Out</span>

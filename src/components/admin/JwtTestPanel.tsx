@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, CheckCircle, XCircle, AlertTriangle, KeyRound, Info } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAppAuth } from '@/contexts/AuthContext';
+import { tradelayoutClient as supabase } from '@/lib/supabase/tradelayout-client';
 
 interface JwtDiagnostics {
   success: boolean;
@@ -17,16 +16,24 @@ interface JwtDiagnostics {
   };
   decoded_claims: {
     sub: string | null;
+    iss: string | null;
     aud: string | null;
     exp: string | null;
     iat: string | null;
+    azp: string | null;
     role: string | null;
     all_claims: string[];
   } | null;
-  user_info: {
+  clerk_user_extraction: {
+    working: boolean;
+    extracted_user_id: string | null;
+    method: string;
+  };
+  supabase_native_auth: {
+    user_recognized: boolean;
     user_id: string | null;
-    email: string | null;
-    phone: string | null;
+    user_error: string | null;
+    note: string;
   };
   user_profile_lookup: {
     successful: boolean;
@@ -39,7 +46,6 @@ interface JwtDiagnostics {
 }
 
 const JwtTestPanel: React.FC = () => {
-  const { session, user } = useAppAuth();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<JwtDiagnostics | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -50,228 +56,235 @@ const JwtTestPanel: React.FC = () => {
     setResult(null);
 
     try {
-      if (!session?.access_token) {
-        setError('No Supabase session found. Please ensure you are logged in.');
+      // Get Clerk token
+      const clerk = (window as any).Clerk;
+      if (!clerk?.session) {
+        setError('No Clerk session found. Please ensure you are logged in.');
         setLoading(false);
         return;
       }
 
-      // Build diagnostic result from Supabase session
-      const token = session.access_token;
-      const isJwtFormat = token.split('.').length === 3;
-
-      // Decode JWT to get claims
-      let decodedClaims = null;
-      if (isJwtFormat) {
-        try {
-          const payloadPart = token.split('.')[1];
-          const decoded = JSON.parse(atob(payloadPart));
-          decodedClaims = {
-            sub: decoded.sub || null,
-            aud: decoded.aud || null,
-            exp: decoded.exp ? new Date(decoded.exp * 1000).toISOString() : null,
-            iat: decoded.iat ? new Date(decoded.iat * 1000).toISOString() : null,
-            role: decoded.role || null,
-            all_claims: Object.keys(decoded),
-          };
-        } catch (e) {
-          console.error('Error decoding JWT:', e);
-        }
+      const token = await clerk.session.getToken({ template: 'supabase' });
+      if (!token) {
+        setError('Failed to get Clerk token.');
+        setLoading(false);
+        return;
       }
 
-      // Check user profile in database
-      let profileLookup = {
-        successful: false,
-        profile_found: false,
-        profile_data: null as any,
-        error: null as string | null,
-      };
-
-      if (user?.id) {
-        try {
-          // Use any to bypass complex type instantiation
-          const client = supabase as any;
-          const { data: profile, error: profileError } = await client
-            .from('user_profiles')
-            .select('*')
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-          profileLookup = {
-            successful: !profileError,
-            profile_found: !!profile,
-            profile_data: profile,
-            error: profileError?.message || null,
-          };
-        } catch (e: any) {
-          profileLookup.error = e.message;
-        }
-      }
-
-      const diagnosticResult: JwtDiagnostics = {
-        success: true,
-        timestamp: new Date().toISOString(),
-        token_info: {
-          token_present: !!token,
-          token_length: token.length,
-          is_jwt_format: isJwtFormat,
+      // Call the test edge function
+      const { data, error: fnError } = await supabase.functions.invoke('test-clerk-jwt', {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-        decoded_claims: decodedClaims,
-        user_info: {
-          user_id: user?.id || null,
-          email: user?.email || null,
-          phone: user?.phone || null,
-        },
-        user_profile_lookup: profileLookup,
-        recommendations: [],
-      };
+      });
 
-      // Add recommendations
-      if (!profileLookup.profile_found) {
-        diagnosticResult.recommendations.push('No user profile found. Consider creating one.');
+      if (fnError) {
+        setError(`Edge function error: ${fnError.message}`);
+        setLoading(false);
+        return;
       }
 
-      setResult(diagnosticResult);
-    } catch (err: any) {
-      console.error('Test error:', err);
-      setError(err.message || 'Unknown error occurred');
+      setResult(data as JwtDiagnostics);
+    } catch (err: unknown) {
+      const e = err as Error;
+      setError(`Test failed: ${e.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const StatusIcon = ({ success }: { success: boolean }) => 
-    success ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />;
+  const StatusIcon = ({ success }: { success: boolean }) => {
+    return success ? (
+      <CheckCircle className="h-4 w-4 text-green-500" />
+    ) : (
+      <XCircle className="h-4 w-4 text-destructive" />
+    );
+  };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <KeyRound className="h-5 w-5" />
-          Supabase Auth Diagnostics
+          JWT Integration Test
         </CardTitle>
         <CardDescription>
-          Test your Supabase authentication and profile lookup
+          Test if Clerk JWT tokens can be used to identify users in the backend
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Button onClick={runTest} disabled={loading}>
+        <Button onClick={runTest} disabled={loading} className="w-full">
           {loading ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Running Test...
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Testing...
             </>
           ) : (
-            'Run Auth Test'
+            'Run JWT Integration Test'
           )}
         </Button>
 
         {error && (
-          <div className="p-4 bg-destructive/10 border border-destructive rounded-lg">
-            <div className="flex items-center gap-2">
-              <XCircle className="h-4 w-4 text-destructive" />
-              <span className="font-medium text-destructive">Error</span>
+          <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <div className="flex items-center gap-2 text-destructive">
+              <XCircle className="h-4 w-4" />
+              <span className="font-medium">Error</span>
             </div>
-            <p className="mt-2 text-sm text-destructive">{error}</p>
+            <p className="mt-1 text-sm text-destructive">{error}</p>
           </div>
         )}
 
         {result && (
-          <ScrollArea className="h-[400px]">
-            <div className="space-y-4 pr-4">
-              {/* Overall Status */}
-              <div className="flex items-center gap-2">
-                <StatusIcon success={result.success} />
-                <span className="font-medium">Overall Status:</span>
-                <Badge variant={result.success ? 'default' : 'destructive'}>
-                  {result.success ? 'SUCCESS' : 'FAILED'}
-                </Badge>
-              </div>
-
+          <ScrollArea className="h-[500px] w-full rounded-md border p-4">
+            <div className="space-y-6">
               {/* Token Info */}
-              <div className="space-y-2">
-                <h4 className="font-medium flex items-center gap-2">
-                  <Info className="h-4 w-4" />
-                  Token Info
-                </h4>
-                <div className="pl-6 space-y-1 text-sm">
-                  <div className="flex items-center gap-2">
-                    <StatusIcon success={result.token_info.token_present} />
-                    <span>Token Present: {String(result.token_info.token_present)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <StatusIcon success={result.token_info.is_jwt_format} />
-                    <span>JWT Format: {String(result.token_info.is_jwt_format)}</span>
-                  </div>
-                  <div>Token Length: {result.token_info.token_length}</div>
-                </div>
-              </div>
-
-              {/* User Info */}
-              <div className="space-y-2">
-                <h4 className="font-medium">User Info</h4>
-                <div className="pl-6 space-y-1 text-sm">
-                  <div className="flex items-center gap-2">
-                    <StatusIcon success={!!result.user_info.user_id} />
-                    <span>User ID: {result.user_info.user_id || 'N/A'}</span>
-                  </div>
-                  <div>Email: {result.user_info.email || 'N/A'}</div>
-                  <div>Phone: {result.user_info.phone || 'N/A'}</div>
+              <div>
+                <h3 className="font-semibold mb-2 flex items-center gap-2">
+                  Token Information
+                  <StatusIcon success={result.token_info?.token_present} />
+                </h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-muted-foreground">Token Present:</span>
+                  <Badge variant={result.token_info?.token_present ? 'default' : 'destructive'}>
+                    {result.token_info?.token_present ? 'Yes' : 'No'}
+                  </Badge>
+                  <span className="text-muted-foreground">Token Length:</span>
+                  <span>{result.token_info?.token_length}</span>
+                  <span className="text-muted-foreground">JWT Format:</span>
+                  <Badge variant={result.token_info?.is_jwt_format ? 'default' : 'destructive'}>
+                    {result.token_info?.is_jwt_format ? 'Valid' : 'Invalid'}
+                  </Badge>
                 </div>
               </div>
 
               {/* Decoded Claims */}
               {result.decoded_claims && (
-                <div className="space-y-2">
-                  <h4 className="font-medium">JWT Claims</h4>
-                  <div className="pl-6 space-y-1 text-sm">
-                    <div>Subject (sub): {result.decoded_claims.sub || 'N/A'}</div>
-                    <div>Audience (aud): {result.decoded_claims.aud || 'N/A'}</div>
-                    <div>Role: {result.decoded_claims.role || 'N/A'}</div>
-                    <div>Expires: {result.decoded_claims.exp || 'N/A'}</div>
-                    <div>Issued At: {result.decoded_claims.iat || 'N/A'}</div>
-                    <div>All Claims: {result.decoded_claims.all_claims.join(', ')}</div>
+                <div>
+                  <h3 className="font-semibold mb-2">Decoded JWT Claims</h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <span className="text-muted-foreground">Subject (sub):</span>
+                    <code className="text-xs bg-muted px-1 py-0.5 rounded break-all">
+                      {result.decoded_claims.sub || 'N/A'}
+                    </code>
+                    <span className="text-muted-foreground">Issuer (iss):</span>
+                    <code className="text-xs bg-muted px-1 py-0.5 rounded break-all">
+                      {result.decoded_claims.iss || 'N/A'}
+                    </code>
+                    <span className="text-muted-foreground">Audience (aud):</span>
+                    <code className="text-xs bg-muted px-1 py-0.5 rounded break-all">
+                      {result.decoded_claims.aud || 'N/A'}
+                    </code>
+                    <span className="text-muted-foreground">Role:</span>
+                    <Badge variant="outline">{result.decoded_claims.role || 'N/A'}</Badge>
+                    <span className="text-muted-foreground">Expires:</span>
+                    <span>{result.decoded_claims.exp || 'N/A'}</span>
                   </div>
                 </div>
               )}
 
-              {/* Profile Lookup */}
-              <div className="space-y-2">
-                <h4 className="font-medium">Profile Lookup</h4>
-                <div className="pl-6 space-y-1 text-sm">
-                  <div className="flex items-center gap-2">
-                    <StatusIcon success={result.user_profile_lookup.successful} />
-                    <span>Query Successful: {String(result.user_profile_lookup.successful)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <StatusIcon success={result.user_profile_lookup.profile_found} />
-                    <span>Profile Found: {String(result.user_profile_lookup.profile_found)}</span>
-                  </div>
-                  {result.user_profile_lookup.error && (
-                    <div className="text-red-500">Error: {result.user_profile_lookup.error}</div>
+              {/* Clerk User Extraction - THE KEY RESULT */}
+              <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                <h3 className="font-semibold mb-2 flex items-center gap-2">
+                  Clerk User ID Extraction
+                  <StatusIcon success={result.clerk_user_extraction?.working} />
+                </h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-muted-foreground">Extraction Working:</span>
+                  <Badge variant={result.clerk_user_extraction?.working ? 'default' : 'destructive'}>
+                    {result.clerk_user_extraction?.working ? 'Yes' : 'No'}
+                  </Badge>
+                  <span className="text-muted-foreground">User ID:</span>
+                  <code className="text-xs bg-muted px-1 py-0.5 rounded break-all font-bold">
+                    {result.clerk_user_extraction?.extracted_user_id || 'Not available'}
+                  </code>
+                  <span className="text-muted-foreground">Method:</span>
+                  <span className="text-xs">{result.clerk_user_extraction?.method}</span>
+                </div>
+              </div>
+
+              {/* User Profile Lookup */}
+              <div>
+                <h3 className="font-semibold mb-2 flex items-center gap-2">
+                  User Profile Lookup
+                  <StatusIcon success={result.user_profile_lookup?.profile_found} />
+                </h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-muted-foreground">Profile Found:</span>
+                  <Badge variant={result.user_profile_lookup?.profile_found ? 'default' : 'secondary'}>
+                    {result.user_profile_lookup?.profile_found ? 'Yes' : 'No'}
+                  </Badge>
+                  {result.user_profile_lookup?.profile_data && (
+                    <>
+                      <span className="text-muted-foreground">Email:</span>
+                      <span>{result.user_profile_lookup.profile_data.email}</span>
+                      <span className="text-muted-foreground">Name:</span>
+                      <span>{result.user_profile_lookup.profile_data.first_name || 'N/A'}</span>
+                    </>
                   )}
-                  {result.user_profile_lookup.profile_data && (
-                    <pre className="bg-muted p-2 rounded text-xs overflow-auto">
-                      {JSON.stringify(result.user_profile_lookup.profile_data, null, 2)}
-                    </pre>
+                  {result.user_profile_lookup?.error && (
+                    <>
+                      <span className="text-muted-foreground">Error:</span>
+                      <span className="text-destructive text-xs">{result.user_profile_lookup.error}</span>
+                    </>
                   )}
                 </div>
               </div>
 
+              {/* Supabase Native Auth - Expected to fail */}
+              <div className="opacity-60">
+                <h3 className="font-semibold mb-2 flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  Supabase Native Auth (auth.uid)
+                </h3>
+                <p className="text-xs text-muted-foreground mb-2">
+                  {result.supabase_native_auth?.note}
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-muted-foreground">Recognized:</span>
+                  <Badge variant="secondary">
+                    {result.supabase_native_auth?.user_recognized ? 'Yes' : 'No (Expected)'}
+                  </Badge>
+                </div>
+              </div>
+
               {/* Recommendations */}
-              {result.recommendations.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-medium flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
-                    Recommendations
-                  </h4>
-                  <ul className="pl-6 list-disc text-sm space-y-1">
-                    {result.recommendations.map((rec, i) => (
-                      <li key={i}>{rec}</li>
+              {result.recommendations && result.recommendations.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-2 flex items-center gap-2">
+                    Results
+                  </h3>
+                  <ul className="space-y-2">
+                    {result.recommendations.map((rec, idx) => (
+                      <li key={idx} className={`text-sm p-2 rounded ${
+                        rec.startsWith('✅') 
+                          ? 'bg-green-500/10 border border-green-500/20' 
+                          : rec.startsWith('⚠️')
+                          ? 'bg-yellow-500/10 border border-yellow-500/20'
+                          : 'bg-blue-500/10 border border-blue-500/20'
+                      }`}>
+                        {rec}
+                      </li>
                     ))}
                   </ul>
                 </div>
               )}
+
+              {/* Summary */}
+              <div className="pt-4 border-t">
+                <h3 className="font-semibold mb-2">Summary</h3>
+                {result.clerk_user_extraction?.working ? (
+                  <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-sm">
+                    <CheckCircle className="h-4 w-4 text-green-500 inline mr-2" />
+                    <strong>Clerk integration is working!</strong> User ID can be extracted from JWT tokens.
+                    Edge functions can use this to authorize database operations.
+                  </div>
+                ) : (
+                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm">
+                    <XCircle className="h-4 w-4 text-destructive inline mr-2" />
+                    <strong>Unable to extract user ID from JWT.</strong> Check if the Clerk JWT template is configured correctly.
+                  </div>
+                )}
+              </div>
             </div>
           </ScrollArea>
         )}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { tradelayoutClient } from '@/lib/supabase/tradelayout-client';
-import { useAppAuth } from '@/contexts/AuthContext';
+import { useUser } from '@clerk/clerk-react';
 
 interface PlanData {
   plan: string;
@@ -16,7 +16,7 @@ interface UserPlanRow {
 }
 
 export const usePlan = () => {
-  const { userId } = useAppAuth();
+  const { user } = useUser();
   const [planData, setPlanData] = useState<PlanData>({
     plan: 'FREE',
     plan_code: 'FREE',
@@ -26,23 +26,23 @@ export const usePlan = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (userId) {
+    if (user?.id) {
       fetchPlan();
     } else {
       setLoading(false);
     }
-  }, [userId]);
+  }, [user?.id]);
 
   const fetchPlan = async () => {
-    if (!userId) return;
+    if (!user?.id) return;
     
-    console.log('🔍 usePlan: Fetching plan from Supabase for user:', userId);
+    console.log('🔍 usePlan: Fetching plan from Supabase for user:', user.id);
     try {
       // Use TradeLayout client for user_plans table
       const { data, error } = await tradelayoutClient
         .from('user_plans' as any)
         .select('plan, status, expires_at')
-        .eq('user_id', userId)
+        .eq('user_id', user.id)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(1)

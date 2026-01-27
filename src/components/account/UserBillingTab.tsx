@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAppAuth } from '@/contexts/AuthContext';
+import { useUser } from '@clerk/clerk-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,7 @@ import { UserPlan, PlanType, BillingCycle, PLAN_CONFIGS } from '@/types/billing'
 import { format } from 'date-fns';
 
 const UserBillingTab: React.FC = () => {
-  const { user } = useAppAuth();
+  const { user } = useUser();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [userPlan, setUserPlan] = useState<UserPlan | null>(null);

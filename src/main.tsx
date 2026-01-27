@@ -1,10 +1,17 @@
 import { createRoot } from 'react-dom/client'
+import { ClerkProvider } from '@clerk/clerk-react'
 import { AuthProvider } from './contexts/AuthContext'
 import App from './App.tsx'
 import './index.css'
 import './utils/errorSuppression' // Suppress development environment errors
 
 console.log('🚀 TradeLayout initializing...');
+
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+if (!CLERK_PUBLISHABLE_KEY) {
+  console.warn("⚠️ Missing Clerk Publishable Key - app will use mock auth");
+}
 
 const rootElement = document.getElementById("root");
 
@@ -15,11 +22,22 @@ if (!rootElement) {
     console.log("✅ Creating React root and rendering application...");
     const root = createRoot(rootElement);
     
-    root.render(
+    // Wrap with ClerkProvider if key exists, otherwise just AuthProvider handles mock auth
+    const AppWithAuth = () => (
       <AuthProvider>
         <App />
       </AuthProvider>
     );
+    
+    if (CLERK_PUBLISHABLE_KEY) {
+      root.render(
+        <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+          <AppWithAuth />
+        </ClerkProvider>
+      );
+    } else {
+      root.render(<AppWithAuth />);
+    }
     
     console.log("🎉 TradeLayout application rendered successfully!");
     

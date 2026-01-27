@@ -3,12 +3,14 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppAuth } from '@/contexts/AuthContext';
+import { useUser } from '@clerk/clerk-react';
 import { initiatePayment } from '@/lib/services/payment-service';
 import { toast } from '@/hooks/use-toast';
 import AuthModal from '../auth/AuthModal';
 
 const FinalCTA = () => {
-  const { isAuthenticated, user } = useAppAuth();
+  const { isAuthenticated } = useAppAuth();
+  const { user } = useUser();
   const navigate = useNavigate();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; mode: 'signin' | 'signup' }>({
@@ -35,9 +37,9 @@ const FinalCTA = () => {
     
     try {
       await initiatePayment(
-        user?.id || '',
-        user?.email || '',
-        user?.fullName || user?.firstName || 'User',
+        user.id,
+        user.emailAddresses[0]?.emailAddress || '',
+        user.fullName || user.firstName || 'User',
         'LAUNCH',
         'monthly',
         () => {

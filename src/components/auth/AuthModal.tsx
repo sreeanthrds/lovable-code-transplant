@@ -1,19 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
-import { 
-  signInWithPhoneOtp, 
-  signInWithEmailOtp, 
-  signInWithGoogle,
-  verifyPhoneOtp,
-  verifyEmailOtp
-} from '@/lib/supabase/auth';
-import { Phone, Mail, Loader2, ArrowLeft, Chrome } from 'lucide-react';
+import { useAuth } from '@clerk/clerk-react';
+import { SignIn, SignUp } from '@clerk/clerk-react';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -22,125 +11,9 @@ interface AuthModalProps {
   onModeSwitch?: (mode: 'signin' | 'signup') => void;
 }
 
-type AuthStep = 'input' | 'verify';
-type AuthMethod = 'phone' | 'email';
-
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode }) => {
-  const { toast } = useToast();
-  const [authMethod, setAuthMethod] = useState<AuthMethod>('phone');
-  const [step, setStep] = useState<AuthStep>('input');
-  const [loading, setLoading] = useState(false);
-
-  // Input states
-  const [phone, setPhone] = useState('+91');
-  const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
-
-  const resetState = () => {
-    setStep('input');
-    setOtp('');
-    setLoading(false);
-  };
-
-  const handleClose = () => {
-    resetState();
-    onClose();
-  };
-
-  const handleSendOtp = async () => {
-    setLoading(true);
-    try {
-      if (authMethod === 'phone') {
-        const result = await signInWithPhoneOtp(phone);
-        if (result.success) {
-          setStep('verify');
-          toast({
-            title: 'OTP Sent',
-            description: 'Please check your phone for the verification code.',
-          });
-        } else {
-          toast({
-            title: 'Error',
-            description: result.error || 'Failed to send OTP',
-            variant: 'destructive',
-          });
-        }
-      } else {
-        const result = await signInWithEmailOtp(email);
-        if (result.success) {
-          setStep('verify');
-          toast({
-            title: 'OTP Sent',
-            description: 'Please check your email for the verification code.',
-          });
-        } else {
-          toast({
-            title: 'Error',
-            description: result.error || 'Failed to send OTP',
-            variant: 'destructive',
-          });
-        }
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    setLoading(true);
-    try {
-      const result = authMethod === 'phone' 
-        ? await verifyPhoneOtp(phone, otp)
-        : await verifyEmailOtp(email, otp);
-
-      if (result.success) {
-        toast({
-          title: 'Success',
-          description: 'You have been signed in successfully!',
-        });
-        handleClose();
-      } else {
-        toast({
-          title: 'Verification Failed',
-          description: result.error || 'Invalid OTP. Please try again.',
-          variant: 'destructive',
-        });
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    try {
-      const result = await signInWithGoogle();
-      if (!result.success) {
-        toast({
-          title: 'Error',
-          description: result.error || 'Failed to sign in with Google',
-          variant: 'destructive',
-        });
-      }
-      // Note: On success, user will be redirected by OAuth flow
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBack = () => {
-    setStep('input');
-    setOtp('');
-  };
-
-  const handleTabChange = (value: string) => {
-    setAuthMethod(value as AuthMethod);
-    setStep('input');
-    setOtp('');
-  };
-
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
@@ -153,162 +26,30 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode }) => {
           </DialogDescription>
         </DialogHeader>
         
-        <div className="py-4 space-y-4">
-          {/* OAuth Section */}
-          <Button
-            variant="outline"
-            className="w-full h-11"
-            onClick={handleGoogleSignIn}
-            disabled={loading}
-          >
-            {loading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Chrome className="h-4 w-4 mr-2" />
-            )}
-            Continue with Google
-          </Button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <Separator className="w-full" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
-              </span>
-            </div>
-          </div>
-
-          {/* OTP Login Tabs */}
-          <Tabs value={authMethod} onValueChange={handleTabChange}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="phone" className="flex items-center gap-2">
-                <Phone className="h-4 w-4" />
-                Phone
-              </TabsTrigger>
-              <TabsTrigger value="email" className="flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                Email
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="phone" className="space-y-4 mt-4">
-              {step === 'input' ? (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="modal-phone">Phone Number</Label>
-                    <Input
-                      id="modal-phone"
-                      type="tel"
-                      placeholder="+91 9876543210"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      disabled={loading}
-                    />
-                  </div>
-                  <Button
-                    className="w-full"
-                    onClick={handleSendOtp}
-                    disabled={loading || phone.length < 10}
-                  >
-                    {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Send OTP
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleBack}
-                    className="p-0 h-auto"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Back
-                  </Button>
-                  <div className="space-y-2">
-                    <Label htmlFor="modal-phone-otp">Verification Code</Label>
-                    <Input
-                      id="modal-phone-otp"
-                      type="text"
-                      placeholder="Enter 6-digit code"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      disabled={loading}
-                      maxLength={6}
-                    />
-                  </div>
-                  <Button
-                    className="w-full"
-                    onClick={handleVerifyOtp}
-                    disabled={loading || otp.length !== 6}
-                  >
-                    {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Verify & Sign In
-                  </Button>
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="email" className="space-y-4 mt-4">
-              {step === 'input' ? (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="modal-email">Email Address</Label>
-                    <Input
-                      id="modal-email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      disabled={loading}
-                    />
-                  </div>
-                  <Button
-                    className="w-full"
-                    onClick={handleSendOtp}
-                    disabled={loading || !email.includes('@')}
-                  >
-                    {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Send OTP
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleBack}
-                    className="p-0 h-auto"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Back
-                  </Button>
-                  <div className="space-y-2">
-                    <Label htmlFor="modal-email-otp">Verification Code</Label>
-                    <Input
-                      id="modal-email-otp"
-                      type="text"
-                      placeholder="Enter 6-digit code"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      disabled={loading}
-                      maxLength={6}
-                    />
-                  </div>
-                  <Button
-                    className="w-full"
-                    onClick={handleVerifyOtp}
-                    disabled={loading || otp.length !== 6}
-                  >
-                    {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Verify & Sign In
-                  </Button>
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+        <div className="py-4">
+          {mode === 'signin' ? (
+            <SignIn 
+              appearance={{
+                elements: {
+                  formButtonPrimary: 'bg-primary hover:bg-primary/90',
+                  footerActionLink: 'text-primary hover:text-primary/80'
+                }
+              }}
+              afterSignInUrl="/app/strategies"
+              signUpUrl="#"
+            />
+          ) : (
+            <SignUp 
+              appearance={{
+                elements: {
+                  formButtonPrimary: 'bg-primary hover:bg-primary/90',
+                  footerActionLink: 'text-primary hover:text-primary/80'
+                }
+              }}
+              afterSignUpUrl="/app/strategies"
+              signInUrl="#"
+            />
+          )}
         </div>
       </DialogContent>
     </Dialog>

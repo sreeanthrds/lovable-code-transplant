@@ -1,21 +1,20 @@
 import React from 'react';
-import { useAppAuth } from '@/contexts/AuthContext';
+import { useClerkUser } from '@/hooks/useClerkUser';
 import { Button } from '@/components/ui/button';
-import { Link, Navigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface AuthGuardProps {
   children: React.ReactNode;
 }
 
 const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
-  const { isAuthenticated, isLoaded } = useAppAuth();
+  const { isAuthenticated, isLoading } = useClerkUser();
 
-  if (!isLoaded) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
           <p className="mt-4 text-muted-foreground">Loading authentication...</p>
         </div>
       </div>
@@ -23,8 +22,17 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    // Redirect to auth page instead of showing a message
-    return <Navigate to="/auth" replace />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-full max-w-md text-center">
+          <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
+          <p className="mb-6 text-muted-foreground">Please sign in to access this page.</p>
+          <Link to="/">
+            <Button>Return to Home</Button>
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;

@@ -1,21 +1,20 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu } from 'lucide-react';
+import { Menu, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useAppAuth } from '@/contexts/AuthContext';
+import { UserButton, SignedIn, SignedOut } from '@clerk/clerk-react';
 import Logo from './logo';
 import DesktopNav from './desktop-nav';
 import MobileNav from './mobile-nav';
 import { PlanBadge } from '@/components/billing/PlanBadge';
 import { usePlan } from '@/hooks/usePlan';
-import UserMenu from './UserMenu';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const closeSheet = () => setIsOpen(false);
   const { planData, loading: planLoading } = usePlan();
-  const { isAuthenticated, isLoaded } = useAppAuth();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/90 dark:bg-white/10 border-white/40 dark:border-white/20 shadow-sm backdrop-blur-xl">
@@ -46,15 +45,16 @@ const Navbar = () => {
           
           {/* Right side - user */}
           <div className="flex items-center space-x-2">
-            {isLoaded && isAuthenticated ? (
-              <UserMenu />
-            ) : (
-              <Link to="/auth">
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
+            <SignedOut>
+              <Link to="/app">
                 <Button size="sm" className="bg-primary hover:bg-primary/90">
                   Sign In
                 </Button>
               </Link>
-            )}
+            </SignedOut>
           </div>
         </div>
 
@@ -73,20 +73,19 @@ const Navbar = () => {
                 Try Demo
               </Button>
             </Link>
-            {isLoaded && isAuthenticated ? (
-              <>
-                <Link to="/app/account?tab=billing" className="hover:opacity-80 transition-opacity">
-                  {!planLoading && <PlanBadge plan={planData.plan} expiresAt={planData.expires_date} />}
-                </Link>
-                <UserMenu />
-              </>
-            ) : (
-              <Link to="/auth">
+            <SignedIn>
+              <Link to="/app/account?tab=billing" className="hover:opacity-80 transition-opacity">
+                {!planLoading && <PlanBadge plan={planData.plan} expiresAt={planData.expires_date} />}
+              </Link>
+              <UserButton />
+            </SignedIn>
+            <SignedOut>
+              <Link to="/app">
                 <Button size="sm" className="bg-primary hover:bg-primary/90">
                   Sign In
                 </Button>
               </Link>
-            )}
+            </SignedOut>
           </div>
         </div>
       </div>

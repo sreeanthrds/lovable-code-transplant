@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Check, Sparkles, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppAuth } from '@/contexts/AuthContext';
+import { useUser } from '@clerk/clerk-react';
 import { initiatePayment } from '@/lib/services/payment-service';
 import { toast } from '@/hooks/use-toast';
 import { PlanType, BillingCycle } from '@/types/billing';
@@ -10,7 +11,8 @@ import AuthModal from '../auth/AuthModal';
 
 const NewPricingSection = () => {
   const [showYearly, setShowYearly] = useState(false);
-  const { isAuthenticated, user } = useAppAuth();
+  const { isAuthenticated } = useAppAuth();
+  const { user } = useUser();
   const navigate = useNavigate();
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [authModal, setAuthModal] = useState<{ isOpen: boolean; mode: 'signin' | 'signup' }>({
@@ -43,9 +45,9 @@ const NewPricingSection = () => {
     
     try {
       await initiatePayment(
-        user?.id || '',
-        user?.email || '',
-        user?.fullName || user?.firstName || 'User',
+        user.id,
+        user.emailAddresses[0]?.emailAddress || '',
+        user.fullName || user.firstName || 'User',
         planType,
         billingCycle,
         () => {

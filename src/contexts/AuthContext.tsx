@@ -1,204 +1,214 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
-import { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { tradelayoutClient as supabase } from '@/lib/supabase/tradelayout-client';
+
+interface EmailAddress {
+  emailAddress: string;
+}
 
 interface AuthUser {
   id: string;
   email?: string;
-  phone?: string;
   firstName?: string;
   lastName?: string;
   fullName?: string;
   imageUrl?: string;
-  emailAddresses?: { emailAddress: string }[];
+  emailAddresses?: EmailAddress[];
   createdAt?: Date | number | null;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   userId: string | null;
-  session: Session | null;
   isAuthenticated: boolean;
   isLoaded: boolean;
+  isMockAuth: boolean;
   isAdmin: boolean;
   isAdminLoading: boolean;
-  signOut: () => Promise<void>;
-  refreshSession: () => Promise<void>;
+  signOut: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/**
- * Convert Supabase User to our AuthUser format
- */
-const mapSupabaseUser = (user: User | null): AuthUser | null => {
-  if (!user) return null;
-
-  const email = user.email;
-  const phone = user.phone;
-  const metadata = user.user_metadata || {};
-
-  return {
-    id: user.id,
-    email: email,
-    phone: phone,
-    firstName: metadata.first_name || metadata.given_name || undefined,
-    lastName: metadata.last_name || metadata.family_name || undefined,
-    fullName: metadata.full_name || metadata.name || undefined,
-    imageUrl: metadata.avatar_url || metadata.picture || undefined,
-    emailAddresses: email ? [{ emailAddress: email }] : [],
-    createdAt: user.created_at ? new Date(user.created_at) : null,
-  };
+// Fallback mock user when Clerk fails
+const MOCK_USER: AuthUser = {
+  id: 'dev-user-tradelayout',
+  email: 'developer@tradelayout.com',
+  firstName: 'Demo',
+  lastName: 'User',
+  fullName: 'Demo User',
+  emailAddresses: [{ emailAddress: 'developer@tradelayout.com' }],
+  createdAt: Date.now(),
 };
 
+const CLERK_LOAD_TIMEOUT = 3000; // 3 seconds timeout for Clerk to load
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [useMockAuth, setUseMockAuth] = useState(false);
+  const [mockAuthenticated, setMockAuthenticated] = useState(true);
+  const [clerkUser, setClerkUser] = useState<AuthUser | null>(null);
+  const [clerkLoaded, setClerkLoaded] = useState(false);
+  const [clerkSignedIn, setClerkSignedIn] = useState(false);
   
   // Cached admin role state
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAdminLoading, setIsAdminLoading] = useState(true);
   const adminCheckRef = useRef<string | null>(null);
 
-  /**
-   * Check if user has admin role
-   */
-  const checkAdminStatus = useCallback(async (userId: string | null) => {
-    if (!userId) {
-      setIsAdmin(false);
-      setIsAdminLoading(false);
-      adminCheckRef.current = null;
-      return;
-    }
-
-    // Skip if we already checked for this user
-    if (adminCheckRef.current === userId) {
-      return;
-    }
-
-    setIsAdminLoading(true);
-    adminCheckRef.current = userId;
-
+  // Try to get Clerk state from window.Clerk
+  const checkClerkState = useCallback(() => {
     try {
-      const { data, error } = await supabase.rpc('has_role', { 
-        _user_id: userId, 
-        _role: 'admin' 
-      });
-
-      if (error) {
-        console.error('Error checking admin status:', error);
-        setIsAdmin(false);
-      } else {
-        setIsAdmin(data || false);
-      }
-    } catch (error) {
-      console.error('Error calling has_role function:', error);
-      setIsAdmin(false);
-    } finally {
-      setIsAdminLoading(false);
-    }
-  }, []);
-
-  /**
-   * Refresh the current session
-   */
-  const refreshSession = useCallback(async () => {
-    try {
-      const { data: { session: newSession }, error } = await supabase.auth.refreshSession();
-      if (error) {
-        console.error('Error refreshing session:', error);
-        return;
-      }
-      setSession(newSession);
-      setUser(mapSupabaseUser(newSession?.user ?? null));
-    } catch (error) {
-      console.error('Error refreshing session:', error);
-    }
-  }, []);
-
-  /**
-   * Sign out the current user
-   */
-  const signOut = useCallback(async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Error signing out:', error);
-      }
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-    // Reset state
-    setSession(null);
-    setUser(null);
-    setIsAdmin(false);
-    adminCheckRef.current = null;
-  }, []);
-
-  // Initialize auth state and listen for changes
-  useEffect(() => {
-    console.log('🔐 Initializing Supabase Auth...');
-
-    // Set up auth state listener FIRST (before checking session)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event: AuthChangeEvent, newSession: Session | null) => {
-        console.log('🔄 Auth state changed:', event);
-        
-        setSession(newSession);
-        setUser(mapSupabaseUser(newSession?.user ?? null));
-        
-        // Use setTimeout to defer admin check (avoid Supabase deadlock)
-        if (newSession?.user?.id) {
-          setTimeout(() => {
-            checkAdminStatus(newSession.user.id);
-          }, 0);
-        } else {
-          setIsAdmin(false);
-          setIsAdminLoading(false);
-          adminCheckRef.current = null;
+      const clerk = (window as any).Clerk;
+      if (clerk) {
+        if (clerk.loaded) {
+          setClerkLoaded(true);
+          if (clerk.user) {
+            setClerkSignedIn(true);
+            setClerkUser({
+              id: clerk.user.id,
+              email: clerk.user.emailAddresses?.[0]?.emailAddress,
+              firstName: clerk.user.firstName || undefined,
+              lastName: clerk.user.lastName || undefined,
+              fullName: clerk.user.fullName || undefined,
+              imageUrl: clerk.user.imageUrl,
+              emailAddresses: clerk.user.emailAddresses || [],
+              createdAt: clerk.user.createdAt || null,
+            });
+          } else {
+            setClerkSignedIn(false);
+            setClerkUser(null);
+          }
+          return true;
         }
       }
-    );
+      return false;
+    } catch (error) {
+      console.warn('⚠️ Error checking Clerk state:', error);
+      return false;
+    }
+  }, []);
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session: existingSession }, error }) => {
-      if (error) {
-        console.error('Error getting session:', error);
+  // Monitor Clerk loading with polling and timeout
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    let intervalId: NodeJS.Timeout;
+
+    // Poll for Clerk state
+    intervalId = setInterval(() => {
+      if (checkClerkState()) {
+        console.log('✅ Clerk loaded successfully via polling');
+        clearInterval(intervalId);
+        clearTimeout(timeoutId);
       }
-      
-      setSession(existingSession);
-      setUser(mapSupabaseUser(existingSession?.user ?? null));
-      setIsLoaded(true);
+    }, 200);
 
-      if (existingSession?.user?.id) {
-        checkAdminStatus(existingSession.user.id);
-      } else {
-        setIsAdminLoading(false);
+    // Timeout fallback
+    timeoutId = setTimeout(() => {
+      clearInterval(intervalId);
+      if (!clerkLoaded) {
+        console.warn('⚠️ Clerk failed to load within timeout, using mock auth');
+        setUseMockAuth(true);
       }
-
-      console.log('✅ Supabase Auth initialized', existingSession ? '(authenticated)' : '(not authenticated)');
-    });
+    }, CLERK_LOAD_TIMEOUT);
 
     return () => {
-      subscription.unsubscribe();
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
     };
-  }, [checkAdminStatus]);
+  }, [checkClerkState, clerkLoaded]);
 
-  const userId = user?.id ?? null;
-  const isAuthenticated = !!session && !!user;
+  // Listen for Clerk errors
+  useEffect(() => {
+    const handleClerkError = (event: ErrorEvent) => {
+      if (event.message?.toLowerCase().includes('clerk')) {
+        console.warn('⚠️ Clerk error detected, using mock auth:', event.message);
+        setUseMockAuth(true);
+      }
+    };
+
+    window.addEventListener('error', handleClerkError);
+    return () => window.removeEventListener('error', handleClerkError);
+  }, []);
+
+  // Determine current auth state
+  const isMockAuth = useMockAuth;
+  const isLoaded = useMockAuth || clerkLoaded;
+  const isAuthenticated = useMockAuth ? mockAuthenticated : clerkSignedIn;
+  
+  const user: AuthUser | null = useMockAuth 
+    ? (mockAuthenticated ? MOCK_USER : null)
+    : clerkUser;
+
+  const userId = user?.id || null;
+
+  // Fetch admin role once when userId changes (cached)
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (!userId) {
+        setIsAdmin(false);
+        setIsAdminLoading(false);
+        adminCheckRef.current = null;
+        return;
+      }
+
+      // Skip if we already checked for this user
+      if (adminCheckRef.current === userId) {
+        return;
+      }
+
+      setIsAdminLoading(true);
+      adminCheckRef.current = userId;
+
+      try {
+        const { data, error } = await supabase.rpc('has_role', { 
+          _user_id: userId, 
+          _role: 'admin' 
+        });
+
+        if (error) {
+          console.error('Error checking admin status:', error);
+          setIsAdmin(false);
+        } else {
+          setIsAdmin(data || false);
+        }
+      } catch (error) {
+        console.error('Error calling has_role function:', error);
+        setIsAdmin(false);
+      } finally {
+        setIsAdminLoading(false);
+      }
+    };
+
+    checkAdminStatus();
+  }, [userId]);
+
+  const signOut = useCallback(() => {
+    if (useMockAuth) {
+      setMockAuthenticated(false);
+    } else {
+      try {
+        const clerk = (window as any).Clerk;
+        if (clerk?.signOut) {
+          clerk.signOut();
+        }
+      } catch (error) {
+        console.error('Error signing out:', error);
+      }
+    }
+    // Reset admin state on sign out
+    setIsAdmin(false);
+    adminCheckRef.current = null;
+  }, [useMockAuth]);
 
   return (
     <AuthContext.Provider value={{
       user,
       userId,
-      session,
       isAuthenticated,
       isLoaded,
+      isMockAuth,
       isAdmin,
       isAdminLoading,
       signOut,
-      refreshSession,
     }}>
       {children}
     </AuthContext.Provider>

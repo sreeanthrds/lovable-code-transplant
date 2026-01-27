@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAppAuth } from '@/contexts/AuthContext';
+import { useUser } from '@clerk/clerk-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,7 +61,7 @@ interface UserWithPlan {
 }
 
 const AdminUserPlansManager: React.FC = () => {
-  const { user: adminUser } = useAppAuth();
+  const { user: adminUser } = useUser();
   const { toast } = useToast();
   
   const [users, setUsers] = useState<UserWithPlan[]>([]);

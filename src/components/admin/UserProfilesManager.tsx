@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAppAuth } from '@/contexts/AuthContext';
+import { useUser } from '@clerk/clerk-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { adminService, UserProfile } from '@/lib/supabase/services/admin-service
 import { format } from 'date-fns';
 
 const UserProfilesManager: React.FC = () => {
-  const { user } = useAppAuth();
+  const { user } = useUser();
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [filteredProfiles, setFilteredProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
