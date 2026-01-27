@@ -273,13 +273,13 @@ export const updateUserLocalUrl = async (
         console.log('✅ Updated existing local URL row');
       } else {
         // Insert new row
+        // Note: config_name is in TS types but NOT in actual DB, using 'as any'
         const insertPayload = {
           user_id: localUserId,
           base_url: localUrl.trim(),
-          config_name: 'local',
           timeout: 30000,
           retries: 3
-        };
+        } as any;
         console.log('➕ Inserting new row:', JSON.stringify(insertPayload));
         
         const { data: insertedData, error } = await client
@@ -351,16 +351,15 @@ export const updateGlobalProductionUrl = async (baseUrl: string): Promise<boolea
         return false;
       }
     } else {
-      // Create global config
+      // Create global config - only columns that exist in actual database
       const { error } = await client
         .from('api_configurations')
         .insert({
           user_id: GLOBAL_CONFIG_USER_ID,
           base_url: baseUrl,
-          config_name: 'Global Production',
           timeout: 30000,
           retries: 3
-        });
+        } as any);
 
       if (error) {
         console.error('❌ Error creating global config:', error);

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { getApiConfig, updateUserLocalUrl, clearApiConfigCache, getActiveApiUrl } from '@/lib/api-config';
+import { getApiConfig, updateUserLocalUrl, updateGlobalProductionUrl, clearApiConfigCache, getActiveApiUrl } from '@/lib/api-config';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useClerkUser } from '@/hooks/useClerkUser';
 import { Loader2, Globe, Settings, RefreshCw, Server, Code } from 'lucide-react';
@@ -64,9 +64,36 @@ const ApiConfigManager: React.FC = () => {
       }
     }
 
+    // Validate global URL
+    if (globalBaseUrl.trim()) {
+      try {
+        new URL(globalBaseUrl);
+      } catch {
+        toast({
+          title: "Error",
+          description: "Please enter a valid Global Production URL",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
+      // Save global production URL first
+      const globalSuccess = await updateGlobalProductionUrl(globalBaseUrl.trim());
+      if (!globalSuccess) {
+        toast({
+          title: "Error",
+          description: "Failed to update global production URL",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Save local URL config
       const success = await updateUserLocalUrl(
         localUrl.trim(),
         useLocalUrl,
@@ -76,7 +103,7 @@ const ApiConfigManager: React.FC = () => {
       if (success) {
         toast({
           title: "Success",
-          description: "Your local API configuration updated successfully",
+          description: "API configuration updated successfully",
           variant: "default"
         });
         setLocalConnectionStatus('unknown');
