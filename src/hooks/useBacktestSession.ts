@@ -13,6 +13,7 @@ import { getApiBaseUrl } from '@/lib/api-config';
 
 interface UseBacktestSessionOptions {
   userId?: string;
+  isAdmin?: boolean;
 }
 
 // Polling configuration
@@ -20,7 +21,7 @@ const POLLING_INTERVAL = 2000;
 const STALE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes without changes = stale
 const MAX_CONSECUTIVE_FAILURES = 10; // Stop after 10 consecutive network failures
 
-export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
+export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessionOptions) {
   const [session, setSession] = useState<BacktestSession | null>(null);
   const [selectedDayData, setSelectedDayData] = useState<DayDetailData | null>(null);
   const [loadingDay, setLoadingDay] = useState<string | null>(null);
@@ -49,10 +50,10 @@ export function useBacktestSession({ userId }: UseBacktestSessionOptions) {
   // Initialize API URL
   const initApiUrl = useCallback(async () => {
     if (userId && !apiBaseUrl.current) {
-      apiBaseUrl.current = await getApiBaseUrl(userId) || '';
+      apiBaseUrl.current = await getApiBaseUrl(userId, isAdmin) || '';
     }
     return apiBaseUrl.current;
-  }, [userId]);
+  }, [userId, isAdmin]);
 
   // Stop polling
   const stopPolling = useCallback(() => {
