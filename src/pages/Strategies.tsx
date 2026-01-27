@@ -5,6 +5,7 @@ import { useAppAuth } from '@/contexts/AuthContext';
 import { useStrategies } from '@/hooks/useStrategies';
 import StrategiesList from '@/components/strategies/StrategiesList';
 import CreateStrategyDialog from '@/components/strategies/CreateStrategyDialog';
+import ImportStrategyButton from '@/components/strategies/ImportStrategyButton';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useStrategyCreation } from '@/hooks/strategy-management/useStrategyCreation';
@@ -48,10 +49,13 @@ const StrategiesPage = () => {
                 Create and manage your trading strategies
               </p>
             </div>
-            <Button onClick={handleCreateStrategy} size="lg">
-              <Plus className="w-4 h-4 mr-2" />
-              Create Strategy
-            </Button>
+            <div className="flex items-center gap-3">
+              <ImportStrategyButton onImportSuccess={refreshStrategies} />
+              <Button onClick={handleCreateStrategy} size="lg">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Strategy
+              </Button>
+            </div>
           </div>
 
           {/* Strategies List */}
