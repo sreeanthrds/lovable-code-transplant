@@ -363,13 +363,11 @@ export const useQuota = () => {
       const needsDailyReset = !plan?.usage_reset_date || plan.usage_reset_date !== today;
       const currentBacktestsToday = needsDailyReset ? 0 : (plan?.backtests_used_today || 0);
 
+      // Only include columns that exist in the user_plans table schema
       const upsertData: any = {
         user_id: userId,
         plan: plan?.plan || 'FREE',
         status: plan?.status || 'active',
-        billing_cycle: plan?.billing_cycle || 'monthly',
-        amount_paid: plan?.amount_paid || 0,
-        currency: plan?.currency || 'INR',
         started_at: plan?.started_at || new Date().toISOString(),
         backtests_used: (plan?.backtests_used || 0) + 1,
         backtests_used_today: currentBacktestsToday + 1,
