@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
 
@@ -25,6 +26,7 @@ interface UserPlan {
   paper_trading_used_today: number;
   addon_backtests: number;
   addon_live_executions: number;
+  admin_notes?: string;
   user_email?: string;
 }
 
@@ -50,6 +52,7 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
     paper_trading_used_today: 0,
     paper_trading_used: 0,
     live_executions_used: 0,
+    admin_notes: '',
   });
 
   useEffect(() => {
@@ -60,6 +63,7 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
         paper_trading_used_today: plan.paper_trading_used_today || 0,
         paper_trading_used: plan.paper_trading_used || 0,
         live_executions_used: plan.live_executions_used || 0,
+        admin_notes: plan.admin_notes || '',
       });
     }
   }, [plan]);
@@ -194,6 +198,17 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
               min="0"
               value={formData.live_executions_used}
               onChange={(e) => handleInputChange('live_executions_used', e.target.value)}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="admin_notes">Admin Notes</Label>
+            <Textarea
+              id="admin_notes"
+              placeholder="Document reason for adjustment (e.g., billing dispute #1234)"
+              value={formData.admin_notes}
+              onChange={(e) => setFormData(prev => ({ ...prev, admin_notes: e.target.value }))}
+              rows={3}
             />
           </div>
         </div>
