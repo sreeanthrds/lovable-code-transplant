@@ -139,6 +139,16 @@ const UserLoginDetails: React.FC = () => {
     }
   };
 
+  // Reset form data to original profile values when cancelling
+  const handleCancel = () => {
+    setFormData({
+      first_name: profile?.first_name || '',
+      last_name: profile?.last_name || '',
+      phone_number: profile?.phone_number || '',
+    });
+    setIsEditing(false);
+  };
+
   const getTimeAgo = (dateString?: string) => {
     if (!dateString) return 'Never';
     try {
@@ -201,7 +211,7 @@ const UserLoginDetails: React.FC = () => {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => isEditing ? setIsEditing(false) : setIsEditing(true)}
+                  onClick={() => isEditing ? handleCancel() : setIsEditing(true)}
                   className="border-border/50 hover:border-primary/50"
                 >
                   {isEditing ? 'Cancel' : 'Edit'}
