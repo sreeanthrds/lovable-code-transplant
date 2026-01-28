@@ -122,10 +122,6 @@ const Account = () => {
                       <Label htmlFor="email" className="text-white/80">Email</Label>
                       <Input id="email" type="email" value={email} disabled className="bg-white/5 border-white/10 text-white/90" />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="userId" className="text-white/80">User ID</Label>
-                      <Input id="userId" value={user?.id || ''} disabled className="bg-white/5 border-white/10 text-white/90" />
-                    </div>
                   </CardContent>
                   <CardFooter>
                     <p className="text-sm text-white/50">
