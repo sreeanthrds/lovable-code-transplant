@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,12 +8,13 @@ import { Label } from '@/components/ui/label';
 import { LogIn, Calendar, Phone, Mail, User, Save, Plus, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useClerkUser } from '@/hooks/useClerkUser';
-import { useClerk } from '@clerk/clerk-react';
+import { useClerk, useUser } from '@clerk/clerk-react';
 import { userProfileService, UserProfile } from '@/lib/supabase/services/user-profile-service';
 import { toast } from '@/hooks/use-toast';
 
 const UserLoginDetails: React.FC = () => {
   const { user: appUser } = useClerkUser();
+  const { user: clerkUser } = useUser();
   const { openUserProfile } = useClerk();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -24,6 +25,39 @@ const UserLoginDetails: React.FC = () => {
     first_name: '',
     last_name: '',
   });
+
+  // Get the verified phone number from Clerk
+  const getClerkPhoneNumber = useCallback(() => {
+    if (!clerkUser?.phoneNumbers?.length) return null;
+    // Get the primary or first verified phone number
+    const primaryPhone = clerkUser.phoneNumbers.find(p => p.id === clerkUser.primaryPhoneNumberId);
+    const verifiedPhone = primaryPhone || clerkUser.phoneNumbers.find(p => p.verification?.status === 'verified');
+    return verifiedPhone?.phoneNumber || null;
+  }, [clerkUser]);
+
+  // Sync phone number from Clerk to user_profiles
+  const syncPhoneNumber = useCallback(async () => {
+    if (!appUser?.id || !profile) return;
+
+    const clerkPhone = getClerkPhoneNumber();
+    const profilePhone = profile.phone_number || null;
+
+    // If Clerk phone differs from profile phone, update the profile
+    if (clerkPhone !== profilePhone) {
+      console.log('Syncing phone number from Clerk to profile:', clerkPhone);
+      try {
+        const updatedProfile = await userProfileService.updateUserProfile(appUser.id, {
+          phone_number: clerkPhone || undefined,
+        });
+        if (updatedProfile) {
+          setProfile(updatedProfile);
+          console.log('Phone number synced successfully');
+        }
+      } catch (error) {
+        console.error('Error syncing phone number:', error);
+      }
+    }
+  }, [appUser?.id, profile, getClerkPhoneNumber]);
 
   // Load existing profile
   useEffect(() => {
@@ -58,6 +92,13 @@ const UserLoginDetails: React.FC = () => {
 
     loadProfile();
   }, [appUser?.id]);
+
+  // Sync phone number when profile is loaded or Clerk user changes
+  useEffect(() => {
+    if (profile && clerkUser) {
+      syncPhoneNumber();
+    }
+  }, [profile, clerkUser, syncPhoneNumber]);
 
   const handleManualCreateProfile = async () => {
     if (!appUser?.id) {
@@ -112,6 +153,8 @@ const UserLoginDetails: React.FC = () => {
   };
 
   // Open Clerk's profile management for phone verification
+  // The useEffect with clerkUser dependency will sync phone automatically
+  // when Clerk refreshes the user object after profile changes
   const handleManagePhone = () => {
     openUserProfile();
   };
@@ -170,13 +213,10 @@ const UserLoginDetails: React.FC = () => {
     }
   };
 
-  // Get phone number from Clerk user or profile
-  const getPhoneNumber = () => {
-    // First try to get from Clerk user (verified phone)
-    const clerkPhone = (window as any).Clerk?.user?.phoneNumbers?.[0]?.phoneNumber;
+  // Get phone number - prioritize Clerk (source of truth), fallback to profile
+  const getDisplayPhoneNumber = () => {
+    const clerkPhone = getClerkPhoneNumber();
     if (clerkPhone) return clerkPhone;
-    
-    // Fallback to profile
     return profile?.phone_number || null;
   };
 
@@ -196,7 +236,7 @@ const UserLoginDetails: React.FC = () => {
     );
   }
 
-  const phoneNumber = getPhoneNumber();
+  const phoneNumber = getDisplayPhoneNumber();
 
   return (
     <div className="space-y-4">
