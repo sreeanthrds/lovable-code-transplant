@@ -5,14 +5,21 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Clock, LogIn, Calendar, Phone, Mail, User, Save, Plus } from 'lucide-react';
+import { Clock, LogIn, Calendar, Phone, Mail, User, Save, Plus, ShieldCheck } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useClerkUser } from '@/hooks/useClerkUser';
+import { useUser } from '@clerk/clerk-react';
 import { userProfileService, UserProfile } from '@/lib/supabase/services/user-profile-service';
 import { toast } from '@/hooks/use-toast';
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 
 const UserLoginDetails: React.FC = () => {
-  const { user } = useClerkUser();
+  const { user: appUser } = useClerkUser();
+  const { user: clerkUser } = useUser();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -24,16 +31,24 @@ const UserLoginDetails: React.FC = () => {
     phone_number: '',
   });
 
+  // Phone verification states
+  const [isVerifyingPhone, setIsVerifyingPhone] = useState(false);
+  const [pendingPhoneNumber, setPendingPhoneNumber] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [phoneVerificationId, setPhoneVerificationId] = useState<string | null>(null);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+
   // Load existing profile
   useEffect(() => {
     const loadProfile = async () => {
-      if (!user?.id) {
+      if (!appUser?.id) {
         setLoading(false);
         return;
       }
 
       try {
-        const existingProfile = await userProfileService.getUserProfile(user.id);
+        const existingProfile = await userProfileService.getUserProfile(appUser.id);
         
         if (existingProfile) {
           console.log('Found existing profile:', existingProfile);
@@ -57,10 +72,10 @@ const UserLoginDetails: React.FC = () => {
     };
 
     loadProfile();
-  }, [user?.id]);
+  }, [appUser?.id]);
 
   const handleManualCreateProfile = async () => {
-    if (!user?.id) {
+    if (!appUser?.id) {
       toast({
         title: "Error creating profile",
         description: "User information not available. Please try refreshing the page.",
@@ -69,7 +84,7 @@ const UserLoginDetails: React.FC = () => {
       return;
     }
 
-    const email = user.emailAddresses?.[0]?.emailAddress;
+    const email = appUser.emailAddresses?.[0]?.emailAddress;
     if (!email) {
       toast({
         title: "Error creating profile",
@@ -82,10 +97,10 @@ const UserLoginDetails: React.FC = () => {
     setCreating(true);
     try {
       const newProfile = await userProfileService.createUserProfile(
-        user.id,
+        appUser.id,
         email,
-        user.firstName || '',
-        user.lastName || ''
+        appUser.firstName || '',
+        appUser.lastName || ''
       );
 
       if (newProfile) {
@@ -112,12 +127,171 @@ const UserLoginDetails: React.FC = () => {
     }
   };
 
-  const handleSave = async () => {
-    if (!user?.id) return;
+  // Send OTP to phone number using Clerk
+  const handleSendPhoneOtp = async () => {
+    if (!clerkUser || !pendingPhoneNumber) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid phone number.",
+        variant: "destructive"
+      });
+      return;
+    }
 
+    // Validate phone number format (basic validation)
+    const phoneRegex = /^\+?[1-9]\d{9,14}$/;
+    if (!phoneRegex.test(pendingPhoneNumber.replace(/\s/g, ''))) {
+      toast({
+        title: "Invalid phone number",
+        description: "Please enter a valid phone number with country code (e.g., +91XXXXXXXXXX).",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSendingOtp(true);
+    try {
+      // Create a phone number in Clerk and prepare verification
+      const phoneNumber = await clerkUser.createPhoneNumber({
+        phoneNumber: pendingPhoneNumber.replace(/\s/g, ''),
+      });
+
+      // Send the verification code
+      await phoneNumber.prepareVerification();
+      
+      setPhoneVerificationId(phoneNumber.id);
+      setIsVerifyingPhone(true);
+      
+      toast({
+        title: "OTP Sent",
+        description: `A verification code has been sent to ${pendingPhoneNumber}.`,
+      });
+    } catch (error: any) {
+      console.error('Error sending OTP:', error);
+      
+      // Handle specific Clerk errors
+      if (error?.errors?.[0]?.code === 'form_identifier_exists') {
+        toast({
+          title: "Phone number already registered",
+          description: "This phone number is already associated with another account.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Error sending OTP",
+          description: error?.errors?.[0]?.message || "Could not send verification code. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  // Verify OTP and update phone number
+  const handleVerifyPhoneOtp = async () => {
+    if (!clerkUser || !phoneVerificationId || !otpCode) {
+      toast({
+        title: "Error",
+        description: "Please enter the verification code.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setVerifyingOtp(true);
+    try {
+      // Find the phone number and attempt verification
+      const phoneNumber = clerkUser.phoneNumbers.find(p => p.id === phoneVerificationId);
+      
+      if (!phoneNumber) {
+        throw new Error("Phone number not found");
+      }
+
+      await phoneNumber.attemptVerification({ code: otpCode });
+
+      // Update the profile with verified phone number
+      if (appUser?.id) {
+        const updatedProfile = await userProfileService.updateUserProfile(appUser.id, {
+          ...formData,
+          phone_number: pendingPhoneNumber,
+        });
+
+        if (updatedProfile) {
+          setProfile(updatedProfile);
+          setFormData(prev => ({ ...prev, phone_number: pendingPhoneNumber }));
+        }
+      }
+
+      // Reset verification states
+      setIsVerifyingPhone(false);
+      setPendingPhoneNumber('');
+      setOtpCode('');
+      setPhoneVerificationId(null);
+      setIsEditing(false);
+
+      toast({
+        title: "Phone verified",
+        description: "Your phone number has been verified and saved successfully.",
+      });
+    } catch (error: any) {
+      console.error('Error verifying OTP:', error);
+      
+      if (error?.errors?.[0]?.code === 'form_code_incorrect') {
+        toast({
+          title: "Invalid code",
+          description: "The verification code is incorrect. Please try again.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Verification failed",
+          description: error?.errors?.[0]?.message || "Could not verify the code. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  // Cancel phone verification
+  const handleCancelPhoneVerification = async () => {
+    // If we created a phone number but didn't verify it, we should clean it up
+    if (clerkUser && phoneVerificationId) {
+      try {
+        const phoneNumber = clerkUser.phoneNumbers.find(p => p.id === phoneVerificationId);
+        if (phoneNumber) {
+          await phoneNumber.destroy();
+        }
+      } catch (error) {
+        console.error('Error cleaning up unverified phone:', error);
+      }
+    }
+
+    setIsVerifyingPhone(false);
+    setPendingPhoneNumber('');
+    setOtpCode('');
+    setPhoneVerificationId(null);
+  };
+
+  const handleSave = async () => {
+    if (!appUser?.id) return;
+
+    // Check if phone number is being changed
+    const originalPhone = profile?.phone_number || '';
+    const newPhone = formData.phone_number;
+
+    if (newPhone && newPhone !== originalPhone) {
+      // Phone number changed - need OTP verification
+      setPendingPhoneNumber(newPhone);
+      return; // Don't save yet, show OTP input
+    }
+
+    // No phone change, save other fields directly
     setSaving(true);
     try {
-      const updatedProfile = await userProfileService.updateUserProfile(user.id, formData);
+      const updatedProfile = await userProfileService.updateUserProfile(appUser.id, formData);
 
       if (updatedProfile) {
         setProfile(updatedProfile);
@@ -146,6 +320,7 @@ const UserLoginDetails: React.FC = () => {
       last_name: profile?.last_name || '',
       phone_number: profile?.phone_number || '',
     });
+    setPendingPhoneNumber('');
     setIsEditing(false);
   };
 
@@ -207,7 +382,7 @@ const UserLoginDetails: React.FC = () => {
                   {creating ? 'Creating...' : 'Create Profile'}
                 </Button>
               )}
-              {profile && (
+              {profile && !isVerifyingPhone && (
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -228,6 +403,88 @@ const UserLoginDetails: React.FC = () => {
               <p className="text-sm text-muted-foreground mb-4">
                 Your profile should be created automatically. If it wasn't, you can create it manually.
               </p>
+            </div>
+          ) : isVerifyingPhone ? (
+            // Phone OTP Verification UI
+            <div className="space-y-6">
+              <div className="text-center space-y-2">
+                <ShieldCheck className="w-12 h-12 mx-auto text-primary" />
+                <h3 className="text-lg font-medium text-foreground">Verify Your Phone Number</h3>
+                <p className="text-sm text-muted-foreground">
+                  Enter the 6-digit code sent to {pendingPhoneNumber}
+                </p>
+              </div>
+              
+              <div className="flex justify-center">
+                <InputOTP
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(value) => setOtpCode(value)}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={handleCancelPhoneVerification}
+                  className="flex-1"
+                  disabled={verifyingOtp}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleVerifyPhoneOtp}
+                  disabled={otpCode.length !== 6 || verifyingOtp}
+                  className="flex-1"
+                >
+                  {verifyingOtp ? 'Verifying...' : 'Verify'}
+                </Button>
+              </div>
+
+              <p className="text-xs text-center text-muted-foreground">
+                Didn't receive the code?{' '}
+                <button 
+                  onClick={handleSendPhoneOtp}
+                  disabled={sendingOtp}
+                  className="text-primary hover:underline"
+                >
+                  {sendingOtp ? 'Sending...' : 'Resend'}
+                </button>
+              </p>
+            </div>
+          ) : pendingPhoneNumber ? (
+            // Pending phone verification - show send OTP button
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-warning/10 border border-warning/30">
+                <p className="text-sm text-warning">
+                  <strong>Phone verification required:</strong> To update your phone number to {pendingPhoneNumber}, we need to verify it first.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setPendingPhoneNumber('')}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSendPhoneOtp}
+                  disabled={sendingOtp}
+                  className="flex-1"
+                >
+                  {sendingOtp ? 'Sending OTP...' : 'Send Verification Code'}
+                </Button>
+              </div>
             </div>
           ) : isEditing ? (
             <div className="space-y-4">
@@ -254,12 +511,15 @@ const UserLoginDetails: React.FC = () => {
                 </div>
               </div>
               <div>
-                <Label htmlFor="phone_number" className="text-foreground">Phone Number</Label>
+                <Label htmlFor="phone_number" className="text-foreground">
+                  Phone Number
+                  <span className="text-xs text-muted-foreground ml-2">(with country code, e.g., +91...)</span>
+                </Label>
                 <Input
                   id="phone_number"
                   value={formData.phone_number}
                   onChange={(e) => setFormData(prev => ({ ...prev, phone_number: e.target.value }))}
-                  placeholder="Enter phone number"
+                  placeholder="+91XXXXXXXXXX"
                   type="tel"
                   className="bg-background/50 border-border/50 focus:border-primary"
                 />
@@ -283,7 +543,7 @@ const UserLoginDetails: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-primary" />
                 <span className="text-sm font-medium text-foreground">Email:</span>
-                <span className="text-sm text-muted-foreground">{profile?.email || user?.emailAddresses[0]?.emailAddress || 'Not available'}</span>
+                <span className="text-sm text-muted-foreground">{profile?.email || appUser?.emailAddresses?.[0]?.emailAddress || 'Not available'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-primary" />
