@@ -175,25 +175,6 @@ const UserLoginDetails: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Debug Information */}
-      {user && (
-        <Card className="glass-card border-warning/30 bg-warning/5">
-          <CardHeader>
-            <CardTitle className="text-sm text-warning flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-warning animate-pulse" />
-              Debug Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs space-y-2 text-muted-foreground">
-            <div><strong className="text-foreground">User ID:</strong> {user.id}</div>
-            <div><strong className="text-foreground">Email:</strong> {user.emailAddresses[0]?.emailAddress}</div>
-            <div><strong className="text-foreground">First Name:</strong> {user.firstName || 'Not provided'}</div>
-            <div><strong className="text-foreground">Last Name:</strong> {user.lastName || 'Not provided'}</div>
-            <div><strong className="text-foreground">Profile Found:</strong> {profile ? 'Yes' : 'No'}</div>
-            {profile && <div><strong className="text-foreground">Profile ID:</strong> {profile.id}</div>}
-          </CardContent>
-        </Card>
-      )}
 
       {/* Profile Information Card */}
       <Card className="glass-card border-border/50 hover:border-primary/30 transition-colors">
