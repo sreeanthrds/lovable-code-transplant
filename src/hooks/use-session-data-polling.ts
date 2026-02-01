@@ -24,7 +24,7 @@ export const useSessionDataPolling = (
   sessionId: string | undefined,
   apiBaseUrl: string | null,
   enabled: boolean = true,
-  pollingInterval: number = 2000 // 2 seconds - reasonable polling rate
+  pollingInterval: number = 10000 // 10 seconds - reduced polling rate
 ) => {
   const [data, setData] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
