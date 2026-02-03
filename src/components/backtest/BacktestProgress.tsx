@@ -1,17 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, CheckCircle2, XCircle, Clock, Timer } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, CheckCircle2, XCircle, Clock, Timer, RefreshCw } from 'lucide-react';
 import { BacktestSession } from '@/types/backtest-session';
 import { cn } from '@/lib/utils';
 
 interface BacktestProgressProps {
   session: BacktestSession;
+  pollCount?: number;
 }
 
-const BacktestProgress: React.FC<BacktestProgressProps> = ({ session }) => {
+const BacktestProgress: React.FC<BacktestProgressProps> = ({ session, pollCount = 0 }) => {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [startTime] = useState(() => Date.now());
+  const [lastPollTime, setLastPollTime] = useState<Date | null>(null);
+
+  // Update last poll time when pollCount changes
+  useEffect(() => {
+    if (pollCount > 0) {
+      setLastPollTime(new Date());
+    }
+  }, [pollCount]);
 
   // Timer effect
   useEffect(() => {
@@ -27,6 +37,15 @@ const BacktestProgress: React.FC<BacktestProgressProps> = ({ session }) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatLastPoll = (date: Date) => {
+    return date.toLocaleTimeString('en-IN', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit',
+      hour12: false 
+    });
   };
 
   // Safely handle daily_results whether it's a Map or plain object
@@ -103,12 +122,29 @@ const BacktestProgress: React.FC<BacktestProgressProps> = ({ session }) => {
       </CardHeader>
       <CardContent className="space-y-4">
         <Progress value={session.progress} className="h-2" />
-        <p className={cn(
-          "text-sm",
-          session.status === 'failed' ? "text-destructive" : "text-muted-foreground"
-        )}>
-          {getStatusText()}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className={cn(
+            "text-sm",
+            session.status === 'failed' ? "text-destructive" : "text-muted-foreground"
+          )}>
+            {getStatusText()}
+          </p>
+          
+          {/* Polling Status Indicator */}
+          {isRunning && (
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="gap-1 text-xs font-normal">
+                <RefreshCw className={cn("h-3 w-3", isRunning && "animate-spin")} />
+                Poll #{pollCount}
+              </Badge>
+              {lastPollTime && (
+                <span className="text-xs text-muted-foreground">
+                  Last: {formatLastPoll(lastPollTime)}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
