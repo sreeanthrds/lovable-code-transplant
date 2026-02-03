@@ -127,7 +127,18 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
       setSession(prev => {
         if (!prev) return null;
 
-        const newResults = new Map(prev.daily_results);
+        // CRITICAL: Handle both Map and plain object for daily_results
+        // new Map(plainObject) creates an EMPTY Map, which would lose all data!
+        let newResults: Map<string, DayResult>;
+        if (prev.daily_results instanceof Map) {
+          newResults = new Map(prev.daily_results);
+        } else if (prev.daily_results && typeof prev.daily_results === 'object') {
+          // Convert plain object to Map
+          newResults = new Map(Object.entries(prev.daily_results));
+          console.warn('daily_results was a plain object, converted to Map');
+        } else {
+          newResults = new Map();
+        }
         
         // IMPORTANT: Process summary_jsonl FIRST - it has the authoritative complete data
         // This ensures days with actual data are marked as completed before daily_results can override
@@ -167,27 +178,38 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
         }
 
         // Update daily results from response (API returns object, not array)
-        // Only add entries that DON'T already exist as completed (from summary_jsonl)
-        // This prevents overwriting completed days with "processing" status
+        // IMPORTANT: Always update from daily_results, even if day exists
+        // The API response is the source of truth for status
         if (data.daily_results && typeof data.daily_results === 'object') {
           const dailyResultsEntries = Object.entries(data.daily_results);
+          console.log(`Processing ${dailyResultsEntries.length} days from daily_results`);
+          
           for (const [dateKey, day] of dailyResultsEntries) {
             const dayData = day as any;
             const existing = newResults.get(dateKey);
             
-            // Skip if we already have this day marked as completed (from summary_jsonl)
-            if (existing?.status === 'completed') {
+            // Get the status from API response - this is authoritative
+            const apiStatus = dayData.status;
+            const existingStatus = existing?.status;
+            
+            // Only skip if BOTH are completed (no need to update)
+            // Otherwise, always update to reflect API state
+            if (existingStatus === 'completed' && apiStatus === 'completed') {
               continue;
             }
             
-            // Only add/update if day doesn't exist or has a non-completed status
+            // Log status transitions for debugging
+            if (existingStatus && existingStatus !== apiStatus) {
+              console.log(`Day ${dateKey}: status changing from '${existingStatus}' to '${apiStatus}'`);
+            }
+            
             newResults.set(dateKey, {
               date: dayData.date || dateKey,
               day_number: dayData.day_number || existing?.day_number,
               total_days: data.total_days || prev.total_days,
               summary: dayData.summary || existing?.summary || { total_trades: 0, total_pnl: '0', winning_trades: 0, losing_trades: 0, win_rate: '0' },
               has_detail_data: dayData.has_detail_data ?? existing?.has_detail_data ?? false,
-              status: dayData.status || 'processing',
+              status: apiStatus || 'processing',
               error: dayData.error,
             });
           }
