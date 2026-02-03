@@ -240,8 +240,9 @@ const Backtesting = () => {
                 <OverallSummaryCard summary={session.overall_summary} />
               )}
 
-              {/* Daily Results List - always show when session exists */}
+              {/* Daily Results List - key forces re-render on each poll */}
               <DailyResultsList
+                key={`daily-results-${pollCount}`}
                 results={dailyResults}
                 selectedDate={selectedDate}
                 loadingDate={loadingDay}
