@@ -211,19 +211,22 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
         const totalDays = data.total_days || prev.total_days;
         const progress = totalDays > 0 ? Math.round((completedCount / totalDays) * 100) : 0;
         
-        // Check if all days are completed
-        const allDaysCompleted = totalDays > 0 && completedCount >= totalDays;
+        // Check if all days are completed using API's completed_days (most reliable)
+        // OR if our local count matches total_days
+        const apiCompletedDays = data.completed_days || 0;
+        const allDaysCompleted = totalDays > 0 && (apiCompletedDays >= totalDays || completedCount >= totalDays);
 
         // Determine status - stop polling when all days received OR explicit completion
         let status = prev.status;
         if (data.status === 'completed' || allDaysCompleted) {
           status = 'completed';
-          stopPolling();
-          console.log('All days received or status completed, stopping polling');
+          console.log(`✅ All days completed! API completed_days: ${apiCompletedDays}, local count: ${completedCount}, total: ${totalDays}`);
+          // Stop polling OUTSIDE of setSession to avoid closure issues
+          setTimeout(() => stopPolling(), 0);
         } else if (data.status === 'failed') {
           status = 'failed';
-          stopPolling();
-        } else if (data.status === 'running') {
+          setTimeout(() => stopPolling(), 0);
+        } else if (data.status === 'running' || data.status === 'starting') {
           status = 'running';
         }
 
