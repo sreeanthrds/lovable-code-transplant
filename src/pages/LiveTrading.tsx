@@ -26,7 +26,8 @@ const Backtesting = () => {
     startBacktest,
     loadDayDetail,
     reset,
-    getDailyResultsArray,
+    dailyResultsArray,
+    pollCount,
   } = useBacktestSession({ userId: user?.id, isAdmin });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -162,7 +163,7 @@ const Backtesting = () => {
     setSelectedDate(null);
   };
 
-  const dailyResults = getDailyResultsArray();
+  const dailyResults = dailyResultsArray;
   const isRunning = session?.status === 'starting' || session?.status === 'running';
   const isCompleted = session?.status === 'completed';
   const isFailed = session?.status === 'failed';
