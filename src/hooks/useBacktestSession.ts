@@ -123,25 +123,14 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
         }
       }
 
-      // Update session state from polling response
+      // Update session state from polling response - ALWAYS rebuild to force re-render
       setSession(prev => {
         if (!prev) return null;
 
-        // CRITICAL: Handle both Map and plain object for daily_results
-        // new Map(plainObject) creates an EMPTY Map, which would lose all data!
-        let newResults: Map<string, DayResult>;
-        if (prev.daily_results instanceof Map) {
-          newResults = new Map(prev.daily_results);
-        } else if (prev.daily_results && typeof prev.daily_results === 'object') {
-          // Convert plain object to Map
-          newResults = new Map(Object.entries(prev.daily_results));
-          console.warn('daily_results was a plain object, converted to Map');
-        } else {
-          newResults = new Map();
-        }
+        // ALWAYS create a fresh Map from API response to ensure re-render
+        const newResults = new Map<string, DayResult>();
         
         // IMPORTANT: Process summary_jsonl FIRST - it has the authoritative complete data
-        // This ensures days with actual data are marked as completed before daily_results can override
         if (data.summary_jsonl) {
           const lines = data.summary_jsonl.split("\n").filter((l: string) => l.trim());
           lines.forEach((line: string, index: number) => {
@@ -149,24 +138,23 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
               const daySummary = JSON.parse(line);
               const dateKey = daySummary.date;
               if (dateKey) {
-                // Map API fields if necessary (total_positions -> total_trades)
-                const mappedSummary = {
-                  total_trades: daySummary.total_positions ?? daySummary.total_trades ?? 0,
-                  total_pnl: String(daySummary.total_pnl ?? "0"),
-                  winning_trades: daySummary.winning_trades ?? 0,
-                  losing_trades: daySummary.losing_trades ?? 0,
-                  win_rate: String(daySummary.win_rate ?? "0"),
-                  realized_pnl: String(daySummary.realized_pnl || daySummary.total_pnl || "0"),
-                  unrealized_pnl: String(daySummary.unrealized_pnl || "0"),
-                };
-
-                // Always set from summary_jsonl as it's the authoritative source
-                const existing = newResults.get(dateKey);
                 newResults.set(dateKey, {
                   date: dateKey,
-                  day_number: existing?.day_number || (index + 1),
+                  day_number: index + 1,
                   total_days: data.total_days || prev.total_days,
-                  summary: mappedSummary,
+                  summary: {
+                    total_trades: daySummary.total_positions ?? daySummary.total_trades ?? 0,
+                    total_positions: daySummary.total_positions ?? 0,
+                    total_pnl: daySummary.total_pnl ?? 0,
+                    winning_trades: daySummary.winning_trades ?? 0,
+                    losing_trades: daySummary.losing_trades ?? 0,
+                    breakeven_trades: daySummary.breakeven_trades ?? 0,
+                    win_rate: daySummary.win_rate ?? 0,
+                    avg_win: daySummary.avg_win ?? 0,
+                    avg_loss: daySummary.avg_loss ?? 0,
+                    largest_win: daySummary.largest_win ?? 0,
+                    largest_loss: daySummary.largest_loss ?? 0,
+                  },
                   has_detail_data: true,
                   status: "completed",
                 });
@@ -177,9 +165,7 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
           });
         }
 
-        // Update daily results from response (API returns object, not array)
-        // IMPORTANT: Always update from daily_results, even if day exists
-        // The API response is the source of truth for status
+        // Process daily_results from API - this is the primary data source
         if (data.daily_results && typeof data.daily_results === 'object') {
           const dailyResultsEntries = Object.entries(data.daily_results);
           console.log(`Processing ${dailyResultsEntries.length} days from daily_results`);
@@ -188,28 +174,32 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
             const dayData = day as any;
             const existing = newResults.get(dateKey);
             
-            // Get the status from API response - this is authoritative
-            const apiStatus = dayData.status;
-            const existingStatus = existing?.status;
-            
-            // Only skip if BOTH are completed (no need to update)
-            // Otherwise, always update to reflect API state
-            if (existingStatus === 'completed' && apiStatus === 'completed') {
+            // Skip if already marked completed from summary_jsonl
+            if (existing?.status === 'completed') {
               continue;
             }
             
-            // Log status transitions for debugging
-            if (existingStatus && existingStatus !== apiStatus) {
-              console.log(`Day ${dateKey}: status changing from '${existingStatus}' to '${apiStatus}'`);
-            }
-            
+            // Map the API response to our expected format
+            const summary = dayData.summary || {};
             newResults.set(dateKey, {
               date: dayData.date || dateKey,
-              day_number: dayData.day_number || existing?.day_number,
+              day_number: dayData.day_number || existing?.day_number || 0,
               total_days: data.total_days || prev.total_days,
-              summary: dayData.summary || existing?.summary || { total_trades: 0, total_pnl: '0', winning_trades: 0, losing_trades: 0, win_rate: '0' },
-              has_detail_data: dayData.has_detail_data ?? existing?.has_detail_data ?? false,
-              status: apiStatus || 'processing',
+              summary: {
+                total_trades: summary.total_positions ?? summary.total_trades ?? 0,
+                total_positions: summary.total_positions ?? 0,
+                total_pnl: summary.total_pnl ?? 0,
+                winning_trades: summary.winning_trades ?? 0,
+                losing_trades: summary.losing_trades ?? 0,
+                breakeven_trades: summary.breakeven_trades ?? 0,
+                win_rate: summary.win_rate ?? 0,
+                avg_win: summary.avg_win ?? 0,
+                avg_loss: summary.avg_loss ?? 0,
+                largest_win: summary.largest_win ?? 0,
+                largest_loss: summary.largest_loss ?? 0,
+              },
+              has_detail_data: dayData.has_detail_data ?? false,
+              status: dayData.status === 'completed' ? 'completed' : 'running',
               error: dayData.error,
             });
           }
@@ -232,14 +222,23 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
           status = 'running';
         }
 
+        // Return a completely new object to force re-render
         return {
-          ...prev,
-          daily_results: newResults,
-          progress,
-          status,
-          overall_summary: data.overall_summary ? { ...data.overall_summary, largest_win: data.overall_summary.largest_win || "0", largest_loss: data.overall_summary.largest_loss || "0" } : prev.overall_summary,
-          error: data.error,
+          backtest_id: prev.backtest_id,
+          strategy_id: prev.strategy_id,
+          start_date: prev.start_date,
+          end_date: prev.end_date,
           total_days: data.total_days || prev.total_days,
+          status,
+          daily_results: newResults,
+          overall_summary: data.overall_summary ? { 
+            ...data.overall_summary, 
+            largest_win: data.overall_summary.largest_win || "0", 
+            largest_loss: data.overall_summary.largest_loss || "0" 
+          } : prev.overall_summary,
+          error: data.error,
+          progress,
+          start_time: prev.start_time,
         };
       });
     } catch (error) {
