@@ -8,7 +8,7 @@ import {
   StartBacktestResponse,
   DayDetailData,
 } from '@/types/backtest-session';
-import { TradesDaily, DiagnosticsExport, Trade, DailySummary } from '@/types/backtest';
+import { TradesDaily, DiagnosticsExport, Trade } from '@/types/backtest';
 import { getApiBaseUrl } from '@/lib/api-config';
 
 interface UseBacktestSessionOptions {
@@ -25,7 +25,6 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
   const [session, setSession] = useState<BacktestSession | null>(null);
   const [selectedDayData, setSelectedDayData] = useState<DayDetailData | null>(null);
   const [loadingDay, setLoadingDay] = useState<string | null>(null);
-  const [pollCount, setPollCount] = useState(0); // Force re-render counter
   
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const apiBaseUrl = useRef<string>('');
@@ -124,14 +123,14 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
         }
       }
 
-      // Update session state from polling response - ALWAYS rebuild to force re-render
+      // Update session state from polling response
       setSession(prev => {
         if (!prev) return null;
 
-        // ALWAYS create a fresh Map from API response to ensure re-render
-        const newResults = new Map<string, DayResult>();
+        const newResults = new Map(prev.daily_results);
         
         // IMPORTANT: Process summary_jsonl FIRST - it has the authoritative complete data
+        // This ensures days with actual data are marked as completed before daily_results can override
         if (data.summary_jsonl) {
           const lines = data.summary_jsonl.split("\n").filter((l: string) => l.trim());
           lines.forEach((line: string, index: number) => {
@@ -139,23 +138,24 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
               const daySummary = JSON.parse(line);
               const dateKey = daySummary.date;
               if (dateKey) {
+                // Map API fields if necessary (total_positions -> total_trades)
+                const mappedSummary = {
+                  total_trades: daySummary.total_positions ?? daySummary.total_trades ?? 0,
+                  total_pnl: String(daySummary.total_pnl ?? "0"),
+                  winning_trades: daySummary.winning_trades ?? 0,
+                  losing_trades: daySummary.losing_trades ?? 0,
+                  win_rate: String(daySummary.win_rate ?? "0"),
+                  realized_pnl: String(daySummary.realized_pnl || daySummary.total_pnl || "0"),
+                  unrealized_pnl: String(daySummary.unrealized_pnl || "0"),
+                };
+
+                // Always set from summary_jsonl as it's the authoritative source
+                const existing = newResults.get(dateKey);
                 newResults.set(dateKey, {
                   date: dateKey,
-                  day_number: index + 1,
+                  day_number: existing?.day_number || (index + 1),
                   total_days: data.total_days || prev.total_days,
-                  summary: {
-                    total_trades: daySummary.total_positions ?? daySummary.total_trades ?? 0,
-                    total_positions: daySummary.total_positions ?? 0,
-                    total_pnl: daySummary.total_pnl ?? 0,
-                    winning_trades: daySummary.winning_trades ?? 0,
-                    losing_trades: daySummary.losing_trades ?? 0,
-                    breakeven_trades: daySummary.breakeven_trades ?? 0,
-                    win_rate: daySummary.win_rate ?? 0,
-                    avg_win: daySummary.avg_win ?? 0,
-                    avg_loss: daySummary.avg_loss ?? 0,
-                    largest_win: daySummary.largest_win ?? 0,
-                    largest_loss: daySummary.largest_loss ?? 0,
-                  },
+                  summary: mappedSummary,
                   has_detail_data: true,
                   status: "completed",
                 });
@@ -166,41 +166,28 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
           });
         }
 
-        // Process daily_results from API - this is the primary data source
+        // Update daily results from response (API returns object, not array)
+        // Only add entries that DON'T already exist as completed (from summary_jsonl)
+        // This prevents overwriting completed days with "processing" status
         if (data.daily_results && typeof data.daily_results === 'object') {
           const dailyResultsEntries = Object.entries(data.daily_results);
-          console.log(`Processing ${dailyResultsEntries.length} days from daily_results`);
-          
           for (const [dateKey, day] of dailyResultsEntries) {
             const dayData = day as any;
             const existing = newResults.get(dateKey);
             
-            // Skip if already marked completed from summary_jsonl
+            // Skip if we already have this day marked as completed (from summary_jsonl)
             if (existing?.status === 'completed') {
               continue;
             }
             
-            // Map the API response to our expected format
-            const summary = dayData.summary || {};
+            // Only add/update if day doesn't exist or has a non-completed status
             newResults.set(dateKey, {
               date: dayData.date || dateKey,
-              day_number: dayData.day_number || existing?.day_number || 0,
+              day_number: dayData.day_number || existing?.day_number,
               total_days: data.total_days || prev.total_days,
-              summary: {
-                total_trades: summary.total_positions ?? summary.total_trades ?? 0,
-                total_positions: summary.total_positions ?? 0,
-                total_pnl: summary.total_pnl ?? 0,
-                winning_trades: summary.winning_trades ?? 0,
-                losing_trades: summary.losing_trades ?? 0,
-                breakeven_trades: summary.breakeven_trades ?? 0,
-                win_rate: summary.win_rate ?? 0,
-                avg_win: summary.avg_win ?? 0,
-                avg_loss: summary.avg_loss ?? 0,
-                largest_win: summary.largest_win ?? 0,
-                largest_loss: summary.largest_loss ?? 0,
-              },
-              has_detail_data: dayData.has_detail_data ?? false,
-              status: dayData.status === 'completed' ? 'completed' : 'running',
+              summary: dayData.summary || existing?.summary || { total_trades: 0, total_pnl: '0', winning_trades: 0, losing_trades: 0, win_rate: '0' },
+              has_detail_data: dayData.has_detail_data ?? existing?.has_detail_data ?? false,
+              status: dayData.status || 'processing',
               error: dayData.error,
             });
           }
@@ -210,49 +197,29 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
         const completedCount = Array.from(newResults.values()).filter(d => d.status === 'completed').length;
         const totalDays = data.total_days || prev.total_days;
         const progress = totalDays > 0 ? Math.round((completedCount / totalDays) * 100) : 0;
-        
-        // Check if all days are completed using API's completed_days (most reliable)
-        // OR if our local count matches total_days
-        const apiCompletedDays = data.completed_days || 0;
-        const allDaysCompleted = totalDays > 0 && (apiCompletedDays >= totalDays || completedCount >= totalDays);
 
-        // Determine status - stop polling when all days received OR explicit completion
+        // Determine status
         let status = prev.status;
-        if (data.status === 'completed' || allDaysCompleted) {
+        if (data.status === 'completed') {
           status = 'completed';
-          console.log(`✅ All days completed! API completed_days: ${apiCompletedDays}, local count: ${completedCount}, total: ${totalDays}`);
-          // Stop polling OUTSIDE of setSession to avoid closure issues
-          setTimeout(() => stopPolling(), 0);
+          stopPolling();
         } else if (data.status === 'failed') {
           status = 'failed';
-          setTimeout(() => stopPolling(), 0);
-        } else if (data.status === 'running' || data.status === 'starting') {
+          stopPolling();
+        } else if (data.status === 'running') {
           status = 'running';
         }
 
-        // Return a completely new object to force re-render
         return {
-          backtest_id: prev.backtest_id,
-          strategy_id: prev.strategy_id,
-          start_date: prev.start_date,
-          end_date: prev.end_date,
-          total_days: data.total_days || prev.total_days,
-          status,
+          ...prev,
           daily_results: newResults,
-          overall_summary: data.overall_summary ? { 
-            ...data.overall_summary, 
-            largest_win: data.overall_summary.largest_win || "0", 
-            largest_loss: data.overall_summary.largest_loss || "0" 
-          } : prev.overall_summary,
-          error: data.error,
           progress,
-          start_time: prev.start_time,
+          status,
+          overall_summary: data.overall_summary ? { ...data.overall_summary, largest_win: data.overall_summary.largest_win || "0", largest_loss: data.overall_summary.largest_loss || "0" } : prev.overall_summary,
+          error: data.error,
+          total_days: data.total_days || prev.total_days,
         };
       });
-      
-      // Increment poll count to force re-render in consuming components
-      setPollCount(prev => prev + 1);
-      console.log('Poll complete, forcing re-render');
     } catch (error) {
       console.error('Polling error:', error);
       consecutiveFailuresRef.current++;
@@ -382,85 +349,43 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
         }
       }
 
-      // Debug: Log what we extracted from the ZIP
-      console.log('=== DEBUG: ZIP Extraction Results ===');
-      console.log('ZIP files found:', zipFileNames);
-      console.log('Trades object exists:', !!trades);
-      console.log('Trades.trades array exists:', !!trades?.trades);
-      console.log('Trades.trades length:', trades?.trades?.length ?? 'N/A');
-      console.log('Diagnostics object exists:', !!diagnostics);
-      console.log('Diagnostics.events_history exists:', !!diagnostics?.events_history);
-
-      if (!trades) {
-        throw new Error(`No trades_daily file found in ZIP. Found files: ${zipFileNames.join(', ')}`);
-      }
-
-      if (!diagnostics) {
-        throw new Error(`No diagnostics_export file found in ZIP. Found files: ${zipFileNames.join(', ')}`);
-      }
-
-      // Handle both formats: direct array OR object with trades property
-      // The API may return either: [{trade1}, {trade2}] OR { trades: [{trade1}, {trade2}], date: "..." }
-      let tradesArray: any[];
-      let tradesDate: string | undefined;
-      
-      if (Array.isArray(trades)) {
-        // Format 1: Direct array of trades
-        console.log('Trades data is a direct array, wrapping into expected structure');
-        tradesArray = trades;
-        tradesDate = date; // Use the date parameter passed to loadDayDetail
-      } else if (trades.trades && Array.isArray(trades.trades)) {
-        // Format 2: Object with trades property
-        tradesArray = trades.trades;
-        tradesDate = trades.date;
+      if (trades && diagnostics) {
+        // Debug: Log the structure of the data with actual string values
+        const firstTrade = trades.trades?.[0];
+        const eventKeys = diagnostics.events_history ? Object.keys(diagnostics.events_history) : [];
+        
+        console.log('=== DEBUG: Full Trade Data Analysis ===');
+        console.log('Trades date:', trades.date);
+        console.log('First trade keys:', firstTrade ? Object.keys(firstTrade) : 'no trade');
+        console.log('First trade entry_flow_ids type:', typeof firstTrade?.entry_flow_ids);
+        console.log('First trade entry_flow_ids value:', JSON.stringify(firstTrade?.entry_flow_ids));
+        console.log('First trade exit_flow_ids value:', JSON.stringify(firstTrade?.exit_flow_ids));
+        console.log('Events history keys (first 3):', JSON.stringify(eventKeys.slice(0, 3)));
+        console.log('Do IDs match?', firstTrade?.entry_flow_ids?.[0] && eventKeys.includes(firstTrade.entry_flow_ids[0]) ? 'YES' : 'NO');
+        
+        // Ensure trades have flow_ids arrays and proper typing
+        const normalizedTrades: TradesDaily = {
+          ...trades,
+          trades: trades.trades.map((t: any): Trade => ({
+            ...t,
+            side: t.side?.toUpperCase() === 'BUY' ? 'BUY' : 
+                  t.side?.toUpperCase() === 'SELL' ? 'SELL' : 
+                  t.side?.toLowerCase() === 'buy' ? 'buy' : 'sell',
+            status: t.status === 'open' ? 'open' : 'closed',
+            exit_price: t.exit_price ?? null,
+            exit_time: t.exit_time ?? null,
+            exit_reason: t.exit_reason ?? null,
+            entry_flow_ids: t.entry_flow_ids || [],
+            exit_flow_ids: t.exit_flow_ids || [],
+          })),
+        };
+        setSelectedDayData({ trades: normalizedTrades, diagnostics });
       } else {
-        console.error('trades object structure:', JSON.stringify(trades, null, 2).substring(0, 500));
-        throw new Error(`Unexpected trades format. Got: ${typeof trades}. Keys: ${Object.keys(trades).join(', ')}`);
+        console.error('Missing data - trades:', !!trades, 'diagnostics:', !!diagnostics);
+        throw new Error(
+          `Missing trades or diagnostics data in ZIP. Found files: ${zipFileNames.join(', ')}`
+        );
       }
-
-      // Debug: Log the structure of the data with actual string values
-      const firstTrade = trades.trades[0];
-      const eventKeys = diagnostics.events_history ? Object.keys(diagnostics.events_history) : [];
-      
-      console.log('=== DEBUG: Full Trade Data Analysis ===');
-      console.log('Trades date:', trades.date);
-      console.log('First trade keys:', firstTrade ? Object.keys(firstTrade) : 'no trade');
-      console.log('First trade entry_flow_ids type:', typeof firstTrade?.entry_flow_ids);
-      console.log('First trade entry_flow_ids value:', JSON.stringify(firstTrade?.entry_flow_ids));
-      console.log('First trade exit_flow_ids value:', JSON.stringify(firstTrade?.exit_flow_ids));
-      console.log('Events history keys (first 3):', JSON.stringify(eventKeys.slice(0, 3)));
-      console.log('Do IDs match?', firstTrade?.entry_flow_ids?.[0] && eventKeys.includes(firstTrade.entry_flow_ids[0]) ? 'YES' : 'NO');
-      
-      // Build summary from trades if not provided (when API returns array directly)
-      const existingSummary = !Array.isArray(trades) ? trades.summary : undefined;
-      const computedSummary: DailySummary = existingSummary || {
-        total_trades: tradesArray.length,
-        total_pnl: tradesArray.reduce((sum, t) => sum + parseFloat(t.pnl || '0'), 0).toFixed(2),
-        winning_trades: tradesArray.filter(t => parseFloat(t.pnl || '0') > 0).length,
-        losing_trades: tradesArray.filter(t => parseFloat(t.pnl || '0') < 0).length,
-        win_rate: tradesArray.length > 0 
-          ? ((tradesArray.filter(t => parseFloat(t.pnl || '0') > 0).length / tradesArray.length) * 100).toFixed(2)
-          : '0',
-      };
-
-      // Normalize trades with proper typing
-      const normalizedTrades: TradesDaily = {
-        date: tradesDate || date,
-        summary: computedSummary,
-        trades: tradesArray.map((t: any): Trade => ({
-          ...t,
-          side: t.side?.toUpperCase() === 'BUY' ? 'BUY' : 
-                t.side?.toUpperCase() === 'SELL' ? 'SELL' : 
-                t.side?.toLowerCase() === 'buy' ? 'buy' : 'sell',
-          status: t.status === 'open' ? 'open' : 'closed',
-          exit_price: t.exit_price ?? null,
-          exit_time: t.exit_time ?? null,
-          exit_reason: t.exit_reason ?? null,
-          entry_flow_ids: t.entry_flow_ids || [],
-          exit_flow_ids: t.exit_flow_ids || [],
-        })),
-      };
-      setSelectedDayData({ trades: normalizedTrades, diagnostics });
     } catch (error) {
       console.error('Error loading day details:', error);
       throw error;
@@ -477,10 +402,8 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
     setLoadingDay(null);
   }, [stopPolling]);
 
-  // Get sorted daily results as array - recalculates on every poll
-  // Note: pollCount dependency ensures this updates after each poll
+  // Get sorted daily results as array - handle both Map and plain object
   const getDailyResultsArray = useCallback((): DayResult[] => {
-    console.log(`getDailyResultsArray called (poll #${pollCount})`);
     if (!session) return [];
     
     const dailyResults = session.daily_results;
@@ -496,22 +419,7 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
     }
     
     return resultsArray.sort((a, b) => a.date.localeCompare(b.date));
-  }, [session, pollCount]);
-
-  // Compute daily results directly (not memoized) for components that need fresh data
-  const dailyResultsArray: DayResult[] = (() => {
-    if (!session) return [];
-    const dailyResults = session.daily_results;
-    let resultsArray: DayResult[];
-    if (dailyResults instanceof Map) {
-      resultsArray = Array.from(dailyResults.values());
-    } else if (dailyResults && typeof dailyResults === 'object') {
-      resultsArray = Object.values(dailyResults) as DayResult[];
-    } else {
-      return [];
-    }
-    return resultsArray.sort((a, b) => a.date.localeCompare(b.date));
-  })();
+  }, [session]);
 
   return {
     session,
@@ -521,8 +429,6 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
     loadDayDetail,
     reset,
     getDailyResultsArray,
-    dailyResultsArray, // Direct array, not memoized
-    pollCount,
     stopPolling,
   };
 }

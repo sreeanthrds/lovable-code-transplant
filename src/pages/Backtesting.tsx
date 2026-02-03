@@ -32,8 +32,7 @@ const Backtesting = () => {
     startBacktest,
     loadDayDetail,
     reset,
-    dailyResultsArray,
-    pollCount,
+    getDailyResultsArray,
   } = useBacktestSession({ userId: user?.id, isAdmin });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -212,8 +211,7 @@ const Backtesting = () => {
     setSelectedDate(null);
   };
 
-  // Use dailyResultsArray directly - it updates on every poll
-  const dailyResults = dailyResultsArray;
+  const dailyResults = getDailyResultsArray();
   const isRunning = session?.status === 'starting' || session?.status === 'running';
   const isCompleted = session?.status === 'completed';
   const isFailed = session?.status === 'failed';
@@ -310,9 +308,8 @@ const Backtesting = () => {
                 <OverallSummaryCard summary={session.overall_summary} />
               )}
 
-              {/* Daily Results List - key forces re-render on each poll */}
+              {/* Daily Results List - always show when session exists */}
               <DailyResultsList
-                key={`daily-results-${pollCount}`}
                 results={dailyResults}
                 selectedDate={selectedDate}
                 loadingDate={loadingDay}
@@ -385,10 +382,10 @@ const Backtesting = () => {
           streamingTradesData={{
             date: selectedDate,
             summary: {
-              total_trades: selectedDayData.trades?.summary?.total_trades || selectedDayData.trades?.summary?.total_positions || 0,
-              total_pnl: String(selectedDayData.trades?.summary?.total_pnl || "0"),
-              realized_pnl: String(selectedDayData.trades?.summary?.realized_pnl || "0"),
-              unrealized_pnl: String(selectedDayData.trades?.summary?.unrealized_pnl || "0"),
+              total_trades: selectedDayData.trades?.summary?.total_trades || 0,
+              total_pnl: selectedDayData.trades?.summary?.total_pnl || "0",
+              realized_pnl: selectedDayData.trades?.summary?.realized_pnl || "0",
+              unrealized_pnl: selectedDayData.trades?.summary?.unrealized_pnl || "0",
               winning_trades: selectedDayData.trades?.summary?.winning_trades || 0,
               losing_trades: selectedDayData.trades?.summary?.losing_trades || 0
             },

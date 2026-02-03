@@ -37,13 +37,13 @@ const DailyResultsList: React.FC<DailyResultsListProps> = ({
     }
   };
 
-  const formatPnl = (pnl: string | number) => {
-    const value = typeof pnl === 'number' ? pnl : parseFloat(pnl);
+  const formatPnl = (pnl: string) => {
+    const value = parseFloat(pnl);
     return value >= 0 ? `+${value.toFixed(2)}` : value.toFixed(2);
   };
 
-  const getPnlColor = (pnl: string | number) => {
-    const value = typeof pnl === 'number' ? pnl : parseFloat(pnl);
+  const getPnlColor = (pnl: string) => {
+    const value = parseFloat(pnl);
     if (value > 0) return 'text-green-500';
     if (value < 0) return 'text-red-500';
     return 'text-muted-foreground';
@@ -61,7 +61,7 @@ const DailyResultsList: React.FC<DailyResultsListProps> = ({
       case 'completed':
         return (
           <Badge variant="secondary" className="gap-1">
-            {result.summary.total_positions ?? result.summary.total_trades ?? 0} trades
+            {result.summary.total_trades} trades
           </Badge>
         );
       case 'error':
@@ -140,11 +140,10 @@ const DailyResultsList: React.FC<DailyResultsListProps> = ({
                 </div>
 
                 <div className="flex items-center gap-4">
-                  {/* Show summary data if available, regardless of status - API uses total_positions */}
-                  {result.summary && ((result.summary.total_positions ?? result.summary.total_trades ?? 0) > 0 || (typeof result.summary.total_pnl === 'number' ? result.summary.total_pnl : parseFloat(String(result.summary.total_pnl) || '0')) !== 0) && (
+                  {result.status === 'completed' && (
                     <div className="text-right">
                       <p className={cn("font-medium", getPnlColor(result.summary.total_pnl))}>
-                        {(typeof result.summary.total_pnl === 'number' ? result.summary.total_pnl : parseFloat(String(result.summary.total_pnl))) >= 0 ? (
+                        {parseFloat(result.summary.total_pnl) >= 0 ? (
                           <TrendingUp className="inline h-4 w-4 mr-1" />
                         ) : (
                           <TrendingDown className="inline h-4 w-4 mr-1" />
