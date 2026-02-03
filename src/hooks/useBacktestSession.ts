@@ -349,43 +349,59 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
         }
       }
 
-      if (trades && diagnostics) {
-        // Debug: Log the structure of the data with actual string values
-        const firstTrade = trades.trades?.[0];
-        const eventKeys = diagnostics.events_history ? Object.keys(diagnostics.events_history) : [];
-        
-        console.log('=== DEBUG: Full Trade Data Analysis ===');
-        console.log('Trades date:', trades.date);
-        console.log('First trade keys:', firstTrade ? Object.keys(firstTrade) : 'no trade');
-        console.log('First trade entry_flow_ids type:', typeof firstTrade?.entry_flow_ids);
-        console.log('First trade entry_flow_ids value:', JSON.stringify(firstTrade?.entry_flow_ids));
-        console.log('First trade exit_flow_ids value:', JSON.stringify(firstTrade?.exit_flow_ids));
-        console.log('Events history keys (first 3):', JSON.stringify(eventKeys.slice(0, 3)));
-        console.log('Do IDs match?', firstTrade?.entry_flow_ids?.[0] && eventKeys.includes(firstTrade.entry_flow_ids[0]) ? 'YES' : 'NO');
-        
-        // Ensure trades have flow_ids arrays and proper typing
-        const normalizedTrades: TradesDaily = {
-          ...trades,
-          trades: trades.trades.map((t: any): Trade => ({
-            ...t,
-            side: t.side?.toUpperCase() === 'BUY' ? 'BUY' : 
-                  t.side?.toUpperCase() === 'SELL' ? 'SELL' : 
-                  t.side?.toLowerCase() === 'buy' ? 'buy' : 'sell',
-            status: t.status === 'open' ? 'open' : 'closed',
-            exit_price: t.exit_price ?? null,
-            exit_time: t.exit_time ?? null,
-            exit_reason: t.exit_reason ?? null,
-            entry_flow_ids: t.entry_flow_ids || [],
-            exit_flow_ids: t.exit_flow_ids || [],
-          })),
-        };
-        setSelectedDayData({ trades: normalizedTrades, diagnostics });
-      } else {
-        console.error('Missing data - trades:', !!trades, 'diagnostics:', !!diagnostics);
-        throw new Error(
-          `Missing trades or diagnostics data in ZIP. Found files: ${zipFileNames.join(', ')}`
-        );
+      // Debug: Log what we extracted from the ZIP
+      console.log('=== DEBUG: ZIP Extraction Results ===');
+      console.log('ZIP files found:', zipFileNames);
+      console.log('Trades object exists:', !!trades);
+      console.log('Trades.trades array exists:', !!trades?.trades);
+      console.log('Trades.trades length:', trades?.trades?.length ?? 'N/A');
+      console.log('Diagnostics object exists:', !!diagnostics);
+      console.log('Diagnostics.events_history exists:', !!diagnostics?.events_history);
+
+      if (!trades) {
+        throw new Error(`No trades_daily file found in ZIP. Found files: ${zipFileNames.join(', ')}`);
       }
+
+      if (!diagnostics) {
+        throw new Error(`No diagnostics_export file found in ZIP. Found files: ${zipFileNames.join(', ')}`);
+      }
+
+      // CRITICAL: Check if trades.trades array exists before calling .map()
+      if (!trades.trades || !Array.isArray(trades.trades)) {
+        console.error('trades object structure:', JSON.stringify(trades, null, 2).substring(0, 500));
+        throw new Error(`trades.trades is not an array. Got: ${typeof trades.trades}. Keys: ${Object.keys(trades).join(', ')}`);
+      }
+
+      // Debug: Log the structure of the data with actual string values
+      const firstTrade = trades.trades[0];
+      const eventKeys = diagnostics.events_history ? Object.keys(diagnostics.events_history) : [];
+      
+      console.log('=== DEBUG: Full Trade Data Analysis ===');
+      console.log('Trades date:', trades.date);
+      console.log('First trade keys:', firstTrade ? Object.keys(firstTrade) : 'no trade');
+      console.log('First trade entry_flow_ids type:', typeof firstTrade?.entry_flow_ids);
+      console.log('First trade entry_flow_ids value:', JSON.stringify(firstTrade?.entry_flow_ids));
+      console.log('First trade exit_flow_ids value:', JSON.stringify(firstTrade?.exit_flow_ids));
+      console.log('Events history keys (first 3):', JSON.stringify(eventKeys.slice(0, 3)));
+      console.log('Do IDs match?', firstTrade?.entry_flow_ids?.[0] && eventKeys.includes(firstTrade.entry_flow_ids[0]) ? 'YES' : 'NO');
+      
+      // Ensure trades have flow_ids arrays and proper typing
+      const normalizedTrades: TradesDaily = {
+        ...trades,
+        trades: trades.trades.map((t: any): Trade => ({
+          ...t,
+          side: t.side?.toUpperCase() === 'BUY' ? 'BUY' : 
+                t.side?.toUpperCase() === 'SELL' ? 'SELL' : 
+                t.side?.toLowerCase() === 'buy' ? 'buy' : 'sell',
+          status: t.status === 'open' ? 'open' : 'closed',
+          exit_price: t.exit_price ?? null,
+          exit_time: t.exit_time ?? null,
+          exit_reason: t.exit_reason ?? null,
+          entry_flow_ids: t.entry_flow_ids || [],
+          exit_flow_ids: t.exit_flow_ids || [],
+        })),
+      };
+      setSelectedDayData({ trades: normalizedTrades, diagnostics });
     } catch (error) {
       console.error('Error loading day details:', error);
       throw error;
