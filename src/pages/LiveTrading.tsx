@@ -233,7 +233,7 @@ const Backtesting = () => {
               </div>
 
               {/* Progress Bar - only show when running */}
-              {isRunning && <BacktestProgress session={session} pollCount={pollCount} />}
+              {isRunning && <BacktestProgress session={session} />}
 
               {/* Overall Summary (when completed) */}
               {isCompleted && session.overall_summary && (
