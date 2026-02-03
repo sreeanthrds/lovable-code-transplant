@@ -210,12 +210,16 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
         const completedCount = Array.from(newResults.values()).filter(d => d.status === 'completed').length;
         const totalDays = data.total_days || prev.total_days;
         const progress = totalDays > 0 ? Math.round((completedCount / totalDays) * 100) : 0;
+        
+        // Check if all days are completed
+        const allDaysCompleted = totalDays > 0 && completedCount >= totalDays;
 
-        // Determine status
+        // Determine status - stop polling when all days received OR explicit completion
         let status = prev.status;
-        if (data.status === 'completed') {
+        if (data.status === 'completed' || allDaysCompleted) {
           status = 'completed';
           stopPolling();
+          console.log('All days received or status completed, stopping polling');
         } else if (data.status === 'failed') {
           status = 'failed';
           stopPolling();
