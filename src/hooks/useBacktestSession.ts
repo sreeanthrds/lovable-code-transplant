@@ -8,7 +8,7 @@ import {
   StartBacktestResponse,
   DayDetailData,
 } from '@/types/backtest-session';
-import { TradesDaily, DiagnosticsExport, Trade } from '@/types/backtest';
+import { TradesDaily, DiagnosticsExport, Trade, DailySummary } from '@/types/backtest';
 import { getApiBaseUrl } from '@/lib/api-config';
 
 interface UseBacktestSessionOptions {
@@ -366,10 +366,23 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
         throw new Error(`No diagnostics_export file found in ZIP. Found files: ${zipFileNames.join(', ')}`);
       }
 
-      // CRITICAL: Check if trades.trades array exists before calling .map()
-      if (!trades.trades || !Array.isArray(trades.trades)) {
+      // Handle both formats: direct array OR object with trades property
+      // The API may return either: [{trade1}, {trade2}] OR { trades: [{trade1}, {trade2}], date: "..." }
+      let tradesArray: any[];
+      let tradesDate: string | undefined;
+      
+      if (Array.isArray(trades)) {
+        // Format 1: Direct array of trades
+        console.log('Trades data is a direct array, wrapping into expected structure');
+        tradesArray = trades;
+        tradesDate = date; // Use the date parameter passed to loadDayDetail
+      } else if (trades.trades && Array.isArray(trades.trades)) {
+        // Format 2: Object with trades property
+        tradesArray = trades.trades;
+        tradesDate = trades.date;
+      } else {
         console.error('trades object structure:', JSON.stringify(trades, null, 2).substring(0, 500));
-        throw new Error(`trades.trades is not an array. Got: ${typeof trades.trades}. Keys: ${Object.keys(trades).join(', ')}`);
+        throw new Error(`Unexpected trades format. Got: ${typeof trades}. Keys: ${Object.keys(trades).join(', ')}`);
       }
 
       // Debug: Log the structure of the data with actual string values
@@ -385,10 +398,23 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
       console.log('Events history keys (first 3):', JSON.stringify(eventKeys.slice(0, 3)));
       console.log('Do IDs match?', firstTrade?.entry_flow_ids?.[0] && eventKeys.includes(firstTrade.entry_flow_ids[0]) ? 'YES' : 'NO');
       
-      // Ensure trades have flow_ids arrays and proper typing
+      // Build summary from trades if not provided (when API returns array directly)
+      const existingSummary = !Array.isArray(trades) ? trades.summary : undefined;
+      const computedSummary: DailySummary = existingSummary || {
+        total_trades: tradesArray.length,
+        total_pnl: tradesArray.reduce((sum, t) => sum + parseFloat(t.pnl || '0'), 0).toFixed(2),
+        winning_trades: tradesArray.filter(t => parseFloat(t.pnl || '0') > 0).length,
+        losing_trades: tradesArray.filter(t => parseFloat(t.pnl || '0') < 0).length,
+        win_rate: tradesArray.length > 0 
+          ? ((tradesArray.filter(t => parseFloat(t.pnl || '0') > 0).length / tradesArray.length) * 100).toFixed(2)
+          : '0',
+      };
+
+      // Normalize trades with proper typing
       const normalizedTrades: TradesDaily = {
-        ...trades,
-        trades: trades.trades.map((t: any): Trade => ({
+        date: tradesDate || date,
+        summary: computedSummary,
+        trades: tradesArray.map((t: any): Trade => ({
           ...t,
           side: t.side?.toUpperCase() === 'BUY' ? 'BUY' : 
                 t.side?.toUpperCase() === 'SELL' ? 'SELL' : 
