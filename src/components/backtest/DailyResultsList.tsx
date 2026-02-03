@@ -140,7 +140,8 @@ const DailyResultsList: React.FC<DailyResultsListProps> = ({
                 </div>
 
                 <div className="flex items-center gap-4">
-                  {result.status === 'completed' && (
+                  {/* Show summary data if available, regardless of status */}
+                  {result.summary && (result.summary.total_trades > 0 || parseFloat(result.summary.total_pnl || '0') !== 0) && (
                     <div className="text-right">
                       <p className={cn("font-medium", getPnlColor(result.summary.total_pnl))}>
                         {parseFloat(result.summary.total_pnl) >= 0 ? (
