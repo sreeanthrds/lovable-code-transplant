@@ -382,10 +382,10 @@ const Backtesting = () => {
           streamingTradesData={{
             date: selectedDate,
             summary: {
-              total_trades: selectedDayData.trades?.summary?.total_trades || 0,
-              total_pnl: selectedDayData.trades?.summary?.total_pnl || "0",
-              realized_pnl: selectedDayData.trades?.summary?.realized_pnl || "0",
-              unrealized_pnl: selectedDayData.trades?.summary?.unrealized_pnl || "0",
+              total_trades: selectedDayData.trades?.summary?.total_trades || selectedDayData.trades?.summary?.total_positions || 0,
+              total_pnl: String(selectedDayData.trades?.summary?.total_pnl || "0"),
+              realized_pnl: String(selectedDayData.trades?.summary?.realized_pnl || "0"),
+              unrealized_pnl: String(selectedDayData.trades?.summary?.unrealized_pnl || "0"),
               winning_trades: selectedDayData.trades?.summary?.winning_trades || 0,
               losing_trades: selectedDayData.trades?.summary?.losing_trades || 0
             },

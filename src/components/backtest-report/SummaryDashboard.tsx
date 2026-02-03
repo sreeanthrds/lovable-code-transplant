@@ -18,9 +18,9 @@ interface SummaryDashboardProps {
 }
 
 const SummaryDashboard: React.FC<SummaryDashboardProps> = ({ summary, date, currentTime }) => {
-  const totalPnl = parseFloat(summary.total_pnl);
+  const totalPnl = typeof summary.total_pnl === 'number' ? summary.total_pnl : parseFloat(String(summary.total_pnl));
   const isProfitable = totalPnl >= 0;
-  const winRate = parseFloat(summary.win_rate);
+  const winRate = typeof summary.win_rate === 'number' ? summary.win_rate : parseFloat(String(summary.win_rate));
 
   const formatPnl = (value: number) => {
     const formatted = Math.abs(value).toFixed(2);

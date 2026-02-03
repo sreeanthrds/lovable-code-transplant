@@ -1,11 +1,21 @@
 // Backtest Types based on API Documentation
 
 export interface DailySummary {
-  total_trades: number;
-  total_pnl: string;
+  total_trades?: number;
+  total_positions?: number; // API returns this field
+  closed_positions?: number;
+  open_positions?: number;
+  total_pnl: string | number;
   winning_trades: number;
   losing_trades: number;
-  win_rate: string;
+  breakeven_trades?: number;
+  win_rate: string | number;
+  avg_win?: number;
+  avg_loss?: number;
+  avg_duration_minutes?: number;
+  largest_win?: number;
+  largest_loss?: number;
+  re_entries?: number;
   // Streaming backtest additions
   realized_pnl?: string;
   unrealized_pnl?: string;
