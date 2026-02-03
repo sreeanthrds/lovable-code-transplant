@@ -25,6 +25,7 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
   const [session, setSession] = useState<BacktestSession | null>(null);
   const [selectedDayData, setSelectedDayData] = useState<DayDetailData | null>(null);
   const [loadingDay, setLoadingDay] = useState<string | null>(null);
+  const [pollCount, setPollCount] = useState(0); // Force re-render counter
   
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const apiBaseUrl = useRef<string>('');
@@ -241,6 +242,10 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
           start_time: prev.start_time,
         };
       });
+      
+      // Increment poll count to force re-render in consuming components
+      setPollCount(prev => prev + 1);
+      console.log('Poll complete, forcing re-render');
     } catch (error) {
       console.error('Polling error:', error);
       consecutiveFailuresRef.current++;
@@ -465,8 +470,10 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
     setLoadingDay(null);
   }, [stopPolling]);
 
-  // Get sorted daily results as array - handle both Map and plain object
+  // Get sorted daily results as array - recalculates on every poll
+  // Note: pollCount dependency ensures this updates after each poll
   const getDailyResultsArray = useCallback((): DayResult[] => {
+    console.log(`getDailyResultsArray called (poll #${pollCount})`);
     if (!session) return [];
     
     const dailyResults = session.daily_results;
@@ -482,7 +489,22 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
     }
     
     return resultsArray.sort((a, b) => a.date.localeCompare(b.date));
-  }, [session]);
+  }, [session, pollCount]);
+
+  // Compute daily results directly (not memoized) for components that need fresh data
+  const dailyResultsArray: DayResult[] = (() => {
+    if (!session) return [];
+    const dailyResults = session.daily_results;
+    let resultsArray: DayResult[];
+    if (dailyResults instanceof Map) {
+      resultsArray = Array.from(dailyResults.values());
+    } else if (dailyResults && typeof dailyResults === 'object') {
+      resultsArray = Object.values(dailyResults) as DayResult[];
+    } else {
+      return [];
+    }
+    return resultsArray.sort((a, b) => a.date.localeCompare(b.date));
+  })();
 
   return {
     session,
@@ -492,6 +514,8 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
     loadDayDetail,
     reset,
     getDailyResultsArray,
+    dailyResultsArray, // Direct array, not memoized
+    pollCount,
     stopPolling,
   };
 }
