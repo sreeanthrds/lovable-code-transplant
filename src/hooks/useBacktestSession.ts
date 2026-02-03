@@ -17,7 +17,7 @@ interface UseBacktestSessionOptions {
 }
 
 // Polling configuration
-const POLLING_INTERVAL = 2000;
+const POLLING_INTERVAL = 10000; // 10 seconds - reduced polling rate
 const STALE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes without changes = stale
 const MAX_CONSECUTIVE_FAILURES = 10; // Stop after 10 consecutive network failures
 
@@ -129,18 +129,65 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
 
         const newResults = new Map(prev.daily_results);
         
-      // Update daily results from response (API returns object, not array)
+        // IMPORTANT: Process summary_jsonl FIRST - it has the authoritative complete data
+        // This ensures days with actual data are marked as completed before daily_results can override
+        if (data.summary_jsonl) {
+          const lines = data.summary_jsonl.split("\n").filter((l: string) => l.trim());
+          lines.forEach((line: string, index: number) => {
+            try {
+              const daySummary = JSON.parse(line);
+              const dateKey = daySummary.date;
+              if (dateKey) {
+                // Map API fields if necessary (total_positions -> total_trades)
+                const mappedSummary = {
+                  total_trades: daySummary.total_positions ?? daySummary.total_trades ?? 0,
+                  total_pnl: String(daySummary.total_pnl ?? "0"),
+                  winning_trades: daySummary.winning_trades ?? 0,
+                  losing_trades: daySummary.losing_trades ?? 0,
+                  win_rate: String(daySummary.win_rate ?? "0"),
+                  realized_pnl: String(daySummary.realized_pnl || daySummary.total_pnl || "0"),
+                  unrealized_pnl: String(daySummary.unrealized_pnl || "0"),
+                };
+
+                // Always set from summary_jsonl as it's the authoritative source
+                const existing = newResults.get(dateKey);
+                newResults.set(dateKey, {
+                  date: dateKey,
+                  day_number: existing?.day_number || (index + 1),
+                  total_days: data.total_days || prev.total_days,
+                  summary: mappedSummary,
+                  has_detail_data: true,
+                  status: "completed",
+                });
+              }
+            } catch (e) {
+              console.error("Error parsing summary_jsonl line:", e);
+            }
+          });
+        }
+
+        // Update daily results from response (API returns object, not array)
+        // Only add entries that DON'T already exist as completed (from summary_jsonl)
+        // This prevents overwriting completed days with "processing" status
         if (data.daily_results && typeof data.daily_results === 'object') {
           const dailyResultsEntries = Object.entries(data.daily_results);
           for (const [dateKey, day] of dailyResultsEntries) {
             const dayData = day as any;
+            const existing = newResults.get(dateKey);
+            
+            // Skip if we already have this day marked as completed (from summary_jsonl)
+            if (existing?.status === 'completed') {
+              continue;
+            }
+            
+            // Only add/update if day doesn't exist or has a non-completed status
             newResults.set(dateKey, {
               date: dayData.date || dateKey,
-              day_number: dayData.day_number,
+              day_number: dayData.day_number || existing?.day_number,
               total_days: data.total_days || prev.total_days,
-              summary: dayData.summary || { total_trades: 0, total_pnl: '0', winning_trades: 0, losing_trades: 0, win_rate: '0' },
-              has_detail_data: dayData.has_detail_data ?? false,
-              status: dayData.status || 'completed',
+              summary: dayData.summary || existing?.summary || { total_trades: 0, total_pnl: '0', winning_trades: 0, losing_trades: 0, win_rate: '0' },
+              has_detail_data: dayData.has_detail_data ?? existing?.has_detail_data ?? false,
+              status: dayData.status || 'processing',
               error: dayData.error,
             });
           }
@@ -168,7 +215,7 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
           daily_results: newResults,
           progress,
           status,
-          overall_summary: data.overall_summary || prev.overall_summary,
+          overall_summary: data.overall_summary ? { ...data.overall_summary, largest_win: data.overall_summary.largest_win || "0", largest_loss: data.overall_summary.largest_loss || "0" } : prev.overall_summary,
           error: data.error,
           total_days: data.total_days || prev.total_days,
         };
