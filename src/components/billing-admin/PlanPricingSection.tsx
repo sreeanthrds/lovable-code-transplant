@@ -63,6 +63,30 @@ export function PlanPricingSection({ formState, onChange }: PlanPricingSectionPr
         </Select>
       </div>
 
+      {/* GST Percentage - Prominently placed at top */}
+      <div className="bg-accent/20 border border-accent/40 rounded-lg p-4 space-y-2">
+        <Label className="flex items-center gap-2 text-base font-semibold">
+          <Percent className="h-5 w-5 text-primary" />
+          GST Percentage
+        </Label>
+        <div className="flex items-center gap-4">
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            step={0.1}
+            value={formState.gst_percentage ?? 18}
+            onChange={(e) => onChange({ gst_percentage: parseFloat(e.target.value) || 0 })}
+            className="w-32 font-mono text-lg"
+            placeholder="18"
+          />
+          <span className="text-lg text-muted-foreground">%</span>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          This percentage will be added to base prices at checkout
+        </p>
+      </div>
+
       {/* Pricing Fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
@@ -104,30 +128,6 @@ export function PlanPricingSection({ formState, onChange }: PlanPricingSectionPr
           </div>
           <p className="text-xs text-muted-foreground">
             Billed annually (before GST)
-          </p>
-        </div>
-      </div>
-
-      {/* GST Percentage */}
-      <div className="space-y-2">
-        <Label className="flex items-center gap-2">
-          <Percent className="h-4 w-4" />
-          GST Percentage
-        </Label>
-        <div className="flex items-center gap-4">
-          <Input
-            type="number"
-            min={0}
-            max={100}
-            step={0.1}
-            value={formState.gst_percentage}
-            onChange={(e) => onChange({ gst_percentage: parseFloat(e.target.value) || 0 })}
-            className="w-24 font-mono"
-            placeholder="18"
-          />
-          <span className="text-muted-foreground">%</span>
-          <p className="text-xs text-muted-foreground">
-            Added to base price at checkout
           </p>
         </div>
       </div>
