@@ -36,7 +36,7 @@ const UI_COLORS = [
 ];
 
 const UI_ICONS = [
-  { value: '', label: 'None' },
+  { value: 'none', label: 'None' },
   { value: 'rocket', label: 'Rocket 🚀' },
   { value: 'star', label: 'Star ⭐' },
   { value: 'crown', label: 'Crown 👑' },
