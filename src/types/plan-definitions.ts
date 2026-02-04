@@ -17,6 +17,7 @@ export interface PlanDefinition {
   // Validity
   duration_type: DurationType;
   duration_days: number | null;
+  valid_till: string | null;
   trial_days: number;
   grace_period_days: number;
   
@@ -68,6 +69,7 @@ export interface CreatePlanInput {
   
   duration_type?: DurationType;
   duration_days?: number | null;
+  valid_till?: string | null;
   trial_days?: number;
   grace_period_days?: number;
   
@@ -111,6 +113,7 @@ export const DEFAULT_FREE_PLAN: Omit<PlanDefinition, 'id' | 'created_at' | 'upda
   
   duration_type: 'subscription',
   duration_days: null,
+  valid_till: null,
   trial_days: 0,
   grace_period_days: 0,
   
@@ -156,6 +159,7 @@ export interface PlanFormState {
   // Validity
   duration_type: DurationType;
   duration_days: number | null;
+  valid_till: string | null;
   trial_days: number;
   grace_period_days: number;
   
@@ -206,6 +210,7 @@ export function formStateToPlanInput(state: PlanFormState): CreatePlanInput {
     
     duration_type: state.duration_type,
     duration_days: state.duration_type === 'fixed' ? state.duration_days : null,
+    valid_till: state.duration_type === 'fixed' ? state.valid_till : null,
     trial_days: state.trial_days,
     grace_period_days: state.grace_period_days,
     
@@ -249,6 +254,7 @@ export function planToFormState(plan: PlanDefinition): PlanFormState {
     
     duration_type: plan.duration_type,
     duration_days: plan.duration_days,
+    valid_till: plan.valid_till || null,
     trial_days: plan.trial_days,
     grace_period_days: plan.grace_period_days,
     
@@ -295,6 +301,7 @@ export const INITIAL_FORM_STATE: PlanFormState = {
   
   duration_type: 'subscription',
   duration_days: null,
+  valid_till: null,
   trial_days: 0,
   grace_period_days: 0,
   

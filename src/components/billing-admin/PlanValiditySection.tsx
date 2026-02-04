@@ -1,6 +1,14 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { format, differenceInDays, addDays } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -8,13 +16,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar, Clock, RotateCcw } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Calendar, Clock, RotateCcw, CalendarDays, Hash, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { PlanFormState, DurationType, ResetType } from '@/types/plan-definitions';
 
 interface PlanValiditySectionProps {
   formState: PlanFormState;
   onChange: (updates: Partial<PlanFormState>) => void;
 }
+
+type ValidityInputMode = 'date' | 'days';
 
 const TIMEZONES = [
   { value: 'Asia/Kolkata', label: 'IST (Asia/Kolkata)', offset: '+05:30' },
@@ -37,6 +49,46 @@ const RESET_TYPES: { value: ResetType; label: string; description: string }[] = 
 ];
 
 export function PlanValiditySection({ formState, onChange }: PlanValiditySectionProps) {
+  const [validityMode, setValidityMode] = React.useState<ValidityInputMode>(
+    formState.valid_till ? 'date' : 'days'
+  );
+
+  // Calculate remaining days if valid_till is set
+  const validityInfo = useMemo(() => {
+    if (!formState.valid_till) return null;
+    const expiryDate = new Date(formState.valid_till);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    expiryDate.setHours(0, 0, 0, 0);
+    const remaining = differenceInDays(expiryDate, today);
+    return { remaining, expiryDate };
+  }, [formState.valid_till]);
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      onChange({ valid_till: date.toISOString() });
+      // Also calculate duration_days from today
+      const days = differenceInDays(date, new Date());
+      onChange({ duration_days: days > 0 ? days : null });
+    } else {
+      onChange({ valid_till: null, duration_days: null });
+    }
+  };
+
+  const handleDaysChange = (days: number | null) => {
+    onChange({ duration_days: days });
+    if (days && days > 0) {
+      const newDate = addDays(new Date(), days);
+      onChange({ valid_till: newDate.toISOString() });
+    } else {
+      onChange({ valid_till: null });
+    }
+  };
+
+  const clearValidity = () => {
+    onChange({ valid_till: null, duration_days: null });
+  };
+
   return (
     <div className="space-y-6">
       {/* Duration Type */}
@@ -65,21 +117,134 @@ export function PlanValiditySection({ formState, onChange }: PlanValiditySection
         </Select>
       </div>
 
-      {/* Duration Days (only for fixed) */}
+      {/* Valid Till Section (only for fixed duration) */}
       {formState.duration_type === 'fixed' && (
-        <div className="space-y-2 pl-4 border-l-2 border-primary/30">
-          <Label>Duration in Days</Label>
-          <Input
-            type="number"
-            min={1}
-            value={formState.duration_days || ''}
-            onChange={(e) => onChange({ duration_days: parseInt(e.target.value) || null })}
-            placeholder="e.g., 60 for 2 months"
-            className="font-mono"
-          />
-          <p className="text-xs text-muted-foreground">
-            Plan will expire after this many days from activation
-          </p>
+        <div className="space-y-4 pl-4 border-l-2 border-primary/30 bg-accent/20 rounded-r-lg p-4">
+          <div className="flex items-center justify-between">
+            <Label className="flex items-center gap-2 text-base font-semibold">
+              <CalendarDays className="h-5 w-5 text-primary" />
+              Plan Validity Period
+            </Label>
+            {(formState.valid_till || formState.duration_days) && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={clearValidity}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+
+          {/* Toggle between date and days input */}
+          <RadioGroup
+            value={validityMode}
+            onValueChange={(v) => setValidityMode(v as ValidityInputMode)}
+            className="flex gap-4"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="date" id="validity-date" />
+              <Label htmlFor="validity-date" className="cursor-pointer flex items-center gap-1">
+                <CalendarDays className="h-4 w-4" />
+                Specific Date
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="days" id="validity-days" />
+              <Label htmlFor="validity-days" className="cursor-pointer flex items-center gap-1">
+                <Hash className="h-4 w-4" />
+                Number of Days
+              </Label>
+            </div>
+          </RadioGroup>
+
+          {/* Date Picker */}
+          {validityMode === 'date' && (
+            <div className="space-y-2">
+              <Label>Valid Till Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !formState.valid_till && "text-muted-foreground"
+                    )}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {formState.valid_till ? (
+                      format(new Date(formState.valid_till), "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={formState.valid_till ? new Date(formState.valid_till) : undefined}
+                    onSelect={handleDateSelect}
+                    disabled={(date) => date < new Date()}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+
+          {/* Days Input */}
+          {validityMode === 'days' && (
+            <div className="space-y-2">
+              <Label>Duration in Days (from activation)</Label>
+              <Input
+                type="number"
+                min={1}
+                value={formState.duration_days ?? ''}
+                onChange={(e) => handleDaysChange(e.target.value ? parseInt(e.target.value) : null)}
+                placeholder="e.g., 30, 60, 90, 365"
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground">
+                Plan will expire after this many days from activation
+              </p>
+            </div>
+          )}
+
+          {/* Validity Summary */}
+          {validityInfo && (
+            <div className={cn(
+              "flex items-center gap-2 p-3 rounded-lg text-sm border",
+              validityInfo.remaining > 7 
+                ? "bg-primary/10 text-primary border-primary/30"
+                : validityInfo.remaining > 0
+                  ? "bg-accent/50 text-accent-foreground border-accent"
+                  : validityInfo.remaining === 0
+                    ? "bg-accent text-accent-foreground border-accent"
+                    : "bg-destructive/10 text-destructive border-destructive/30"
+            )}>
+              {validityInfo.remaining > 0 ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>
+                    Valid for <strong>{validityInfo.remaining} days</strong> 
+                    {' '}(until {format(validityInfo.expiryDate, "PPP")})
+                  </span>
+                </>
+              ) : validityInfo.remaining === 0 ? (
+                <>
+                  <AlertCircle className="h-4 w-4" />
+                  <span>Expires today</span>
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="h-4 w-4" />
+                  <span>Already expired {Math.abs(validityInfo.remaining)} days ago</span>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 
