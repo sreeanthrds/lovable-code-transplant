@@ -344,9 +344,37 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
         if (file.dir) continue;
         
         const fileData = await file.async('uint8array');
+        console.log('=== DEBUG: Processing ZIP file ===');
+        console.log('File name:', fileName);
+        console.log('File data size:', fileData.length, 'bytes');
         
         if (fileName.includes('trades_daily')) {
-          trades = decodePossiblyGzippedJson(fileData, fileName);
+          const parsed = decodePossiblyGzippedJson(fileData, fileName);
+          console.log('=== DEBUG: Parsed trades_daily structure ===');
+          console.log('Parsed object keys:', Object.keys(parsed));
+          console.log('Full parsed object:', JSON.stringify(parsed).slice(0, 500));
+          
+          // Handle different possible structures from the API
+          // The trades might be at root level as an array, or nested under 'trades' or 'positions'
+          if (Array.isArray(parsed)) {
+            // Root level is an array of trades
+            trades = { date, trades: parsed, summary: null };
+          } else if (parsed.trades && Array.isArray(parsed.trades)) {
+            // Standard structure with trades array
+            trades = parsed;
+          } else if (parsed.positions && Array.isArray(parsed.positions)) {
+            // Alternative: positions instead of trades
+            trades = { ...parsed, trades: parsed.positions };
+          } else {
+            // Fallback: try to find any array property
+            const arrayKey = Object.keys(parsed).find(k => Array.isArray(parsed[k]));
+            if (arrayKey) {
+              console.log('Found array at key:', arrayKey);
+              trades = { ...parsed, trades: parsed[arrayKey] };
+            } else {
+              trades = parsed;
+            }
+          }
         } else if (fileName.includes('diagnostics_export')) {
           diagnostics = decodePossiblyGzippedJson(fileData, fileName);
         }
@@ -358,15 +386,11 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
         const firstTrade = tradesArray[0];
         const eventKeys = diagnostics.events_history ? Object.keys(diagnostics.events_history) : [];
         
-        console.log('=== DEBUG: Full Trade Data Analysis ===');
+        console.log('=== DEBUG: Final Trade Data Analysis ===');
         console.log('Trades date:', trades.date);
         console.log('Trades array length:', tradesArray.length);
         console.log('First trade keys:', firstTrade ? Object.keys(firstTrade) : 'no trade');
-        console.log('First trade entry_flow_ids type:', typeof firstTrade?.entry_flow_ids);
-        console.log('First trade entry_flow_ids value:', JSON.stringify(firstTrade?.entry_flow_ids));
-        console.log('First trade exit_flow_ids value:', JSON.stringify(firstTrade?.exit_flow_ids));
-        console.log('Events history keys (first 3):', JSON.stringify(eventKeys.slice(0, 3)));
-        console.log('Do IDs match?', firstTrade?.entry_flow_ids?.[0] && eventKeys.includes(firstTrade.entry_flow_ids[0]) ? 'YES' : 'NO');
+        console.log('First trade sample:', firstTrade ? JSON.stringify(firstTrade).slice(0, 200) : 'none');
         
         // Ensure trades have flow_ids arrays and proper typing - with defensive array check
         const normalizedTrades: TradesDaily = {
