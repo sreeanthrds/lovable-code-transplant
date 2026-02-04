@@ -178,9 +178,11 @@ export const planDefinitionsService = {
           delete updateData[key];
         }
       });
-      // Remove created_by/updated_by to avoid UUID type mismatch with Clerk string IDs
+      // Remove fields that don't exist in the database schema
       delete updateData.created_by;
       delete updateData.updated_by;
+      delete updateData.gst_percentage; // Not in DB schema yet
+      delete updateData.valid_till; // Not in DB schema yet
 
       const { data, error } = await (authClient as any)
         .from('plan_definitions')
