@@ -28,6 +28,7 @@ interface UserPlan {
   addon_live_executions: number;
   admin_notes?: string;
   user_email?: string;
+  expires_at?: string;
 }
 
 interface UserPlanEditDialogProps {
@@ -53,10 +54,18 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
     paper_trading_used: 0,
     live_executions_used: 0,
     admin_notes: '',
+    expires_at: '',
   });
 
   useEffect(() => {
     if (plan) {
+      // Format expires_at for date input (YYYY-MM-DD)
+      let expiresAtValue = '';
+      if (plan.expires_at) {
+        const date = new Date(plan.expires_at);
+        expiresAtValue = date.toISOString().split('T')[0];
+      }
+      
       setFormData({
         backtests_used_today: plan.backtests_used_today || 0,
         backtests_used: plan.backtests_used || 0,
@@ -64,6 +73,7 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
         paper_trading_used: plan.paper_trading_used || 0,
         live_executions_used: plan.live_executions_used || 0,
         admin_notes: plan.admin_notes || '',
+        expires_at: expiresAtValue,
       });
     }
   }, [plan]);
@@ -87,6 +97,11 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
         live_executions_used: formData.live_executions_used,
         updated_at: new Date().toISOString(),
       };
+      
+      // Include expires_at if set
+      if (formData.expires_at) {
+        updateData.expires_at = new Date(formData.expires_at).toISOString();
+      }
       
       // Only include admin_notes if it has content (column may not exist yet)
       if (formData.admin_notes) {
@@ -213,6 +228,19 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
               value={formData.live_executions_used}
               onChange={(e) => handleInputChange('live_executions_used', e.target.value)}
             />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="expires_at">Valid Till</Label>
+            <Input
+              id="expires_at"
+              type="date"
+              value={formData.expires_at}
+              onChange={(e) => setFormData(prev => ({ ...prev, expires_at: e.target.value }))}
+            />
+            <p className="text-xs text-muted-foreground">
+              Leave empty for subscription plans with no fixed end date
+            </p>
           </div>
           
           <div className="space-y-2">
