@@ -121,14 +121,24 @@ export const planDefinitionsService = {
     try {
       console.log('➕ Creating new plan:', input.code);
       
-      const planData = {
+      // Use authenticated client for write operations (RLS requires admin role)
+      const authClient = await getAuthenticatedTradelayoutClient();
+      
+      const planData: Record<string, any> = {
         ...input,
         code: input.code.toUpperCase(),
-        created_by: adminId || null,
-        updated_by: adminId || null,
       };
+      
+      // Remove created_by/updated_by to avoid UUID type mismatch with Clerk string IDs
+      delete planData.created_by;
+      delete planData.updated_by;
+      
+      // Convert 'none' icon value back to null for database
+      if (planData.ui_icon === 'none') {
+        planData.ui_icon = null;
+      }
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await (authClient as any)
         .from('plan_definitions')
         .insert(planData)
         .select()
