@@ -198,15 +198,18 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
         const totalDays = data.total_days || prev.total_days;
         const progress = totalDays > 0 ? Math.round((completedCount / totalDays) * 100) : 0;
 
-        // Determine status
+        // Determine status - check both API status AND client-side completion
         let status = prev.status;
-        if (data.status === 'completed') {
+        const allDaysCompleted = totalDays > 0 && completedCount >= totalDays;
+        
+        if (data.status === 'completed' || allDaysCompleted) {
           status = 'completed';
+          console.log('Backtest completed - stopping polling. API status:', data.status, 'Days:', completedCount, '/', totalDays);
           stopPolling();
         } else if (data.status === 'failed') {
           status = 'failed';
           stopPolling();
-        } else if (data.status === 'running') {
+        } else if (data.status === 'running' || data.status === 'starting') {
           status = 'running';
         }
 
