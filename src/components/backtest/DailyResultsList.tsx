@@ -61,7 +61,7 @@ const DailyResultsList: React.FC<DailyResultsListProps> = ({
       case 'completed':
         return (
           <Badge variant="secondary" className="gap-1">
-            {result.summary.total_trades} trades
+            {result.summary.total_trades ?? 0} trades
           </Badge>
         );
       case 'error':
