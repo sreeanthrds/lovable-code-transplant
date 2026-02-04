@@ -371,30 +371,40 @@ const Backtesting = () => {
       </div>
 
       {/* View Trades Modal */}
-      {isModalOpen && modalStrategy && selectedDayData && (
-        <ViewTradesModalV2
-          strategy={modalStrategy}
-          userId={user?.id || null}
-          apiBaseUrl={null}
-          onClose={handleModalClose}
-          mode="backtest"
-          backtestDate={selectedDate}
-          streamingTradesData={{
-            date: selectedDate,
-            summary: {
-              total_trades: selectedDayData.trades?.summary?.total_trades || 0,
-              total_pnl: selectedDayData.trades?.summary?.total_pnl || "0",
-              realized_pnl: selectedDayData.trades?.summary?.realized_pnl || "0",
-              unrealized_pnl: selectedDayData.trades?.summary?.unrealized_pnl || "0",
-              winning_trades: selectedDayData.trades?.summary?.winning_trades || 0,
-              losing_trades: selectedDayData.trades?.summary?.losing_trades || 0
-            },
-            trades: selectedDayData.trades?.trades || [],
-            diagnostics: selectedDayData.diagnostics
-          }}
-          cachedBacktestResults={selectedDayData}
-        />
-      )}
+      {isModalOpen && modalStrategy && selectedDayData && (() => {
+        // Get summary from session's daily_results (populated from polling) as fallback
+        const dayResult = selectedDate ? session?.daily_results.get(selectedDate) : null;
+        const sessionSummary = dayResult?.summary;
+        
+        // Prefer summary from ZIP trades, fall back to session summary
+        const zipSummary = selectedDayData.trades?.summary;
+        const summary = {
+          total_trades: zipSummary?.total_trades ?? sessionSummary?.total_trades ?? selectedDayData.trades?.trades?.length ?? 0,
+          total_pnl: zipSummary?.total_pnl ?? sessionSummary?.total_pnl ?? "0",
+          realized_pnl: zipSummary?.realized_pnl ?? sessionSummary?.realized_pnl ?? "0",
+          unrealized_pnl: zipSummary?.unrealized_pnl ?? sessionSummary?.unrealized_pnl ?? "0",
+          winning_trades: zipSummary?.winning_trades ?? sessionSummary?.winning_trades ?? 0,
+          losing_trades: zipSummary?.losing_trades ?? sessionSummary?.losing_trades ?? 0
+        };
+        
+        return (
+          <ViewTradesModalV2
+            strategy={modalStrategy}
+            userId={user?.id || null}
+            apiBaseUrl={null}
+            onClose={handleModalClose}
+            mode="backtest"
+            backtestDate={selectedDate}
+            streamingTradesData={{
+              date: selectedDate,
+              summary,
+              trades: selectedDayData.trades?.trades || [],
+              diagnostics: selectedDayData.diagnostics
+            }}
+            cachedBacktestResults={selectedDayData}
+          />
+        );
+      })()}
     </AppLayout>
   );
 };
