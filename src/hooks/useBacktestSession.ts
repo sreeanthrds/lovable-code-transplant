@@ -306,7 +306,7 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
 
   // Download and extract day detail data
   const loadDayDetail = useCallback(async (date: string) => {
-    if (!session?.backtest_id) return;
+    if (!session?.backtest_id || !userId) return;
 
     const baseUrl = await initApiUrl();
     if (!baseUrl) {
@@ -317,7 +317,7 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
     setSelectedDayData(null);
 
     try {
-      const url = `${baseUrl}/api/v1/backtest/${session.backtest_id}/day/${date}`;
+      const url = `${baseUrl}/api/v1/backtest/${userId}/${session.backtest_id}/day/${date}`;
       const response = await fetch(url, {
         headers: {
           'ngrok-skip-browser-warning': 'true',
