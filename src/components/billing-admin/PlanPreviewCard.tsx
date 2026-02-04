@@ -81,20 +81,35 @@ export function PlanPreviewCard({ formState }: PlanPreviewCardProps) {
             <div className="text-3xl font-bold text-primary">Free</div>
           ) : (
             <>
-              <div className="text-3xl font-bold">
-                {currencySymbol}{formState.price_monthly}
-                <span className="text-sm font-normal text-muted-foreground">/month</span>
-              </div>
-              {formState.price_yearly > 0 && (
-                <div className="text-sm text-muted-foreground">
-                  or {currencySymbol}{formState.price_yearly}/year
-                  {formState.discount_percentage > 0 && (
-                    <Badge variant="secondary" className="ml-2 text-xs">
-                      Save {formState.discount_percentage}%
-                    </Badge>
-                  )}
-                </div>
-              )}
+              {(() => {
+                const gstRate = (formState.gst_percentage || 0) / 100;
+                const monthlyWithGst = formState.price_monthly * (1 + gstRate);
+                const yearlyWithGst = formState.price_yearly * (1 + gstRate);
+                
+                return (
+                  <>
+                    <div className="text-3xl font-bold">
+                      {currencySymbol}{monthlyWithGst.toFixed(0)}
+                      <span className="text-sm font-normal text-muted-foreground">/month</span>
+                    </div>
+                    {formState.gst_percentage > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        incl. {formState.gst_percentage}% GST
+                      </div>
+                    )}
+                    {formState.price_yearly > 0 && (
+                      <div className="text-sm text-muted-foreground mt-1">
+                        or {currencySymbol}{yearlyWithGst.toFixed(0)}/year
+                        {formState.discount_percentage > 0 && (
+                          <Badge variant="secondary" className="ml-2 text-xs">
+                            Save {formState.discount_percentage}%
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </>
           )}
         </div>
