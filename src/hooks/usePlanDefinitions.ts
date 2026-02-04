@@ -39,6 +39,7 @@ function convertPlanConfigsToDefinitions(): PlanDefinition[] {
     
     duration_type: 'subscription' as const,
     duration_days: config.duration_months ? config.duration_months * 30 : null,
+    valid_till: null,
     trial_days: 0,
     grace_period_days: 0,
     
