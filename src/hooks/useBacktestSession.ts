@@ -181,11 +181,23 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
             }
             
             // Only add/update if day doesn't exist or has a non-completed status
+            // Map API fields (total_positions -> total_trades) for consistency
+            const daySummary = dayData.summary || existing?.summary || {};
+            const mappedSummary = {
+              total_trades: daySummary.total_positions ?? daySummary.total_trades ?? 0,
+              total_pnl: String(daySummary.total_pnl ?? "0"),
+              winning_trades: daySummary.winning_trades ?? 0,
+              losing_trades: daySummary.losing_trades ?? 0,
+              win_rate: String(daySummary.win_rate ?? "0"),
+              realized_pnl: String(daySummary.realized_pnl || daySummary.total_pnl || "0"),
+              unrealized_pnl: String(daySummary.unrealized_pnl || "0"),
+            };
+
             newResults.set(dateKey, {
               date: dayData.date || dateKey,
               day_number: dayData.day_number || existing?.day_number,
               total_days: data.total_days || prev.total_days,
-              summary: dayData.summary || existing?.summary || { total_trades: 0, total_pnl: '0', winning_trades: 0, losing_trades: 0, win_rate: '0' },
+              summary: mappedSummary,
               has_detail_data: dayData.has_detail_data ?? existing?.has_detail_data ?? false,
               status: dayData.status || 'processing',
               error: dayData.error,
