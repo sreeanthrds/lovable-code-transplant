@@ -354,11 +354,13 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
 
       if (trades && diagnostics) {
         // Debug: Log the structure of the data with actual string values
-        const firstTrade = trades.trades?.[0];
+        const tradesArray = trades.trades || [];
+        const firstTrade = tradesArray[0];
         const eventKeys = diagnostics.events_history ? Object.keys(diagnostics.events_history) : [];
         
         console.log('=== DEBUG: Full Trade Data Analysis ===');
         console.log('Trades date:', trades.date);
+        console.log('Trades array length:', tradesArray.length);
         console.log('First trade keys:', firstTrade ? Object.keys(firstTrade) : 'no trade');
         console.log('First trade entry_flow_ids type:', typeof firstTrade?.entry_flow_ids);
         console.log('First trade entry_flow_ids value:', JSON.stringify(firstTrade?.entry_flow_ids));
@@ -366,10 +368,10 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
         console.log('Events history keys (first 3):', JSON.stringify(eventKeys.slice(0, 3)));
         console.log('Do IDs match?', firstTrade?.entry_flow_ids?.[0] && eventKeys.includes(firstTrade.entry_flow_ids[0]) ? 'YES' : 'NO');
         
-        // Ensure trades have flow_ids arrays and proper typing
+        // Ensure trades have flow_ids arrays and proper typing - with defensive array check
         const normalizedTrades: TradesDaily = {
           ...trades,
-          trades: trades.trades.map((t: any): Trade => ({
+          trades: tradesArray.map((t: any): Trade => ({
             ...t,
             side: t.side?.toUpperCase() === 'BUY' ? 'BUY' : 
                   t.side?.toUpperCase() === 'SELL' ? 'SELL' : 
