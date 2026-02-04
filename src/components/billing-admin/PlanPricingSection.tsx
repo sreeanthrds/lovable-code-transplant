@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { IndianRupee, DollarSign, Euro } from 'lucide-react';
+import { IndianRupee, DollarSign, Euro, Percent } from 'lucide-react';
 import type { PlanFormState } from '@/types/plan-definitions';
 
 interface PlanPricingSectionProps {
@@ -30,6 +30,13 @@ export function PlanPricingSection({ formState, onChange }: PlanPricingSectionPr
   const yearlySavings = formState.price_monthly > 0
     ? Math.round((1 - formState.price_yearly / (formState.price_monthly * 12)) * 100)
     : 0;
+
+  // Calculate GST amounts
+  const gstRate = formState.gst_percentage / 100;
+  const monthlyWithGst = formState.price_monthly * (1 + gstRate);
+  const yearlyWithGst = formState.price_yearly * (1 + gstRate);
+  const monthlyGstAmount = formState.price_monthly * gstRate;
+  const yearlyGstAmount = formState.price_yearly * gstRate;
 
   return (
     <div className="space-y-6">
@@ -59,7 +66,7 @@ export function PlanPricingSection({ formState, onChange }: PlanPricingSectionPr
       {/* Pricing Fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <Label>Monthly Price</Label>
+          <Label>Monthly Price (Base)</Label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
               {selectedCurrency.symbol}
@@ -75,12 +82,12 @@ export function PlanPricingSection({ formState, onChange }: PlanPricingSectionPr
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Billed monthly
+            Billed monthly (before GST)
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label>Yearly Price</Label>
+          <Label>Yearly Price (Base)</Label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
               {selectedCurrency.symbol}
@@ -96,10 +103,68 @@ export function PlanPricingSection({ formState, onChange }: PlanPricingSectionPr
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Billed annually (full year)
+            Billed annually (before GST)
           </p>
         </div>
       </div>
+
+      {/* GST Percentage */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2">
+          <Percent className="h-4 w-4" />
+          GST Percentage
+        </Label>
+        <div className="flex items-center gap-4">
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            step={0.1}
+            value={formState.gst_percentage}
+            onChange={(e) => onChange({ gst_percentage: parseFloat(e.target.value) || 0 })}
+            className="w-24 font-mono"
+            placeholder="18"
+          />
+          <span className="text-muted-foreground">%</span>
+          <p className="text-xs text-muted-foreground">
+            Added to base price at checkout
+          </p>
+        </div>
+      </div>
+
+      {/* Price with GST Display */}
+      {(formState.price_monthly > 0 || formState.price_yearly > 0) && formState.gst_percentage > 0 && (
+        <div className="bg-accent/30 border border-accent/50 rounded-lg p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Percent className="h-4 w-4 text-primary" />
+            <p className="text-sm font-medium">Price with GST ({formState.gst_percentage}%)</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            {formState.price_monthly > 0 && (
+              <div className="space-y-1">
+                <p className="text-muted-foreground">Monthly</p>
+                <p className="font-mono font-bold text-lg">
+                  {selectedCurrency.symbol}{monthlyWithGst.toFixed(2)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Base: {selectedCurrency.symbol}{formState.price_monthly.toFixed(2)} + GST: {selectedCurrency.symbol}{monthlyGstAmount.toFixed(2)}
+                </p>
+              </div>
+            )}
+            {formState.price_yearly > 0 && (
+              <div className="space-y-1">
+                <p className="text-muted-foreground">Yearly</p>
+                <p className="font-mono font-bold text-lg">
+                  {selectedCurrency.symbol}{yearlyWithGst.toFixed(2)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Base: {selectedCurrency.symbol}{formState.price_yearly.toFixed(2)} + GST: {selectedCurrency.symbol}{yearlyGstAmount.toFixed(2)}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Savings Display */}
       {formState.price_monthly > 0 && formState.price_yearly > 0 && (

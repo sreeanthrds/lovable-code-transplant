@@ -42,6 +42,7 @@ export interface PlanDefinition {
   price_yearly: number;
   currency: string;
   discount_percentage: number;
+  gst_percentage: number;
   
   // Features
   can_buy_addons: boolean;
@@ -87,6 +88,7 @@ export interface CreatePlanInput {
   price_yearly?: number;
   currency?: string;
   discount_percentage?: number;
+  gst_percentage?: number;
   
   can_buy_addons?: boolean;
   feature_flags?: Record<string, boolean>;
@@ -129,6 +131,7 @@ export const DEFAULT_FREE_PLAN: Omit<PlanDefinition, 'id' | 'created_at' | 'upda
   price_yearly: 0,
   currency: 'INR',
   discount_percentage: 0,
+  gst_percentage: 18,
   
   can_buy_addons: false,
   feature_flags: {},
@@ -182,6 +185,7 @@ export interface PlanFormState {
   price_yearly: number;
   currency: string;
   discount_percentage: number;
+  gst_percentage: number;
   
   // Features
   can_buy_addons: boolean;
@@ -222,6 +226,7 @@ export function formStateToPlanInput(state: PlanFormState): CreatePlanInput {
     price_yearly: state.price_yearly,
     currency: state.currency,
     discount_percentage: state.discount_percentage,
+    gst_percentage: state.gst_percentage,
     
     can_buy_addons: state.can_buy_addons,
     feature_flags: state.feature_flags,
@@ -270,6 +275,7 @@ export function planToFormState(plan: PlanDefinition): PlanFormState {
     price_yearly: plan.price_yearly,
     currency: plan.currency,
     discount_percentage: plan.discount_percentage,
+    gst_percentage: plan.gst_percentage ?? 18,
     
     can_buy_addons: plan.can_buy_addons,
     feature_flags: plan.feature_flags || {},
@@ -315,6 +321,7 @@ export const INITIAL_FORM_STATE: PlanFormState = {
   price_yearly: 0,
   currency: 'INR',
   discount_percentage: 0,
+  gst_percentage: 18,
   
   can_buy_addons: false,
   feature_flags: {},
