@@ -27,7 +27,7 @@ const QuotaExhaustedCard: React.FC<QuotaExhaustedCardProps> = ({ quotaInfo }) =>
       return {
         title: 'Daily Backtest Limit Reached',
         description: 'Free plan allows 2 backtests per day. Upgrade to unlock unlimited backtests and more features.',
-        primaryAction: { label: 'View Plans', path: '/pricing' },
+        primaryAction: { label: 'View Plans', path: '/#pricing' },
         secondaryAction: null,
       };
     }
@@ -36,7 +36,7 @@ const QuotaExhaustedCard: React.FC<QuotaExhaustedCardProps> = ({ quotaInfo }) =>
       return {
         title: 'Backtest Quota Exhausted',
         description: 'Your Launch plan quota is used up. Upgrade to PRO for more backtests and advanced features.',
-        primaryAction: { label: 'Upgrade to PRO', path: '/pricing' },
+        primaryAction: { label: 'Upgrade to PRO', path: '/#pricing' },
         secondaryAction: null,
       };
     }
@@ -47,8 +47,8 @@ const QuotaExhaustedCard: React.FC<QuotaExhaustedCardProps> = ({ quotaInfo }) =>
         description: 'Your PRO plan monthly quota is used up. Purchase add-ons or upgrade to Enterprise for unlimited access.',
         primaryAction: canBuyAddons 
           ? { label: 'Buy Add-ons', path: '/app/account?tab=payments' }
-          : { label: 'Upgrade Plan', path: '/pricing' },
-        secondaryAction: { label: 'Upgrade to Enterprise', path: '/pricing' },
+          : { label: 'Upgrade Plan', path: '/#pricing' },
+        secondaryAction: { label: 'Upgrade to Enterprise', path: '/#pricing' },
       };
     }
 
@@ -75,28 +75,51 @@ const QuotaExhaustedCard: React.FC<QuotaExhaustedCardProps> = ({ quotaInfo }) =>
           <p className="text-muted-foreground mb-6">{content.description}</p>
 
           <div className="flex flex-wrap justify-center gap-3">
-            <Button 
-              onClick={() => navigate(content.primaryAction.path)}
-              className="gap-2"
-            >
-              {content.primaryAction.label.includes('Upgrade') || content.primaryAction.label.includes('View') ? (
-                <Crown className="w-4 h-4" />
-              ) : (
-                <Zap className="w-4 h-4" />
-              )}
-              {content.primaryAction.label}
-              <ArrowUpRight className="w-4 h-4" />
-            </Button>
-
-            {content.secondaryAction && (
+            {content.primaryAction.path.startsWith('/#') ? (
+              <a href={content.primaryAction.path}>
+                <Button className="gap-2">
+                  {content.primaryAction.label.includes('Upgrade') || content.primaryAction.label.includes('View') ? (
+                    <Crown className="w-4 h-4" />
+                  ) : (
+                    <Zap className="w-4 h-4" />
+                  )}
+                  {content.primaryAction.label}
+                  <ArrowUpRight className="w-4 h-4" />
+                </Button>
+              </a>
+            ) : (
               <Button 
-                variant="outline"
-                onClick={() => navigate(content.secondaryAction!.path)}
+                onClick={() => navigate(content.primaryAction.path)}
                 className="gap-2"
               >
-                {content.secondaryAction.label}
+                {content.primaryAction.label.includes('Upgrade') || content.primaryAction.label.includes('View') ? (
+                  <Crown className="w-4 h-4" />
+                ) : (
+                  <Zap className="w-4 h-4" />
+                )}
+                {content.primaryAction.label}
                 <ArrowUpRight className="w-4 h-4" />
               </Button>
+            )}
+
+            {content.secondaryAction && (
+              content.secondaryAction.path.startsWith('/#') ? (
+                <a href={content.secondaryAction.path}>
+                  <Button variant="outline" className="gap-2">
+                    {content.secondaryAction.label}
+                    <ArrowUpRight className="w-4 h-4" />
+                  </Button>
+                </a>
+              ) : (
+                <Button 
+                  variant="outline"
+                  onClick={() => navigate(content.secondaryAction!.path)}
+                  className="gap-2"
+                >
+                  {content.secondaryAction.label}
+                  <ArrowUpRight className="w-4 h-4" />
+                </Button>
+              )
             )}
           </div>
 
