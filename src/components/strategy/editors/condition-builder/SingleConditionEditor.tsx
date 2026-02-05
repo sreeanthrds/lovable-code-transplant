@@ -75,7 +75,7 @@ const SingleConditionEditor: React.FC<SingleConditionEditorProps> = ({
   };
 
   const isBetweenOperator = condition.operator === 'between' || condition.operator === 'not_between';
-  const allOperators: ComparisonOperator[] = ['>', '<', '>=', '<=', '==', '!=', 'crosses_above', 'crosses_below', 'between', 'not_between'];
+ const allOperators: ComparisonOperator[] = ['>', '<', '>=', '<=', '==', '!=', 'crosses_above', 'crosses_below', 'between', 'not_between', 'in', 'not_in'];
 
   return (
     <div className={cn(
