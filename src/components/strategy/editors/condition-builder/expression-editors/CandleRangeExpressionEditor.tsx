@@ -11,12 +11,16 @@
    required?: boolean;
  }
  
- const CandleRangeExpressionEditor: React.FC<CandleRangeExpressionEditorProps> = ({
-   expression,
-   updateExpression,
-   required = false
- }) => {
+const CandleRangeExpressionEditor: React.FC<CandleRangeExpressionEditorProps> = ({
+  expression,
+  updateExpression,
+  required = false
+}) => {
   const nodes = useStrategyStore(state => state.nodes);
+
+  // Get start node data
+  const startNode = nodes.find(node => node.type === 'startNode');
+  const startNodeData = startNode?.data as any;
 
   // Get positions for relative range - must be before early return
   const positions = React.useMemo(() => {
@@ -33,51 +37,57 @@
     return allPositions;
   }, [nodes]);
 
-   if (expression.type !== 'candle_range') {
-     return null;
-   }
- 
-   const candleRangeExpr = expression as CandleRangeExpression;
- 
-    // Get timeframe options from strategy
-    const getTimeframeOptions = () => {
-      const startNode = nodes.find(node => node.type === 'startNode');
-      const instrumentType = candleRangeExpr.instrumentType || 'TI';
-      
-      let timeframes = [];
-      if (instrumentType === 'TI') {
-        timeframes = (startNode?.data as any)?.tradingInstrumentConfig?.timeframes || [];
-      } else {
-        timeframes = (startNode?.data as any)?.supportingInstrumentConfig?.timeframes || [];
-      }
-      
-      // Only return configured timeframes - no fallback to avoid showing unconfigured options
-      return timeframes.map((tf: any) => ({
-        value: tf.id || tf.timeframe,
-        label: tf.timeframe
-      }));
-    };
- 
-   const rangeTypeOptions = [
-     { value: 'by_count', label: 'By Count (e.g., last 10 candles)' },
-     { value: 'by_time', label: 'By Time (e.g., 09:15 to 10:30)' },
+  // Check if supporting instrument is enabled
+  const supportingInstrumentEnabled = startNodeData?.supportingInstrumentEnabled === true;
+
+  if (expression.type !== 'candle_range') {
+    return null;
+  }
+
+  const candleRangeExpr = expression as CandleRangeExpression;
+
+  // Get timeframe options from strategy based on instrument type
+  const getTimeframeOptions = () => {
+    const instrumentType = candleRangeExpr.instrumentType || 'TI';
+    
+    let timeframes = [];
+    if (instrumentType === 'TI') {
+      timeframes = startNodeData?.tradingInstrumentConfig?.timeframes || [];
+    } else if (supportingInstrumentEnabled) {
+      timeframes = startNodeData?.supportingInstrumentConfig?.timeframes || [];
+    }
+    
+    return timeframes.map((tf: any) => ({
+      value: tf.timeframe, // Use timeframe string directly as value for consistency
+      label: tf.timeframe
+    }));
+  };
+
+  const rangeTypeOptions = [
+    { value: 'by_count', label: 'By Count (e.g., last 10 candles)' },
+    { value: 'by_time', label: 'By Time (e.g., 09:15 to 10:30)' },
     { value: 'relative', label: 'Relative (e.g., 5 candles after entry)' },
     { value: 'to_current', label: 'To Current Candle (from reference to now)' }
-   ];
- 
-   const instrumentOptions = [
-     { value: 'TI', label: 'Trading Instrument' },
-     { value: 'SI', label: 'Supporting Instrument' }
-   ];
- 
-   const referenceTypeOptions = [
-     { value: 'time', label: 'Specific Time' },
-      { value: 'current_candle', label: 'Current Candle Time' },
-     { value: 'candle_number', label: 'Candle Number (from day start)' },
-     { value: 'position_entry', label: 'Position Entry' },
-     { value: 'position_exit', label: 'Position Exit' }
-   ];
- 
+  ];
+
+  // Only show Supporting Instrument if enabled in start node
+  const instrumentOptions = supportingInstrumentEnabled
+    ? [
+        { value: 'TI', label: 'Trading Instrument' },
+        { value: 'SI', label: 'Supporting Instrument' }
+      ]
+    : [
+        { value: 'TI', label: 'Trading Instrument' }
+      ];
+
+  const referenceTypeOptions = [
+    { value: 'time', label: 'Specific Time' },
+    { value: 'current_candle', label: 'Current Candle Time' },
+    { value: 'candle_number', label: 'Candle Number (from day start)' },
+    { value: 'position_entry', label: 'Position Entry' },
+    { value: 'position_exit', label: 'Position Exit' }
+  ];
+
   const startReferenceOptions = [
     { value: 'time', label: 'Specific Time' },
     { value: 'candle_number', label: 'Candle Number (from day start)' },
