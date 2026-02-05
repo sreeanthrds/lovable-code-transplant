@@ -280,7 +280,7 @@ const TabbedExpressionTypeSelector: React.FC<TabbedExpressionTypeSelectorProps> 
       ]
     },
     candles: {
-      label: 'Candle Ranges & Aggregations',
+      label: 'Candle Ranges',
       icon: BarChart3,
       color: 'text-cyan-600 dark:text-cyan-400',
       bgColor: 'bg-cyan-50/70 hover:bg-cyan-100 dark:bg-cyan-950/30 dark:hover:bg-cyan-900/50',
