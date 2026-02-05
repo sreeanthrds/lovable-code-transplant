@@ -66,6 +66,8 @@ const PositionDataExpressionEditor: React.FC<PositionDataExpressionEditorProps> 
       { value: 'currentPrice', label: 'Current Price', group: 'Position Data' },
       { value: 'quantity', label: 'Quantity', group: 'Position Data' },
       { value: 'status', label: 'Status (Open/Closed)', group: 'Position Data' },
+      { value: 'entryTime', label: 'Entry Time', group: 'Position Data' },
+      { value: 'exitTime', label: 'Exit Time', group: 'Position Data' },
       
       // Instrument Information
       { value: 'instrumentName', label: 'Instrument Name', group: 'Instrument Info' },
