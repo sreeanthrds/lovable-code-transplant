@@ -216,27 +216,6 @@ const ExpressionEditorDialog: React.FC<ExpressionEditorDialogProps> = ({
                     </div>
                   </div>
                 )}
-                
-                {/* Math expression breakdown */}
-                {localExpression.type === 'math_expression' && localExpression.items && localExpression.items.length > 1 && (
-                  <div className="space-y-2">
-                    <div className="text-xs font-medium text-muted-foreground">Expression Breakdown:</div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                      {localExpression.items.map((item: any, index: number) => (
-                        <React.Fragment key={index}>
-                          {index > 0 && (
-                            <div className="bg-primary/10 border border-primary/20 rounded px-2 py-1 font-mono text-lg">
-                              {item.operator || '+'}
-                            </div>
-                          )}
-                          <div className="bg-background/50 border border-border rounded p-2">
-                            <div className="font-mono">{getDetailedExpressionPreview(item.expression)}</div>
-                          </div>
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>

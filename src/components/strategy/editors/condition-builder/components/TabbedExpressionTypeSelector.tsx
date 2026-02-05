@@ -111,6 +111,17 @@ const TabbedExpressionTypeSelector: React.FC<TabbedExpressionTypeSelectorProps> 
           value: 0
         }
       },
+      math_expression: {
+        type: 'math_expression',
+        items: [{
+          expression: {
+            type: 'constant',
+            valueType: 'number',
+            numberValue: 0,
+            value: 0
+          }
+        }]
+      },
       node_variable: {
         type: 'node_variable',
         nodeId: '',
@@ -239,6 +250,12 @@ const TabbedExpressionTypeSelector: React.FC<TabbedExpressionTypeSelectorProps> 
       borderColor: 'border-orange-200 dark:border-orange-800',
       iconBg: 'bg-orange-100 dark:bg-orange-900/50',
       options: [
+        {
+          type: 'math_expression',
+          label: 'Math Expression',
+          description: 'Combine expressions with +, -, ×, ÷ operations',
+          icon: Calculator
+        },
         {
           type: 'node_variable',
           label: 'Node Variables',
