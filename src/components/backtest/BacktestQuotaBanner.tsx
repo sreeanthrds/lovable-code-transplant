@@ -92,15 +92,16 @@ const BacktestQuotaBanner: React.FC<BacktestQuotaBannerProps> = ({
       {/* Action Buttons */}
       <div className="flex items-center gap-2">
         {(isExhausted || isLow) && plan === 'FREE' && (
-          <Button 
-            variant="default" 
-            size="sm"
-            onClick={() => navigate('/pricing')}
-            className="gap-1"
-          >
-            Upgrade
-            <ArrowUpRight className="w-3 h-3" />
-          </Button>
+          <a href="/#pricing">
+            <Button 
+              variant="default" 
+              size="sm"
+              className="gap-1"
+            >
+              Upgrade
+              <ArrowUpRight className="w-3 h-3" />
+            </Button>
+          </a>
         )}
         {(isExhausted || isLow) && plan !== 'FREE' && quotaInfo.canBuyAddons && (
           <Button 
