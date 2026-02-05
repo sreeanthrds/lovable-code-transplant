@@ -15,7 +15,12 @@ import {
   PositionDataExpressionEditor,
   ExternalTriggerExpressionEditor,
   NodeVariableExpressionEditor,
-  MathExpressionEditor
+  MathExpressionEditor,
+  PositionTimeExpressionEditor,
+  TimeOffsetExpressionEditor,
+  CandleRangeExpressionEditor,
+  AggregationExpressionEditor,
+  ListExpressionEditor
 } from './expression-editors';
 import PnLExpressionEditor from './expression-editors/PnLExpressionEditor';
 import UnderlyingPnLExpressionEditor from './expression-editors/UnderlyingPnLExpressionEditor';
@@ -176,6 +181,44 @@ const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
         case 'math_expression':
           return (
             <MathExpressionEditor
+              expression={expression}
+              updateExpression={updateExpression}
+              currentNodeId={currentNodeId}
+            />
+          );
+        case 'position_time':
+          return (
+            <PositionTimeExpressionEditor
+              expression={expression}
+              updateExpression={updateExpression}
+            />
+          );
+        case 'time_offset':
+          return (
+            <TimeOffsetExpressionEditor
+              expression={expression}
+              updateExpression={updateExpression}
+              currentNodeId={currentNodeId}
+            />
+          );
+        case 'candle_range':
+          return (
+            <CandleRangeExpressionEditor
+              expression={expression}
+              updateExpression={updateExpression}
+            />
+          );
+        case 'aggregation':
+          return (
+            <AggregationExpressionEditor
+              expression={expression}
+              updateExpression={updateExpression}
+              currentNodeId={currentNodeId}
+            />
+          );
+        case 'list':
+          return (
+            <ListExpressionEditor
               expression={expression}
               updateExpression={updateExpression}
               currentNodeId={currentNodeId}

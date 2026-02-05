@@ -149,17 +149,26 @@ export type Expression =
   | NodeVariableExpression
   | PnLExpression
   | UnderlyingPnLExpression
-  | MathExpression;
+  | MathExpression
+  | PositionTimeExpression
+  | TimeOffsetExpression
+  | CandleRangeExpression
+  | AggregationExpression
+  | ListExpression;
 
 // Operator types - matching the UI component's supported operators
 export type ComparisonOperator = '>' | '<' | '>=' | '<=' | '==' | '!=' | 'crosses_above' | 'crosses_below';
+ // Extended operators including 'between' which requires 3 expressions
+ export type ExtendedComparisonOperator = ComparisonOperator | 'between' | 'not_between' | 'in' | 'not_in';
 
 // Condition types
 export interface Condition {
   id: string;
-  operator: ComparisonOperator;
+  operator: ExtendedComparisonOperator;
   lhs: Expression;
   rhs: Expression;
+  // For 'between' operator: lhs between rhs (lower) and rhsUpper
+  rhsUpper?: Expression;
 }
 
 export interface GroupCondition {
@@ -206,3 +215,59 @@ export interface NodeVariable {
     }>;
   };
 }
+ 
+ // Position Time Expression - for entry/exit time
+ export interface PositionTimeExpression extends BaseExpression {
+   type: 'position_time';
+   timeField: 'entryTime' | 'exitTime';
+   vpi?: string; // Which position to get time from
+ }
+ 
+ // Time Offset Expression - time + days/hours/minutes/seconds/candles
+ export interface TimeOffsetExpression extends BaseExpression {
+   type: 'time_offset';
+   baseTime: Expression; // The reference time (current_time, position_time, time_function)
+   offsetType: 'days' | 'hours' | 'minutes' | 'seconds' | 'candles';
+   offsetValue: number;
+   direction: 'before' | 'after';
+ }
+ 
+ // Candle Range Expression - for specifying a range of candles
+ export interface CandleRangeExpression extends BaseExpression {
+   type: 'candle_range';
+   rangeType: 'by_count' | 'by_time' | 'relative';
+   // For by_count: candles from index startIndex to endIndex (0 = current, 1 = previous)
+   startIndex?: number;
+   endIndex?: number;
+   // For by_time: candles between startTime and endTime
+   startTime?: string; // HH:MM format
+   endTime?: string; // HH:MM format
+   // For relative: N candles before/after a reference
+   referenceType?: 'time' | 'candle_number' | 'position_entry' | 'position_exit';
+   referenceTime?: string; // HH:MM if referenceType is 'time'
+   referenceCandleNumber?: number; // If referenceType is 'candle_number'
+   referenceVpi?: string; // If referenceType is 'position_entry' or 'position_exit'
+   candleCount?: number; // Number of candles
+   direction?: 'before' | 'after';
+   // Instrument context
+   instrumentType?: 'TI' | 'SI';
+   timeframeId?: string;
+ }
+ 
+ // Aggregation Expression - min/max/avg/first/last on a list or range
+ export interface AggregationExpression extends BaseExpression {
+   type: 'aggregation';
+   aggregationType: 'min' | 'max' | 'avg' | 'sum' | 'first' | 'last' | 'count';
+   // Source can be a candle range or a list of expressions
+   sourceType: 'candle_range' | 'expression_list';
+   candleRange?: CandleRangeExpression;
+   expressions?: Expression[];
+   // For candle range, specify which field to aggregate
+   ohlcvField?: 'open' | 'high' | 'low' | 'close' | 'volume';
+ }
+ 
+ // List Expression - for 'in' / 'not in' checks or aggregation input
+ export interface ListExpression extends BaseExpression {
+   type: 'list';
+   items: Expression[];
+ }
