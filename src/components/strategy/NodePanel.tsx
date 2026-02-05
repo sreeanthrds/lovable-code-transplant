@@ -117,7 +117,6 @@ const NodePanel: React.FC<NodePanelProps> = ({ node, updateNodeData, onClose, is
       case 'retryNode':
         return <ReEntryNodeEditor {...commonProps} />;
       default:
-        console.log('❓ Unknown node type:', node.type, 'for node:', node);
         return (
           <div className="p-4 text-center text-muted-foreground">
             <p>Unknown node type: {node.type}</p>

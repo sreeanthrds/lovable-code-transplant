@@ -122,9 +122,6 @@ const MarketDataSelector: React.FC<MarketDataSelectorProps> = ({
       };
     });
     
-    console.log('🔧 MarketDataSelector timeframe options:', options);
-    console.log('🔧 Available timeframes:', timeframes);
-    
     return options;
   };
 
@@ -138,15 +135,6 @@ const MarketDataSelector: React.FC<MarketDataSelectorProps> = ({
       { value: 'Volume', label: 'Volume' }
     ];
   };
-
-  console.log('🔧 MarketDataSelector state:', {
-    instrumentType: marketDataExpr.instrumentType,
-    timeframeId: marketDataExpr.timeframeId,
-    timeframe: marketDataExpr.timeframe,
-    field: marketDataExpr.field,
-    dataField: marketDataExpr.dataField,
-    offset: marketDataExpr.offset
-  });
 
   return (
     <div className="space-y-4">

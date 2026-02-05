@@ -20,7 +20,6 @@ export const useSmartAutoArrange = ({
 
   const triggerSmartArrange = useCallback(async (reason: string = 'unknown') => {
     if (!enabled || isArrangingRef.current) {
-      console.log('🚫 Smart arrange blocked:', { enabled, isArranging: isArrangingRef.current });
       return;
     }
 
@@ -28,7 +27,6 @@ export const useSmartAutoArrange = ({
     const now = Date.now();
     const timeSinceLastArrange = now - lastArrangeTimeRef.current;
     if (timeSinceLastArrange < 2000) {
-      console.log('⏳ Smart arrange throttled, too soon since last arrange');
       return;
     }
 
@@ -39,15 +37,13 @@ export const useSmartAutoArrange = ({
 
     // Debounce the arrangement
     arrangeTimeoutRef.current = setTimeout(async () => {
-      console.log('🎯 Triggering smart auto-arrange, reason:', reason);
       isArrangingRef.current = true;
       lastArrangeTimeRef.current = Date.now();
 
       try {
         await onAutoArrange();
-        console.log('✅ Smart auto-arrange completed');
       } catch (error) {
-        console.error('❌ Smart auto-arrange failed:', error);
+        console.error('Smart auto-arrange failed:', error);
       } finally {
         isArrangingRef.current = false;
       }
