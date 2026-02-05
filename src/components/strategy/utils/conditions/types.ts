@@ -235,7 +235,7 @@ export interface NodeVariable {
  // Candle Range Expression - for specifying a range of candles
  export interface CandleRangeExpression extends BaseExpression {
    type: 'candle_range';
-   rangeType: 'by_count' | 'by_time' | 'relative';
+  rangeType: 'by_count' | 'by_time' | 'relative' | 'to_current';
    // For by_count: candles from index startIndex to endIndex (0 = current, 1 = previous)
    startIndex?: number;
    endIndex?: number;
