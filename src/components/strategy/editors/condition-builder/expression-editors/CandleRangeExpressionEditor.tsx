@@ -95,49 +95,90 @@ const CandleRangeExpressionEditor: React.FC<CandleRangeExpressionEditorProps> = 
     { value: 'position_exit', label: 'Position Exit' }
   ];
 
-   const directionOptions = [
-     { value: 'before', label: 'Before' },
-     { value: 'after', label: 'After' }
-   ];
+  const directionOptions = [
+    { value: 'before', label: 'Before' },
+    { value: 'after', label: 'After' }
+  ];
+
+  const ohlcvOptions = [
+    { value: 'open', label: 'Open' },
+    { value: 'high', label: 'High' },
+    { value: 'low', label: 'Low' },
+    { value: 'close', label: 'Close' },
+    { value: 'volume', label: 'Volume' }
+  ];
+
+  const aggregationOptions = [
+    { value: 'none', label: 'None (Raw List)' },
+    { value: 'min', label: 'Min' },
+    { value: 'max', label: 'Max' },
+    { value: 'avg', label: 'Average' },
+    { value: 'sum', label: 'Sum' },
+    { value: 'first', label: 'First' },
+    { value: 'last', label: 'Last' },
+    { value: 'count', label: 'Count' }
+  ];
  
    const updateField = (field: string, value: any) => {
      updateExpression({ ...candleRangeExpr, [field]: value });
    };
  
-   return (
-     <div className="space-y-3">
-       {/* Instrument & Timeframe */}
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-         <div className="p-3 border border-blue-200 rounded-lg bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/30">
-           <RadioGroupField
-             label="Instrument"
-             value={candleRangeExpr.instrumentType || 'TI'}
-             onChange={(v) => updateField('instrumentType', v)}
-             options={instrumentOptions}
-             layout="horizontal"
-           />
-         </div>
-         <div className="p-3 border border-green-200 rounded-lg bg-green-50/50 dark:border-green-800 dark:bg-green-950/30">
-           <RadioGroupField
-             label="Timeframe"
-             value={candleRangeExpr.timeframeId || ''}
-             onChange={(v) => updateField('timeframeId', v)}
-             options={getTimeframeOptions()}
-             layout="horizontal"
-           />
-         </div>
-       </div>
- 
-       {/* Range Type */}
-       <div className="p-3 border border-purple-200 rounded-lg bg-purple-50/50 dark:border-purple-800 dark:bg-purple-950/30">
-         <RadioGroupField
-           label="Range Type"
-           value={candleRangeExpr.rangeType || 'by_count'}
-           onChange={(v) => updateField('rangeType', v)}
-           options={rangeTypeOptions}
-           layout="vertical"
-         />
-       </div>
+    return (
+      <div className="space-y-3">
+        {/* OHLCV Field & Aggregation */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="p-3 border border-amber-200 rounded-lg bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/30">
+            <RadioGroupField
+              label="OHLCV Field"
+              value={candleRangeExpr.ohlcvField || 'close'}
+              onChange={(v) => updateField('ohlcvField', v)}
+              options={ohlcvOptions}
+              layout="horizontal"
+            />
+          </div>
+          <div className="p-3 border border-violet-200 rounded-lg bg-violet-50/50 dark:border-violet-800 dark:bg-violet-950/30">
+            <RadioGroupField
+              label="Aggregation"
+              value={candleRangeExpr.aggregationType || 'none'}
+              onChange={(v) => updateField('aggregationType', v)}
+              options={aggregationOptions}
+              layout="horizontal"
+            />
+          </div>
+        </div>
+
+        {/* Instrument & Timeframe */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="p-3 border border-blue-200 rounded-lg bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/30">
+            <RadioGroupField
+              label="Instrument"
+              value={candleRangeExpr.instrumentType || 'TI'}
+              onChange={(v) => updateField('instrumentType', v)}
+              options={instrumentOptions}
+              layout="horizontal"
+            />
+          </div>
+          <div className="p-3 border border-green-200 rounded-lg bg-green-50/50 dark:border-green-800 dark:bg-green-950/30">
+            <RadioGroupField
+              label="Timeframe"
+              value={candleRangeExpr.timeframeId || ''}
+              onChange={(v) => updateField('timeframeId', v)}
+              options={getTimeframeOptions()}
+              layout="horizontal"
+            />
+          </div>
+        </div>
+  
+        {/* Range Type */}
+        <div className="p-3 border border-purple-200 rounded-lg bg-purple-50/50 dark:border-purple-800 dark:bg-purple-950/30">
+          <RadioGroupField
+            label="Range Type"
+            value={candleRangeExpr.rangeType || 'by_count'}
+            onChange={(v) => updateField('rangeType', v)}
+            options={rangeTypeOptions}
+            layout="vertical"
+          />
+        </div>
  
        {/* Range Configuration based on type */}
        {candleRangeExpr.rangeType === 'by_count' && (
