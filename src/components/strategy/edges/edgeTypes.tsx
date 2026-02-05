@@ -18,7 +18,6 @@ MemoizedFixedEdge.displayName = 'MemoizedFixedEdge';
 // Create stable wrapper components that properly pass props
 const ButtonEdgeWrapper = React.memo((props: any) => {
   const { data, id, onDelete, ...rest } = props;
-  console.log('Edge props in wrapper:', { id, hasOnDelete: !!onDelete });
   return <MemoizedButtonEdge {...rest} id={id} onDelete={onDelete} />;
 });
 ButtonEdgeWrapper.displayName = 'ButtonEdgeWrapper';

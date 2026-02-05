@@ -42,11 +42,8 @@ const StrategyFlow = ({ isNew = false, isReadOnly = false }: StrategyFlowProps) 
   }, []);
 
   if (!isReady) {
-    console.log('⏳ StrategyFlow not ready yet, showing loading indicator');
     return <LoadingIndicator />;
   }
-
-  console.log('🚀 StrategyFlow rendering with ReactFlowProvider');
 
   return (
     <ReactFlowProvider>

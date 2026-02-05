@@ -55,16 +55,9 @@ export const useStartNodeData = ({
           const optionsEnabled = 
             data.tradingInstrumentConfig?.type === 'options' || 
             data.tradingInstrument?.type === 'options';
-          console.log('🔍 [useStartNodeData] Start node data:', {
-            exchange: data.exchange,
-            tradingInstrument: data.tradingInstrument,
-            tradingInstrumentConfig: data.tradingInstrumentConfig
-          });
-          console.log('🎯 [useStartNodeData] Options enabled:', optionsEnabled);
           
           // Only make updates when the state actually changes
           if (hasOptionTrading !== optionsEnabled) {
-            console.log('Updating hasOptionTrading from', hasOptionTrading, 'to', optionsEnabled);
             setHasOptionTrading(optionsEnabled || false);
           }
           
@@ -97,7 +90,6 @@ export const useStartNodeData = ({
                 
                 // Check if we need to auto-set lot size/multiplier
                 const lotSize = getLotSize(tradingSymbol, exchange);
-                console.log(`📦 [Lot Size Check] Symbol: ${tradingSymbol}, Exchange: ${exchange}, Lot Size: ${lotSize}`);
                 if (lotSize !== undefined) {
                   // Get current node to update positions with lot size
                   const currentNode = nodes.find(node => node.id === nodeId);
@@ -107,17 +99,11 @@ export const useStartNodeData = ({
                       multiplier: lotSize
                     }));
                     
-                    console.log(`✅ Auto-setting lot size for ${tradingSymbol} (${exchange}): ${lotSize}`);
-                    console.log(`📊 Updated positions:`, updatedPositions);
                     updateNodeData(nodeId, { 
                       positions: updatedPositions,
                       _lastUpdated: Date.now()
                     });
-                  } else {
-                    console.log(`⚠️ No positions found to update lot size`);
                   }
-                } else {
-                  console.log(`⚠️ No lot size found for ${tradingSymbol} (${exchange})`);
                 }
                 
                 // Reset update flag after a short delay
@@ -161,7 +147,6 @@ export const useStartNodeData = ({
               });
               
               if (needsPositionUpdate) {
-                console.log(`Updating positions for instrument type change: ${previousInstrumentTypeRef.current} -> ${currentInstrumentType}`);
                 updateNodeData(nodeId, { 
                   positions: updatedPositions,
                   _lastUpdated: Date.now()

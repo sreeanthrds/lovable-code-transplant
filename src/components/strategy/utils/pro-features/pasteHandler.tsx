@@ -33,16 +33,7 @@ export const PasteHandler: React.FC<PasteHandlerProps> = ({
   const [selectedParentId, setSelectedParentId] = useState<string>('');
 
   const handleConfirm = () => {
-    console.log('🔧 PasteHandler handleConfirm called with selectedParentId:', selectedParentId);
-    console.log('🔧 Clipboard data:', {
-      nodes: clipboardNodes.length,
-      edges: clipboardEdges.length,
-      nodeIds: clipboardNodes.map(n => n.id),
-      edgeData: clipboardEdges.map(e => ({ id: e.id, source: e.source, target: e.target }))
-    });
-    
     if (!selectedParentId) {
-      console.warn('❌ No parent selected, cannot proceed');
       return;
     }
 
@@ -53,8 +44,6 @@ export const PasteHandler: React.FC<PasteHandlerProps> = ({
     const parentNode = availableNodes.find(n => n.id === selectedParentId);
     const baseX = parentNode ? parentNode.position.x + PASTE_OFFSET : 0;
     const baseY = parentNode ? parentNode.position.y + PASTE_OFFSET : 0;
-
-    console.log('🔧 Parent node found:', parentNode?.id, 'Position:', { baseX, baseY });
 
     // Create new nodes with updated IDs (positions will be handled by auto arrange)
     const newNodes = clipboardNodes.map((node, index) => {
@@ -78,15 +67,11 @@ export const PasteHandler: React.FC<PasteHandlerProps> = ({
       };
     });
 
-    console.log('🔧 Node ID mapping:', Array.from(nodeIdMap.entries()));
-
     // Clone internal edges between pasted nodes
     const clipboardNodeIds = new Set(clipboardNodes.map(n => n.id));
     const internalEdges = clipboardEdges.filter(edge => 
       clipboardNodeIds.has(edge.source) && clipboardNodeIds.has(edge.target)
     );
-
-    console.log('🔧 Internal edges found:', internalEdges.length, internalEdges.map(e => ({ id: e.id, source: e.source, target: e.target })));
 
     const newEdges: Edge[] = [];
     
@@ -94,13 +79,6 @@ export const PasteHandler: React.FC<PasteHandlerProps> = ({
     internalEdges.forEach((edge) => {
       const newSourceId = nodeIdMap.get(edge.source);
       const newTargetId = nodeIdMap.get(edge.target);
-      
-      console.log('🔧 Processing edge:', {
-        originalEdge: { id: edge.id, source: edge.source, target: edge.target },
-        sourceMapping: `${edge.source} → ${newSourceId}`,
-        targetMapping: `${edge.target} → ${newTargetId}`,
-        edgeData: edge
-      });
       
       const newEdgeId = generateIncrementalEdgeId([...availableEdges, ...newEdges]);
       
@@ -111,16 +89,6 @@ export const PasteHandler: React.FC<PasteHandlerProps> = ({
         target: newTargetId || edge.target,
       };
       newEdges.push(newEdge);
-      
-      console.log('🔧 Created new edge:', {
-        id: newEdge.id,
-        source: newEdge.source,
-        target: newEdge.target,
-        hasSourceHandle: !!edge.sourceHandle,
-        sourceHandle: edge.sourceHandle,
-        hasTargetHandle: !!edge.targetHandle,
-        targetHandle: edge.targetHandle
-      });
     });
 
     // Connect nodes to parent - find root nodes (nodes without incoming internal edges)
@@ -129,18 +97,10 @@ export const PasteHandler: React.FC<PasteHandlerProps> = ({
       .filter(node => !internalEdges.some(edge => edge.target === node.id))
       .map(node => node.id);
     
-    console.log('🔧 Root analysis:', {
-      clipboardNodeIds: clipboardNodes.map(n => n.id),
-      internalEdgeConnections: internalEdges.map(e => `${e.source} → ${e.target}`),
-      identifiedRoots: rootNodeIds
-    });
-    
     const rootNodes = newNodes.filter(node => {
       const originalId = Array.from(nodeIdMap.entries()).find(([, newId]) => newId === node.id)?.[0];
       return originalId && rootNodeIds.includes(originalId);
      });
-
-    console.log('🔧 Root nodes identified:', rootNodes.map(n => ({ id: n.id, originalId: Array.from(nodeIdMap.entries()).find(([, newId]) => newId === n.id)?.[0] })));
 
     // Connect all root nodes to the parent
     rootNodes.forEach((rootNode) => {
@@ -151,11 +111,7 @@ export const PasteHandler: React.FC<PasteHandlerProps> = ({
         type: 'default',
       };
       newEdges.push(connectionEdge);
-      console.log('🔧 Created parent connection edge:', connectionEdge.id, 'from', connectionEdge.source, 'to', connectionEdge.target);
     });
-
-    console.log('🔧 Final result - New nodes:', newNodes.length, 'New edges:', newEdges.length);
-    console.log('🔧 All new edges:', newEdges.map(e => ({ id: e.id, source: e.source, target: e.target })));
 
     onConfirm(selectedParentId, newNodes, newEdges);
     onClose();
@@ -172,19 +128,10 @@ export const PasteHandler: React.FC<PasteHandlerProps> = ({
     node.type !== 'endNode' && node.type !== 'forceEndNode'
   );
 
-  console.log('🔧 PasteHandler render:', {
-    isOpen,
-    selectedParentId,
-    validParentNodesCount: validParentNodes.length,
-    availableNodesCount: availableNodes.length,
-    clipboardNodesCount: clipboardNodes.length,
-    clipboardEdgesCount: clipboardEdges.length,
-    buttonDisabled: !selectedParentId
-  });
 
   return (
     <Dialog open={isOpen} onOpenChange={handleCancel}>
-      <DialogContent className="sm:max-w-md z-[9999]">{/* Added high z-index for debugging */}
+      <DialogContent className="sm:max-w-md z-[9999]">
         <DialogHeader>
           <DialogTitle>Select Parent Node</DialogTitle>
           <DialogDescription>
@@ -196,7 +143,6 @@ export const PasteHandler: React.FC<PasteHandlerProps> = ({
           <div className="space-y-2">
             <label className="text-sm font-medium">Parent Node</label>
             <Select value={selectedParentId} onValueChange={(value) => {
-              console.log('🔧 Parent node selected:', value);
               setSelectedParentId(value);
             }}>
               <SelectTrigger>

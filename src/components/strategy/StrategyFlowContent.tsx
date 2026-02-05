@@ -207,7 +207,6 @@ const StrategyFlowContent: React.FC<StrategyFlowContentProps> = ({ isNew = false
   ]);
 
   if (!isReady) {
-    console.log('⏳ StrategyFlowContent not ready yet');
     return (
       <div className="h-full w-full flex items-center justify-center">
         <div className="flex flex-col items-center">
@@ -217,11 +216,6 @@ const StrategyFlowContent: React.FC<StrategyFlowContentProps> = ({ isNew = false
       </div>
     );
   }
-
-  console.log('🚀 StrategyFlowContent rendering FlowLayout with nodes:', nodes.length);
-  console.log('🚀 Actual nodes data:', nodes);
-  console.log('🚀 NodeTypes available:', Object.keys(nodeTypes || {}));
-  console.log('🚀 Panel state - isPanelOpen:', isPanelOpen, 'selectedNode:', selectedNode, 'hasNodePanelComponent:', !!nodePanelComponent);
 
   return (
     <ResponsiveFlowLayout

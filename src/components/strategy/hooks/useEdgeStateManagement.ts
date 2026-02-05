@@ -35,18 +35,9 @@ export function useEdgeStateManagement(initialEdges: Edge[] = [], strategyStore:
       // This prevents race conditions that cause edge data loss
       const hadEdgesBefore = lastSyncedEdgesRef.current && lastSyncedEdgesRef.current !== '[]';
       if (edges.length === 0 && hadEdgesBefore) {
-        console.warn('⚠️ BLOCKED: Attempted to sync empty edges when edges existed before!', {
-          previousHash: lastSyncedEdgesRef.current,
-          currentEdgeCount: edges.length
-        });
         // Don't sync empty edges to store - this protects against accidental data loss
         return;
       }
-      
-      console.log('🔄 Edge sync check - edges changed:', {
-        edgeCount: edges.length,
-        edgeIds: edges.map(e => e.id)
-      });
       
       // Debounce store sync to avoid rapid updates
       if (syncTimeoutRef.current !== null) {
@@ -55,7 +46,6 @@ export function useEdgeStateManagement(initialEdges: Edge[] = [], strategyStore:
       
       syncTimeoutRef.current = window.setTimeout(() => {
         try {
-          console.log('💾 Syncing edges to store:', edges.length);
           strategyStore.setEdges(edges);
           lastSyncedEdgesRef.current = edgesHash;
         } catch (error) {
@@ -69,7 +59,6 @@ export function useEdgeStateManagement(initialEdges: Edge[] = [], strategyStore:
   const setEdges = useCallback((updatedEdges: Edge[] | ((prevEdges: Edge[]) => Edge[])) => {
     // Skip if we're in an update cycle to prevent loops
     if (updateCycleRef.current) {
-      console.log('⏭️ Skipping setEdges - update cycle in progress');
       return;
     }
     
@@ -84,12 +73,6 @@ export function useEdgeStateManagement(initialEdges: Edge[] = [], strategyStore:
         if (deepEqual(newEdges, prevEdges)) {
           return prevEdges;
         }
-        
-        console.log('📝 Setting local edges:', {
-          prevCount: prevEdges.length,
-          newCount: newEdges.length,
-          newEdgeIds: newEdges.map(e => e.id)
-        });
         
         return newEdges;
       } catch (error) {
@@ -106,7 +89,6 @@ export function useEdgeStateManagement(initialEdges: Edge[] = [], strategyStore:
       
       // Skip if we're in an update cycle
       if (updateCycleRef.current) {
-        console.log('⏭️ Skipping onConnect - update cycle in progress');
         return;
       }
       
@@ -121,12 +103,6 @@ export function useEdgeStateManagement(initialEdges: Edge[] = [], strategyStore:
         };
         const newEdges = addEdge(newEdge, edges);
         
-        console.log('🔗 New connection created:', {
-          source: params.source,
-          target: params.target,
-          totalEdges: newEdges.length
-        });
-        
         setLocalEdges(newEdges);
         
         // Sync to store and add to history
@@ -134,7 +110,6 @@ export function useEdgeStateManagement(initialEdges: Edge[] = [], strategyStore:
           try {
             strategyStore.setEdges(newEdges);
             strategyStore.addHistoryItem(strategyStore.nodes, newEdges);
-            console.log('✅ Edge synced to store and history');
           } catch (error) {
             console.error('Error syncing edge to store:', error);
           } finally {

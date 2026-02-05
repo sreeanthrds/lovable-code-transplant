@@ -56,12 +56,6 @@ const EntryNodeEditor = ({ node, updateNodeData }: EntryNodeEditorProps) => {
     handleOptionTypeChange
   } = useActionNodeForm({ node, updateNodeData });
 
-  console.log('📊 [EntryNodeEditor] Config:', {
-    hasOptionTrading,
-    startNodeSymbol,
-    startNodeExchange,
-    positions: nodeData?.positions
-  });
 
   // Ensure we always have a position for entry nodes
   useEffect(() => {

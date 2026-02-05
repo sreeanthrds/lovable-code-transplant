@@ -52,9 +52,8 @@ const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
     internalHandleNodesChange(changes, onNodesChange);
   }, [internalHandleNodesChange, onNodesChange]);
 
-  // Add logging for backtest panel toggle
+  // Handle backtest panel toggle
   const handleToggleBacktest = useCallback(() => {
-    console.log("Toggle backtest called from ReactFlowCanvas");
     if (toggleBacktest) {
       toggleBacktest();
     }
@@ -62,21 +61,11 @@ const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   
   // Update instance ref when initialized
   const handleInit = useCallback((instance: any) => {
-    console.log(`🎯 ReactFlow initialized for strategy with key ${flowKey}`);
-    console.log('🔍 ReactFlow rendering with:', {
-      nodesCount: nodes.length,
-      edgesCount: edges.length,
-      nodeTypes: Object.keys(nodeTypes || {}),
-      edgeTypes: Object.keys(edgeTypes || {}),
-      nodes: nodes.map(n => ({ id: n.id, type: n.type, position: n.position })),
-      edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target, type: e.type }))
-    });
     reactFlowInstanceRef.current = instance;
     
     // Force fit view and center nodes on init with better settings
     setTimeout(() => {
       try {
-        console.log('🎯 Force fitting view and centering nodes');
         if (nodes.length > 0) {
           instance.fitView({
             padding: 0.3,

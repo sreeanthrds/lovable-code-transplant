@@ -27,14 +27,10 @@ interface ReEntryNodeData {
 }
 
 const ReEntryNodeEditor: React.FC<ReEntryNodeEditorProps> = ({ node, updateNodeData }) => {
-  console.log('🔧 ReEntryNodeEditor rendering with node:', node);
-  
   // Force actionType to be 'retry'
   const nodeData = node.data as ReEntryNodeData || {};
-  console.log('🔧 ReEntryNodeEditor nodeData:', nodeData);
   
   if (nodeData?.actionType !== 'retry') {
-    console.log('🔧 Setting actionType to retry for node:', node.id);
     updateNodeData(node.id, { 
       ...nodeData, 
       actionType: 'retry',

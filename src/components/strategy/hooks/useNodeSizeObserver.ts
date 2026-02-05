@@ -69,7 +69,7 @@ export const useNodeSizeObserver = ({
           return node;
         });
 
-        console.log('🔍 Node sizes updated:', Array.from(updates.entries()));
+        
         onNodesResize(updatedNodes);
       }, 300); // 300ms debounce
     }

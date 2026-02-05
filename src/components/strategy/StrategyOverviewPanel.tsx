@@ -9,8 +9,6 @@ interface StrategyOverviewPanelProps {
 }
 
 const StrategyOverviewPanel: React.FC<StrategyOverviewPanelProps> = ({ onClose }) => {
-  console.log('📋 StrategyOverviewPanel rendering');
-  
   return (
     <div className="h-full w-full flex flex-col bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header with gradient */}
