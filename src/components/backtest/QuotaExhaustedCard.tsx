@@ -18,7 +18,7 @@ const QuotaExhaustedCard: React.FC<QuotaExhaustedCardProps> = ({ quotaInfo }) =>
       return {
         title: 'Subscription Expired',
         description: 'Your subscription has expired. Renew to continue running backtests.',
-        primaryAction: { label: 'Renew Plan', path: '/pricing' },
+        primaryAction: { label: 'Renew Plan', path: '/#pricing' },
         secondaryAction: null,
       };
     }

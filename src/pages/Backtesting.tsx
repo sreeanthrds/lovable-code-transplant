@@ -7,6 +7,7 @@ import DailyResultsList from '@/components/backtest/DailyResultsList';
 import OverallSummaryCard from '@/components/backtest/OverallSummaryCard';
 import BacktestQuotaBanner from '@/components/backtest/BacktestQuotaBanner';
 import QuotaExhaustedCard from '@/components/backtest/QuotaExhaustedCard';
+import SubscriptionExpiredBanner from '@/components/backtest/SubscriptionExpiredBanner';
 import { ViewTradesModalV2 } from '@/components/live-trade/ViewTradesModalV2';
 import { useBacktestSession } from '@/hooks/useBacktestSession';
 import { useClerkUser } from '@/hooks/useClerkUser';
@@ -245,8 +246,10 @@ const Backtesting = () => {
     );
   }
 
-  // Check if quota is exhausted
-  const isQuotaExhausted = !quotaLoading && quotaInfo.backtests.remaining === 0;
+  // Check if quota is exhausted - but allow unlimited plans even if expired
+  const isUnlimitedPlan = quotaInfo.backtests.remaining === -1;
+  const isQuotaExhausted = !quotaLoading && !isUnlimitedPlan && quotaInfo.backtests.remaining === 0;
+  const showExpiryWarning = quotaInfo.isExpired;
 
   return (
     <AppLayout>
@@ -260,6 +263,16 @@ const Backtesting = () => {
             </p>
           </div>
 
+          {/* Subscription Expired Warning Banner */}
+          {showExpiryWarning && (
+            <div className="mb-6">
+              <SubscriptionExpiredBanner 
+                planName={quotaInfo.planName}
+                expiredAt={quotaInfo.expiresAt}
+              />
+            </div>
+          )}
+
           {/* Quota Banner - always visible */}
           <div className="mb-6">
             <BacktestQuotaBanner
@@ -270,7 +283,7 @@ const Backtesting = () => {
             />
           </div>
 
-          {/* Quota Exhausted Card - blocks form when quota is 0 */}
+          {/* Quota Exhausted Card - blocks form when quota is 0 and not unlimited */}
           {isQuotaExhausted && !session && (
             <div className="mb-6">
               <QuotaExhaustedCard quotaInfo={quotaInfo} />
