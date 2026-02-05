@@ -25,7 +25,7 @@ const ExpressionWrapper: React.FC<ExpressionWrapperProps> = ({
   currentNodeId,
   currentVariableId
 }) => {
-  console.log('ExpressionWrapper rendering with expression:', expression);
+  // Debug logging removed to reduce console noise
 
   // Safety check for expression
   if (!expression) {
@@ -39,7 +39,7 @@ const ExpressionWrapper: React.FC<ExpressionWrapperProps> = ({
 
   const handleUpdateExpression = (expr: Expression) => {
     try {
-      console.log('ExpressionWrapper updating expression:', expr);
+      // Debug logging removed
       updateExpression(expr);
     } catch (error) {
       console.error('Error in ExpressionWrapper updateExpression:', error);

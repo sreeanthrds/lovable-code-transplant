@@ -50,27 +50,25 @@ const NodeVariableExpressionEditor: React.FC<NodeVariableExpressionEditorProps> 
   // Get all nodes from the strategy store, excluding the current node
   const allNodes = useStrategyStore(state => state.nodes);
   
-  console.log('NodeVariableExpressionEditor: All nodes:', allNodes);
-  console.log('NodeVariableExpressionEditor: Current node ID:', currentNodeId);
-  console.log('NodeVariableExpressionEditor: Current variable ID:', currentVariableId);
+  // Debug logging removed to reduce console noise
   
   // Build combined options: all variables from all nodes (except current variable)
   const allVariableOptions = allNodes.reduce((options, node) => {
-    console.log(`NodeVariableExpressionEditor: Processing node ${node.id}:`, node.data);
+    
     
     // Only include nodes that have user-defined variables
     if (!node.data?.variables || !Array.isArray(node.data.variables) || node.data.variables.length === 0) {
-      console.log(`NodeVariableExpressionEditor: Node ${node.id} has no variables, skipping`);
+      
       return options;
     }
     
     const nodeVariables = getNodeVariables(node.id);
-    console.log(`NodeVariableExpressionEditor: Node ${node.id} variables from getNodeVariables:`, nodeVariables);
+    
     
     nodeVariables.forEach(variable => {
       // Skip current variable to prevent circular reference (only if we're editing within the same node)
       if (node.id === currentNodeId && variable.id === currentVariableId) {
-        console.log(`NodeVariableExpressionEditor: Skipping current variable ${variable.name} to prevent circular reference`);
+        
         return;
       }
       
@@ -81,21 +79,21 @@ const NodeVariableExpressionEditor: React.FC<NodeVariableExpressionEditorProps> 
         nodeId: node.id,
         variableName: variable.name
       };
-      console.log(`NodeVariableExpressionEditor: Adding variable option:`, option);
+      
       options.push(option);
     });
     
     return options;
   }, [] as Array<{value: string, label: string, nodeId: string, variableName: string}>);
   
-  console.log('NodeVariableExpressionEditor: Final variable options:', allVariableOptions);
+  
   
   // Current combined value
   const currentValue = nodeVarExpr.nodeId && nodeVarExpr.variableName 
     ? `${nodeVarExpr.nodeId}.${nodeVarExpr.variableName}`
     : '';
     
-  console.log('NodeVariableExpressionEditor: Current value:', currentValue);
+  
   
   return (
     <div className="space-y-3">

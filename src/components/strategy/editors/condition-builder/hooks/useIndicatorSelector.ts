@@ -26,72 +26,49 @@ export const useIndicatorSelector = ({ expression, updateExpression }: UseIndica
   
   useEffect(() => {
     const startNode = strategyStore.nodes.find(node => node.type === 'startNode');
-    console.log('🔍 useIndicatorSelector - Start Node found:', !!startNode);
     
     if (startNode && startNode.data) {
       const allIndicators = new Map();
       
-      console.log('🔍 Start node data:', startNode.data);
-      
       // Get indicators from trading instrument config
       const tradingConfig = startNode.data.tradingInstrumentConfig as any;
-      console.log('📊 Trading config:', tradingConfig);
-      console.log('📊 Trading config timeframes:', tradingConfig?.timeframes);
       
       if (tradingConfig?.timeframes) {
         tradingConfig.timeframes.forEach((timeframe: any) => {
-          console.log('🕐 Processing TI timeframe:', timeframe);
           if (timeframe.indicators && typeof timeframe.indicators === 'object') {
-            console.log('📈 TI timeframe has indicators:', Object.keys(timeframe.indicators));
             Object.entries(timeframe.indicators).forEach(([id, data]: [string, any]) => {
-              console.log('📈 Adding TI indicator:', { id, data, timeframeId: timeframe.id, timeframeValue: timeframe.timeframe });
               allIndicators.set(id, {
                 id,
                 displayName: data?.display_name || id,
                 source: 'TI',
                 timeframe: timeframe.id,
-                timeframeDisplay: timeframe.timeframe // Store actual display value directly
+                timeframeDisplay: timeframe.timeframe
               });
             });
-          } else {
-            console.log('⚠️ TI timeframe has no indicators:', timeframe);
           }
         });
-      } else {
-        console.log('⚠️ No trading config timeframes found');
       }
       
       // Get indicators from supporting instrument config  
       const supportingConfig = startNode.data.supportingInstrumentConfig as any;
-      console.log('📊 Supporting config:', supportingConfig);
-      console.log('📊 Supporting config timeframes:', supportingConfig?.timeframes);
       
       if (supportingConfig?.timeframes) {
         supportingConfig.timeframes.forEach((timeframe: any) => {
-          console.log('🕐 Processing SI timeframe:', timeframe);
           if (timeframe.indicators && typeof timeframe.indicators === 'object') {
-            console.log('📈 SI timeframe has indicators:', Object.keys(timeframe.indicators));
             Object.entries(timeframe.indicators).forEach(([id, data]: [string, any]) => {
-              console.log('📈 Adding SI indicator:', { id, data, timeframeId: timeframe.id, timeframeValue: timeframe.timeframe });
               allIndicators.set(id, {
                 id,
                 displayName: data?.display_name || id,
                 source: 'SI',
                 timeframe: timeframe.id,
-                timeframeDisplay: timeframe.timeframe // Store actual display value directly
+                timeframeDisplay: timeframe.timeframe
               });
             });
-          } else {
-            console.log('⚠️ SI timeframe has no indicators:', timeframe);
           }
         });
-      } else {
-        console.log('⚠️ No supporting config timeframes found');
       }
       
       const indicatorsList = Array.from(allIndicators.values());
-      console.log('📋 Final indicators list:', indicatorsList);
-      console.log('📋 Total indicators found:', indicatorsList.length);
       setAvailableIndicators(indicatorsList);
       
       // Check if the current indicator still exists
@@ -101,7 +78,6 @@ export const useIndicatorSelector = ({ expression, updateExpression }: UseIndica
         setMissingIndicator(false);
       }
     } else {
-      console.log('❌ No start node found or no data');
       setAvailableIndicators([]);
       if (indicatorExpr.name) {
         setMissingIndicator(true);
