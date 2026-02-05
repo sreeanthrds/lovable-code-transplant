@@ -20,31 +20,18 @@ export function usePositionData(expression: Expression, updateExpression: (expr:
   const positionIdentifiers = useMemo(() => {
     const positions: Array<{ id: string; label: string }> = [];
     
-    console.log('usePositionData: Extracting positions from nodes:', nodes);
-    
     nodes.forEach(node => {
-      console.log('usePositionData: Checking node:', node.id, 'type:', node.type, 'data:', node.data);
-      
       if (node.data?.positions && Array.isArray(node.data.positions)) {
-        console.log('usePositionData: Found positions array:', node.data.positions);
-        
         node.data.positions.forEach((position: any) => {
-          console.log('usePositionData: Processing position:', position);
-          
           if (position.vpi) {
-            console.log('usePositionData: Adding position with VPI:', position.vpi);
             positions.push({
               id: position.vpi,
               label: position.vpi
             });
-          } else {
-            console.log('usePositionData: Position missing VPI:', position);
           }
         });
       }
     });
-    
-    console.log('usePositionData: Final positions array:', positions);
     
     return {
       positionOptions: positions

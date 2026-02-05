@@ -31,46 +31,32 @@ const MultiLevelRadioGroup: React.FC<MultiLevelRadioGroupProps> = ({
 
   // Initialize from value
   useEffect(() => {
-    console.log('🔄 MultiLevelRadioGroup: Initializing from value:', value);
-    console.log('🔄 Available indicators:', availableIndicators);
-    
     if (value && value.includes('.')) {
       const parts = value.split('.');
       if (parts.length === 3) {
         const [instrumentType, timeframeId, indicator] = parts;
-        console.log('📋 Parsed parts:', { instrumentType, timeframeId, indicator });
         
         // First try to get timeframe display from availableIndicators (most reliable)
         const matchedIndicator = availableIndicators.find(ind => ind.id === indicator);
         let timeframeDisplay = '';
         
         if (matchedIndicator) {
-          // Use the timeframeDisplay from the indicator data directly
           timeframeDisplay = matchedIndicator.timeframeDisplay || TimeframeResolver.getDisplayValue(matchedIndicator.timeframe);
-          console.log('🔄 Got timeframe from matched indicator:', { matchedIndicator, timeframeDisplay });
         } else {
-          // Fallback to TimeframeResolver
           timeframeDisplay = TimeframeResolver.getDisplayValue(timeframeId);
-          console.log('🔄 Fallback timeframe from resolver:', { timeframeId, timeframeDisplay });
         }
         
         const newStepData = { instrumentType, timeframe: timeframeDisplay, indicator };
-        console.log('📊 Setting stepData:', newStepData);
         setStepData(newStepData);
       }
     } else {
-      console.log('🔄 Clearing stepData');
       setStepData({});
     }
   }, [value, availableIndicators]);
 
   const handleInstrumentChange = (instrumentType: string) => {
-    console.log('🔄 Instrument changed to:', instrumentType);
     const newStepData = { instrumentType };
     setStepData(newStepData);
-    console.log('📊 Available indicators for instrument:', 
-      availableIndicators.filter(ind => ind.source === instrumentType)
-    );
   };
 
   const handleTimeframeChange = (timeframe: string) => {
@@ -93,22 +79,10 @@ const MultiLevelRadioGroup: React.FC<MultiLevelRadioGroupProps> = ({
 
   const getFilteredTimeframes = () => {
     if (!stepData.instrumentType || !availableIndicators || !Array.isArray(availableIndicators)) {
-      console.log('⚠️ getFilteredTimeframes: Missing data', {
-        instrumentType: stepData.instrumentType,
-        availableIndicators: availableIndicators?.length,
-        isArray: Array.isArray(availableIndicators)
-      });
       return [];
     }
     
     const filteredIndicators = availableIndicators.filter(indicator => indicator.source === stepData.instrumentType);
-    console.log('📋 Filtered indicators for', stepData.instrumentType, ':', filteredIndicators);
-    
-    const timeframeIds = Array.from(new Set(
-      filteredIndicators.map(indicator => indicator.timeframe || '1m')
-    ));
-    
-    console.log('🕐 Raw timeframe IDs:', timeframeIds);
     
     // Use timeframeDisplay directly if available, otherwise fall back to TimeframeResolver
     const displayTimeframes = filteredIndicators.reduce((acc, indicator) => {
@@ -119,7 +93,6 @@ const MultiLevelRadioGroup: React.FC<MultiLevelRadioGroupProps> = ({
       return acc;
     }, [] as string[]);
     
-    console.log('📅 Final display timeframes:', displayTimeframes);
     return displayTimeframes.sort();
   };
 

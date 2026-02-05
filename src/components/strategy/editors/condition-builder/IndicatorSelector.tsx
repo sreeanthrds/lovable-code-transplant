@@ -81,46 +81,26 @@ const IndicatorSelector: React.FC<IndicatorSelectorProps> = ({
     const startNode = strategyStore.nodes.find(node => node.type === 'startNode');
     const isSupportingInstrumentEnabled = startNode?.data?.supportingInstrumentEnabled !== false;
     
-    console.log('🔍 Supporting instrument check:', {
-      startNodeFound: !!startNode,
-      supportingInstrumentEnabled: startNode?.data?.supportingInstrumentEnabled,
-      isSupportingInstrumentEnabled,
-      startNodeData: startNode?.data
-    });
-    
     const instruments = ['TI'];
     if (isSupportingInstrumentEnabled) {
       instruments.push('SI');
     }
-    
-    console.log('📋 Available instruments:', instruments);
     return instruments;
   };
 
   const getAvailableTimeframes = () => {
-    console.log('🕐 getAvailableTimeframes called');
-    console.log('🕐 availableIndicators:', availableIndicators);
-    console.log('🕐 availableIndicators length:', availableIndicators?.length);
-    
-    // Guard against undefined availableIndicators
     if (!availableIndicators || !Array.isArray(availableIndicators)) {
-      console.log('❌ No available indicators or not array');
       return [];
     }
     
-    // Extract unique timeframes from available indicators and resolve to display values
     const timeframeIds = Array.from(new Set(
       availableIndicators.map(indicator => (indicator as any).timeframe || '1m')
     ));
     
-    console.log('🕐 Extracted timeframe IDs:', timeframeIds);
-    
-    // Convert timeframe IDs to display values using TimeframeResolver
     const displayTimeframes = timeframeIds.map(timeframeId => 
       TimeframeResolver.getDisplayValue(timeframeId)
     );
     
-    console.log('📅 Final display timeframes:', displayTimeframes);
     return Array.from(new Set(displayTimeframes)).sort();
   };
   
