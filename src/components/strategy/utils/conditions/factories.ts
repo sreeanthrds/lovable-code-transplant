@@ -21,7 +21,6 @@ import {
   PositionTimeExpression,
   TimeOffsetExpression,
   CandleRangeExpression,
-  AggregationExpression,
   ListExpression
 } from './types';
 
@@ -201,18 +200,6 @@ export const createCandleRangeExpression = (
   instrumentType: 'TI'
 });
 
-// Aggregation Expression factory
-export const createAggregationExpression = (
-  aggregationType: 'min' | 'max' | 'avg' | 'sum' | 'first' | 'last' | 'count' = 'max',
-  sourceType: 'candle_range' | 'expression_list' = 'candle_range'
-): AggregationExpression => ({
-  type: 'aggregation',
-  aggregationType,
-  sourceType,
-  ohlcvField: 'close',
-  candleRange: sourceType === 'candle_range' ? createCandleRangeExpression() : undefined,
-  expressions: sourceType === 'expression_list' ? [createConstantExpression('number', 0)] : undefined
-});
 
 // List Expression factory
 export const createListExpression = (
@@ -359,7 +346,6 @@ export const expressionFactoryMap: Record<string, () => Expression> = {
   position_time: () => createPositionTimeExpression(),
   time_offset: () => createTimeOffsetExpression(),
   candle_range: () => createCandleRangeExpression(),
-  aggregation: () => createAggregationExpression(),
   list: () => createListExpression()
 };
 

@@ -153,7 +153,6 @@ export type Expression =
   | PositionTimeExpression
   | TimeOffsetExpression
   | CandleRangeExpression
-  | AggregationExpression
   | ListExpression;
 
 // Operator types - matching the UI component's supported operators
@@ -256,18 +255,6 @@ export interface NodeVariable {
     ohlcvField?: 'open' | 'high' | 'low' | 'close' | 'volume';
     aggregationType?: 'min' | 'max' | 'avg' | 'sum' | 'first' | 'last' | 'count' | 'none';
   }
- 
- // Aggregation Expression - min/max/avg/first/last on a list or range
- export interface AggregationExpression extends BaseExpression {
-   type: 'aggregation';
-   aggregationType: 'min' | 'max' | 'avg' | 'sum' | 'first' | 'last' | 'count';
-   // Source can be a candle range or a list of expressions
-   sourceType: 'candle_range' | 'expression_list';
-   candleRange?: CandleRangeExpression;
-   expressions?: Expression[];
-   // For candle range, specify which field to aggregate
-   ohlcvField?: 'open' | 'high' | 'low' | 'close' | 'volume';
- }
  
   // List Expression - for 'in' / 'not in' checks or aggregation input
   export interface ListExpression extends BaseExpression {

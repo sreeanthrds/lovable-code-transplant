@@ -305,17 +305,6 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
           return `${count} candles ${dir} ${refType}`;
         }
       
-      case 'aggregation':
-        const aggType = expression.aggregationType?.toUpperCase() || 'MAX';
-        if (expression.sourceType === 'candle_range' && expression.candleRange) {
-          const rangeStr = expressionToString(expression.candleRange, nodeData);
-          const field = expression.ohlcvField?.toUpperCase() || 'CLOSE';
-          return `${aggType}(${field} of ${rangeStr})`;
-        } else if (expression.expressions && expression.expressions.length > 0) {
-          const exprStrs = expression.expressions.map(e => expressionToString(e, nodeData)).join(', ');
-          return `${aggType}(${exprStrs})`;
-        }
-        return `${aggType}()`;
       
       case 'list':
         if (expression.items && expression.items.length > 0) {

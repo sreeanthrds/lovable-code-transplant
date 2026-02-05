@@ -19,7 +19,6 @@ import {
   PositionTimeExpressionEditor,
   TimeOffsetExpressionEditor,
   CandleRangeExpressionEditor,
-  AggregationExpressionEditor,
   ListExpressionEditor
 } from './expression-editors';
 import PnLExpressionEditor from './expression-editors/PnLExpressionEditor';
@@ -206,14 +205,6 @@ const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
             <CandleRangeExpressionEditor
               expression={expression}
               updateExpression={updateExpression}
-            />
-          );
-        case 'aggregation':
-          return (
-            <AggregationExpressionEditor
-              expression={expression}
-              updateExpression={updateExpression}
-              currentNodeId={currentNodeId}
             />
           );
         case 'list':

@@ -37,7 +37,7 @@ const WebsiteFooter = () => {
           <div>
             <h4 className="font-semibold text-foreground mb-4">Company</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link></li>
+              
               <li><Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
               <li><Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link></li>
             </ul>

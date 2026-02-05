@@ -11,7 +11,7 @@ import Index from "./pages/Index";
 import StrategyBuilder from "./pages/StrategyBuilder";
 import Strategies from "./pages/StrategiesLanding";
 import Features from "./pages/Features";
-import Pricing from "./pages/Pricing";
+
 import Documentation from "./pages/Documentation";
 import LiveTradingDashboard from "./pages/LiveTradingDashboard";
 import StrategyDetail from "./pages/StrategyDetail";
@@ -55,7 +55,7 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/features" element={<Features />} />
-              <Route path="/pricing" element={<Pricing />} />
+              
               <Route path="/documentation" element={<Documentation />} />
               <Route path="/demo" element={<Demo />} />
               
