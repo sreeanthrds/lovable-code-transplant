@@ -58,7 +58,6 @@ export interface UserPlan {
   
   // Admin
   admin_notes: string | null;
-  updated_by: string | null;
   
   created_at: string;
   updated_at: string;
