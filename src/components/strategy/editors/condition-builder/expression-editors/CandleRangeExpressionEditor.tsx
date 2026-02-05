@@ -77,6 +77,7 @@
  
    const referenceTypeOptions = [
      { value: 'time', label: 'Specific Time' },
+      { value: 'current_candle', label: 'Current Candle Time' },
      { value: 'candle_number', label: 'Candle Number (from day start)' },
      { value: 'position_entry', label: 'Position Entry' },
      { value: 'position_exit', label: 'Position Exit' }

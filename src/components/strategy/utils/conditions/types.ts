@@ -82,7 +82,7 @@ export interface FunctionExpression extends BaseExpression {
 export interface PositionDataExpression extends BaseExpression {
   type: 'position_data';
   vpi?: string; // Which position to get data from (using VPI instead of ID)
-  positionField: 'entryPrice' | 'currentPrice' | 'quantity' | 'status' | 'underlyingPriceOnEntry' | 'underlyingPriceOnExit' | 'instrumentName' | 'instrumentType' | 'symbol' | 'expiryDate' | 'strikePrice' | 'optionType' | 'strikeType' | 'underlyingName';
+  positionField: 'entryPrice' | 'currentPrice' | 'quantity' | 'status' | 'underlyingPriceOnEntry' | 'underlyingPriceOnExit' | 'instrumentName' | 'instrumentType' | 'symbol' | 'expiryDate' | 'strikePrice' | 'optionType' | 'strikeType' | 'underlyingName' | 'entryTime' | 'exitTime';
   field?: string;
 }
 
@@ -243,7 +243,7 @@ export interface NodeVariable {
    startTime?: string; // HH:MM format
    endTime?: string; // HH:MM format
    // For relative: N candles before/after a reference
-   referenceType?: 'time' | 'candle_number' | 'position_entry' | 'position_exit';
+   referenceType?: 'time' | 'candle_number' | 'position_entry' | 'position_exit' | 'current_candle';
    referenceTime?: string; // HH:MM if referenceType is 'time'
    referenceCandleNumber?: number; // If referenceType is 'candle_number'
    referenceVpi?: string; // If referenceType is 'position_entry' or 'position_exit'
