@@ -121,6 +121,18 @@ export interface UnderlyingPnLExpression extends BaseExpression {
   vpi?: string; // Required when scope is 'position'
 }
 
+// Math expression item for the flat array format
+export interface MathExpressionItem {
+  expression: Expression;
+  operator?: '+' | '-' | '*' | '/' | '%' | '+%' | '-%'; // Operator before this expression (undefined for first item)
+}
+
+// New flat array-based math expression
+export interface MathExpression extends BaseExpression {
+  type: 'math_expression';
+  items: MathExpressionItem[]; // Array of expressions with their preceding operators
+}
+
 export type Expression = 
   | IndicatorExpression
   | MarketDataExpression
@@ -136,7 +148,8 @@ export type Expression =
   | ExternalTriggerExpression
   | NodeVariableExpression
   | PnLExpression
-  | UnderlyingPnLExpression;
+  | UnderlyingPnLExpression
+  | MathExpression;
 
 // Operator types - matching the UI component's supported operators
 export type ComparisonOperator = '>' | '<' | '>=' | '<=' | '==' | '!=' | 'crosses_above' | 'crosses_below';

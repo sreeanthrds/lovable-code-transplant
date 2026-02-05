@@ -111,6 +111,17 @@ const TabbedExpressionTypeSelector: React.FC<TabbedExpressionTypeSelectorProps> 
           value: 0
         }
       },
+      math_expression: {
+        type: 'math_expression',
+        items: [{
+          expression: {
+            type: 'constant',
+            valueType: 'number',
+            numberValue: 0,
+            value: 0
+          }
+        }]
+      },
       node_variable: {
         type: 'node_variable',
         nodeId: '',
@@ -232,7 +243,7 @@ const TabbedExpressionTypeSelector: React.FC<TabbedExpressionTypeSelectorProps> 
       ]
     },
     advanced: {
-      label: 'Complex Expressions',
+      label: 'Math & Variables',
       icon: Calculator,
       color: 'text-orange-600 dark:text-orange-400',
       bgColor: 'bg-orange-50/70 hover:bg-orange-100 dark:bg-orange-950/30 dark:hover:bg-orange-900/50',
@@ -240,9 +251,9 @@ const TabbedExpressionTypeSelector: React.FC<TabbedExpressionTypeSelectorProps> 
       iconBg: 'bg-orange-100 dark:bg-orange-900/50',
       options: [
         {
-          type: 'expression',
-          label: 'Nested Expression',
-          description: 'Combine multiple expressions with operations',
+          type: 'math_expression',
+          label: 'Math Expression',
+          description: 'Combine expressions with +, -, ×, ÷ operations',
           icon: Calculator
         },
         {
