@@ -67,7 +67,8 @@
    const rangeTypeOptions = [
      { value: 'by_count', label: 'By Count (e.g., last 10 candles)' },
      { value: 'by_time', label: 'By Time (e.g., 09:15 to 10:30)' },
-     { value: 'relative', label: 'Relative (e.g., 5 candles after entry)' }
+    { value: 'relative', label: 'Relative (e.g., 5 candles after entry)' },
+    { value: 'to_current', label: 'To Current Candle (from reference to now)' }
    ];
  
    const instrumentOptions = [
@@ -83,6 +84,13 @@
      { value: 'position_exit', label: 'Position Exit' }
    ];
  
+  const startReferenceOptions = [
+    { value: 'time', label: 'Specific Time' },
+    { value: 'candle_number', label: 'Candle Number (from day start)' },
+    { value: 'position_entry', label: 'Position Entry' },
+    { value: 'position_exit', label: 'Position Exit' }
+  ];
+
    const directionOptions = [
      { value: 'before', label: 'Before' },
      { value: 'after', label: 'After' }
@@ -253,6 +261,64 @@
            </div>
          </div>
        )}
+
+      {candleRangeExpr.rangeType === 'to_current' && (
+        <div className="space-y-3">
+          <div className="p-3 border border-orange-200 rounded-lg bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/30">
+            <RadioGroupField
+              label="Start From"
+              value={candleRangeExpr.referenceType || 'time'}
+              onChange={(v) => updateField('referenceType', v)}
+              options={startReferenceOptions}
+              layout="vertical"
+            />
+          </div>
+
+          {candleRangeExpr.referenceType === 'time' && (
+            <div className="p-3 border border-slate-200 rounded-lg bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/30">
+              <Label className="text-sm font-medium mb-2 block">Start Time</Label>
+              <Input
+                type="time"
+                value={candleRangeExpr.referenceTime || '09:15'}
+                onChange={(e) => updateField('referenceTime', e.target.value)}
+              />
+            </div>
+          )}
+
+          {candleRangeExpr.referenceType === 'candle_number' && (
+            <div className="p-3 border border-slate-200 rounded-lg bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/30">
+              <Label className="text-sm font-medium mb-2 block">Start Candle Number (from day start)</Label>
+              <Input
+                type="number"
+                value={candleRangeExpr.referenceCandleNumber ?? 1}
+                onChange={(e) => updateField('referenceCandleNumber', parseInt(e.target.value) || 1)}
+                min={1}
+              />
+            </div>
+          )}
+
+          {(candleRangeExpr.referenceType === 'position_entry' || candleRangeExpr.referenceType === 'position_exit') && (
+            <div className="p-3 border border-slate-200 rounded-lg bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/30">
+              <RadioGroupField
+                label="Position"
+                value={candleRangeExpr.referenceVpi || ''}
+                onChange={(v) => updateField('referenceVpi', v)}
+                options={positions.map(p => ({ value: p.vpi, label: p.vpt || p.vpi }))}
+                layout="horizontal"
+              />
+            </div>
+          )}
+
+          <div className="p-3 border border-green-200 rounded-lg bg-green-50/50 dark:border-green-800 dark:bg-green-950/30">
+            <Label className="text-sm font-medium text-green-700 dark:text-green-400 mb-2 block">
+              End: Current Candle
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Range will include all candles from the start reference up to and including the current candle.
+            </p>
+          </div>
+        </div>
+      )}
      </div>
    );
  };
