@@ -77,7 +77,6 @@ export function useFlowState(isNew: boolean = false) {
   
   // Create auto-arrange callback for initial load
   const handleLoadComplete = useCallback(() => {
-    console.log('📦 Load complete, triggering auto-arrange...');
     // Use store's handleAutoArrange which uses ELK.js
     strategyStore.handleAutoArrange();
   }, [strategyStore]);
@@ -157,23 +156,16 @@ export function useFlowState(isNew: boolean = false) {
 
   // Auto-arrange handler (use Pro version)
   const handleAutoArrange = useCallback(async (layoutType: string = 'hierarchical') => {
-    console.log('🔄 Auto-arrange called from useFlowState with layout:', layoutType);
-    console.log('Current nodes before arrange:', nodes.length);
-    console.log('Current edges before arrange:', edges.length);
-    
     if (nodes.length === 0) {
-      console.log('⚠️ No nodes to arrange');
       return;
     }
     
     try {
       // Import layout utilities
       const { getLayoutedElements, layoutPresets } = await import('../utils/pro-layout/elkLayoutUtils');
-      console.log('📦 ELK layout utilities imported successfully');
       
       // Get the selected layout preset
       const selectedLayout = layoutPresets[layoutType as keyof typeof layoutPresets] || layoutPresets.hierarchical;
-      console.log('🎨 Using layout preset:', layoutType, selectedLayout);
       
       // Apply the selected layout to current state
       const { nodes: arrangedNodes, edges: arrangedEdges } = await getLayoutedElements(
@@ -181,8 +173,6 @@ export function useFlowState(isNew: boolean = false) {
         edges, 
         selectedLayout
       );
-      
-      console.log('✅ Layout applied successfully, updating nodes:', arrangedNodes.length);
       
       // Update local React Flow state
       setNodes(arrangedNodes);
@@ -194,7 +184,6 @@ export function useFlowState(isNew: boolean = false) {
       // Fit view and center after auto-arrange
       setTimeout(() => {
         if (reactFlowInstance) {
-          console.log('🎯 Fitting view after auto-arrange');
           try {
             reactFlowInstance.fitView({
               padding: 0.2,
@@ -241,10 +230,8 @@ export function useFlowState(isNew: boolean = false) {
           }
         }
       }, 300);
-      
-      console.log('🎯 Auto-arrange completed successfully');
     } catch (error) {
-      console.error('❌ Auto-arrange failed:', error);
+      console.error('Auto-arrange failed:', error);
     }
   }, [nodes, edges, setNodes, setEdges, strategyStore, reactFlowInstance]);
 
@@ -256,7 +243,6 @@ export function useFlowState(isNew: boolean = false) {
 
   // Handle node resize events
   const handleNodesResize = useCallback((updatedNodes: any[]) => {
-    console.log('📏 Nodes resized, updating dimensions');
     setNodes(updatedNodes);
     
     // Trigger smart arrange after resize

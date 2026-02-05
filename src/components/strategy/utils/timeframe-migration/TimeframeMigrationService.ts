@@ -13,8 +13,6 @@ export class TimeframeMigrationService {
    * Migrates a strategy from string-based timeframes to ID-based timeframes
    */
   static migrateStrategy(strategyData: any): MigrationResult {
-    console.log('🔄 Starting migration for strategy:', strategyData?.name || 'Unknown');
-    
     const result: MigrationResult = {
       migrated: false,
       warnings: [],
@@ -24,46 +22,33 @@ export class TimeframeMigrationService {
     // Find the start node
     const startNode = strategyData.nodes?.find((node: any) => node.type === 'startNode');
     if (!startNode) {
-      console.log('❌ No start node found');
       result.warnings.push('No start node found');
       return result;
     }
 
-    console.log('✅ Found start node:', startNode.id);
-
     // Get existing timeframes from start node
     const existingTimeframes = this.getExistingTimeframes(startNode);
-    console.log('📊 Existing timeframes:', existingTimeframes);
     
     // Collect all timeframe strings used in the strategy
     const usedTimeframes = this.collectUsedTimeframes(strategyData);
-    console.log('🔍 Used timeframes found:', Array.from(usedTimeframes));
     
     // First, migrate timeframe definitions in start node to have UUIDs and new structure
     const migratedTimeframes = this.migrateTimeframeDefinitions(existingTimeframes, result);
-    console.log('🔄 Migrated timeframe definitions:', migratedTimeframes);
     
     // Update start node with new timeframe definitions
     if (migratedTimeframes.length > 0) {
       this.updateStartNodeTimeframes(startNode, migratedTimeframes);
-      console.log('✅ Updated start node timeframes');
     }
     
     // Create mapping from old timeframe strings/IDs to new UUIDs
     const timeframeMapping = this.createTimeframeMapping(migratedTimeframes, usedTimeframes, result);
-    console.log('🗺️ Timeframe mapping created:', timeframeMapping);
     
     // If we have mappings to apply, migrate the strategy
     if (Object.keys(timeframeMapping).length > 0) {
-      console.log('✨ Applying migration with mapping:', timeframeMapping);
       this.migrateStrategyData(strategyData, timeframeMapping);
       result.migrated = true;
-      console.log('✅ Migration completed successfully');
-    } else {
-      console.log('ℹ️ No timeframes need migration');
     }
 
-    console.log('📋 Final migration result:', result);
     return result;
   }
 
@@ -107,7 +92,6 @@ export class TimeframeMigrationService {
           number
         };
         
-        console.log(`🔄 Converting old timeframe structure "${oldTf.number}${oldTf.unit}" to "${timeframeValue}"`);
         result.migrated = true;
         return newTimeframe;
       }
@@ -161,26 +145,17 @@ export class TimeframeMigrationService {
   private static collectUsedTimeframes(strategyData: any): Set<string> {
     const usedTimeframes = new Set<string>();
     
-    console.log('🔍 Scanning strategy data for timeframes...', strategyData);
-    
     // Recursively scan all nodes for timeframe references
     if (strategyData.nodes) {
-      console.log('📊 Found', strategyData.nodes.length, 'nodes to scan');
       for (const node of strategyData.nodes) {
-        console.log('🔎 Scanning node:', node.type, node.id);
         this.scanNodeForTimeframes(node, usedTimeframes);
       }
-    } else {
-      console.log('❌ No nodes found in strategy data');
     }
     
-    console.log('✅ Collected timeframes:', Array.from(usedTimeframes));
     return usedTimeframes;
   }
 
   private static scanNodeForTimeframes(node: any, usedTimeframes: Set<string>) {
-    console.log('🔍 Scanning node data:', JSON.stringify(node.data, null, 2));
-    
     // Scan conditions
     if (node.data?.entryConditions) {
       this.scanConditionsForTimeframes(node.data.entryConditions, usedTimeframes);
@@ -194,7 +169,6 @@ export class TimeframeMigrationService {
     
     // Special check for startNode timeframe
     if (node.type === 'startNode' && node.data?.timeframe && typeof node.data.timeframe === 'string') {
-      console.log('🎯 Found timeframe in startNode:', node.data.timeframe);
       usedTimeframes.add(node.data.timeframe);
     }
   }
@@ -271,14 +245,12 @@ export class TimeframeMigrationService {
       
       if (matchingTimeframe) {
         mapping[timeframeStr] = matchingTimeframe.id;
-        console.log(`📍 Mapping "${timeframeStr}" -> "${matchingTimeframe.id}"`);
       } else {
         // Create new timeframe config for this string
         const newTimeframe = this.createTimeframeFromString(timeframeStr);
         if (newTimeframe) {
           mapping[timeframeStr] = newTimeframe.id;
           result.createdTimeframes.push(newTimeframe);
-          console.log(`✨ Created new timeframe "${timeframeStr}" -> "${newTimeframe.id}"`);
         } else {
           result.warnings.push(`Could not parse timeframe: ${timeframeStr}`);
         }

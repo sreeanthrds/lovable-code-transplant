@@ -9,12 +9,9 @@ export class TimeframeResolver {
    */
   static initialize(timeframes: TimeframeConfig[]) {
     this.timeframeCache.clear();
-    console.log('🔄 TimeframeResolver: Initializing with timeframes:', timeframes);
     timeframes.forEach(tf => {
       this.timeframeCache.set(tf.id, tf);
-      console.log('📝 TimeframeResolver: Added to cache:', { id: tf.id, timeframe: tf.timeframe });
     });
-    console.log('✅ TimeframeResolver: Cache initialized with', this.timeframeCache.size, 'timeframes');
   }
   
   /**
@@ -49,7 +46,6 @@ export class TimeframeResolver {
       }
     }
     
-    console.warn('⚠️ TimeframeResolver: No timeframe found for ID:', timeframeId, 'Cache entries:', Array.from(this.timeframeCache.keys()));
     return timeframeId || 'Unknown';
   }
   

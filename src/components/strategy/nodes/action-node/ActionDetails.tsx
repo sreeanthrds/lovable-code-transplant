@@ -66,15 +66,9 @@ const ActionDetails: React.FC<ActionDetailsProps> = ({
       return <div className="text-xs text-muted-foreground">No positions defined</div>;
     }
 
-    console.log('ActionDetails: isOptionsTrading =', isOptionsTrading);
-    console.log('ActionDetails: processedPositions =', processedPositions);
-
     return (
       <div className="mt-1">
         {processedPositions.map((position, index) => {
-          console.log(`ActionDetails: position ${index} optionDetails =`, position.optionDetails);
-          console.log(`ActionDetails: position ${index} hasValidOptionDetails =`, position.hasValidOptionDetails);
-          
           return (
             <TooltipProvider key={position.vpi || index}>
               <Tooltip>

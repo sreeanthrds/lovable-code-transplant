@@ -23,19 +23,14 @@ const LoadingIndicator = () => (
 );
 
 const StrategyFlow = ({ isNew = false, isReadOnly = false }: StrategyFlowProps) => {
-  console.log('🔄 StrategyFlow component mounting, isNew:', isNew);
-  
   const [isReady, setIsReady] = useState(false);
   
   useEffect(() => {
-    console.log('🎯 StrategyFlow component mounted');
-    
     // Immediate initialization for better responsiveness
     try {
       setIsReady(true);
-      console.log('✅ StrategyFlow is ready to render ReactFlow');
     } catch (error) {
-      console.error('❌ Error initializing StrategyFlow:', error);
+      console.error('Error initializing StrategyFlow:', error);
       // Still set ready to prevent infinite loading
       setIsReady(true);
     }

@@ -54,8 +54,6 @@ const StartNode = ({ data, id, zIndex = 0, selected = false }: StartNodeProps) =
     
     const { type, underlyingType } = data.tradingInstrument;
     
-    console.log('StartNode display - type:', type, 'underlyingType:', underlyingType);
-    
     if (type === 'futures' && underlyingType) {
       return `${underlyingType.charAt(0).toUpperCase() + underlyingType.slice(1)} Futures`;
     }

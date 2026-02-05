@@ -33,8 +33,6 @@ const VariableItem: React.FC<VariableItemProps> = ({
 
   // Get expression preview text
   const getExpressionPreview = () => {
-    console.log('VariableItem: Getting expression preview for variable:', variable.name, variable.expression);
-    
     if (!variable.expression || !variable.expression.type) {
       return 'Click to add expression';
     }

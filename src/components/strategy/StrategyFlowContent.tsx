@@ -25,16 +25,12 @@ const edgeTypesFactory = () =>
   createEdgeTypes();
 
 const StrategyFlowContent: React.FC<StrategyFlowContentProps> = ({ isNew = false, isReadOnly = false }) => {
-  console.log('🎯 StrategyFlowContent rendering, isNew:', isNew, 'isReadOnly:', isReadOnly);
-  
   const { theme } = useWebsiteTheme();
   const [isReady, setIsReady] = useState(false);
   
   // Initialize immediately without complex state management
   useEffect(() => {
-    console.log('🔄 StrategyFlowContent initializing...');
     setIsReady(true);
-    console.log('✅ StrategyFlowContent ready');
   }, []);
   
   const {
@@ -65,22 +61,17 @@ const StrategyFlowContent: React.FC<StrategyFlowContentProps> = ({ isNew = false
   // Listen for global auto-arrange events from StrategyBuilder
   useEffect(() => {
     const handleGlobalAutoArrange = (event: CustomEvent) => {
-      console.log('🔥 Global auto-arrange event received');
       const layoutType = event.detail?.layoutType || 'hierarchical';
-      console.log('🎯 Using layout type:', layoutType);
       handleAutoArrange(layoutType);
     };
 
     const handleShowStrategyOverview = () => {
-      console.log('🔥 Strategy overview event received in StrategyFlowContent');
       // Get the virtual strategy overview node from store
       const overviewNode = strategyStore.getStrategyOverviewNode();
-      console.log('📋 Got strategy overview node from store:', overviewNode);
       
       // Set the node and open panel
       setSelectedNode(overviewNode);
       setIsPanelOpen(true);
-      console.log('📋 Panel opened for strategy overview');
     };
 
     window.addEventListener('globalAutoArrange', handleGlobalAutoArrange as EventListener);
@@ -131,27 +122,13 @@ const StrategyFlowContent: React.FC<StrategyFlowContentProps> = ({ isNew = false
 
   // Check if multiple nodes are selected
   const selectedNodes = useMemo(() => {
-    const selected = nodes.filter(node => node.selected);
-    console.log('🎯 Selected nodes:', selected.map(n => ({id: n.id, type: n.type})));
-    return selected;
+    return nodes.filter(node => node.selected);
   }, [nodes]);
 
   // Node panel component - always render when panel is open and we have a selected node
   const nodePanelComponent = useMemo(() => {
-    console.log('🎨 Computing nodePanelComponent - isPanelOpen:', isPanelOpen, 'selectedNode:', selectedNode);
-    console.log('🎨 Selected nodes count:', selectedNodes.length, 'nodes:', selectedNodes.map(n => n.id));
-    
-    // Temporarily disable multiple selection check to debug
-    /*
-    if (selectedNodes.length > 1) {
-      console.log('🎨 Multiple nodes selected, hiding panel');
-      return null;
-    }
-    */
-    
     // Always render if panel is open and we have a selected node
     if (isPanelOpen && selectedNode) {
-      console.log('🎨 Creating NodePanel component for node:', selectedNode);
       return (
         <NodePanel
           node={selectedNode}
@@ -161,7 +138,6 @@ const StrategyFlowContent: React.FC<StrategyFlowContentProps> = ({ isNew = false
       );
     }
     
-    console.log('🎨 No panel component - isPanelOpen:', isPanelOpen, 'selectedNode exists:', !!selectedNode);
     return null;
   }, [isPanelOpen, selectedNode, updateNodeData, closePanel, selectedNodes.length]);
 
