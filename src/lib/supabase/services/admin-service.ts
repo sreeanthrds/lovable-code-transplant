@@ -137,12 +137,12 @@ export const upsertUserPlan = async (
   adminUserId: string
 ): Promise<UserPlan | null> => {
   try {
+    // Note: removed updated_by as it doesn't exist in user_plans table schema
     const { data, error } = await tradelayoutSupabase
       .from('user_plans')
       .upsert({
         user_id: targetUserId,
         ...planData,
-        updated_by: adminUserId,
         updated_at: new Date().toISOString(),
       }, {
         onConflict: 'user_id'
@@ -172,11 +172,11 @@ export const updateUserPlan = async (
   adminUserId: string
 ): Promise<void> => {
   try {
+    // Note: removed updated_by as it doesn't exist in user_plans table schema
     const { error } = await tradelayoutSupabase
       .from('user_plans')
       .update({
         ...updates,
-        updated_by: adminUserId,
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', targetUserId);
@@ -225,13 +225,13 @@ export const resetUserUsage = async (
   adminUserId: string
 ): Promise<void> => {
   try {
+    // Note: removed updated_by as it doesn't exist in user_plans table schema
     const { error } = await tradelayoutSupabase
       .from('user_plans')
       .update({
         backtests_used: 0,
         live_executions_used: 0,
         paper_trading_used: 0,
-        updated_by: adminUserId,
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', targetUserId);
@@ -256,8 +256,8 @@ export const addUserAddons = async (
     // Get current plan
     const currentPlan = await getUserPlan(targetUserId);
     
+    // Note: removed updated_by as it doesn't exist in user_plans table schema
     const updates: Partial<UserPlan> = {
-      updated_by: adminUserId,
       updated_at: new Date().toISOString(),
     };
     

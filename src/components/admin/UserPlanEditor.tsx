@@ -396,7 +396,6 @@ const UserPlanEditor: React.FC<UserPlanEditorProps> = ({
           {currentPlan?.updated_at && (
             <p className="text-xs text-muted-foreground text-center">
               Last updated: {format(new Date(currentPlan.updated_at), 'PPp')}
-              {currentPlan.updated_by && ` by ${currentPlan.updated_by}`}
             </p>
           )}
         </div>
