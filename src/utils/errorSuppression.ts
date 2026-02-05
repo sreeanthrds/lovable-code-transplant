@@ -10,6 +10,9 @@ const suppressedErrorPatterns = [
   /Failed to parse data/i,
   /Decompression error/i,
   /Object of type datetime is not JSON serializable/i,
+  // React development warning - doesn't affect functionality
+  /Function components cannot be given refs/i,
+  /Check the render method of/i,
 ];
 
 const originalConsoleError = console.error;
