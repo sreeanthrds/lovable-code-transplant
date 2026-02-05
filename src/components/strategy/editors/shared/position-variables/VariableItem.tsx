@@ -42,15 +42,12 @@ const VariableItem: React.FC<VariableItemProps> = ({
     try {
       const startNode = strategyStore.nodes.find(node => node.type === 'startNode');
       const displayText = expressionToString(variable.expression, startNode?.data);
-      console.log('VariableItem: Expression preview text:', displayText);
       return displayText || `${variable.expression.type} expression`;
     } catch (error) {
       console.error('Error formatting expression preview:', error);
       return `${variable.expression.type || 'Unknown'} expression`;
     }
   };
-  
-  console.log('VariableItem RENDERING for variable:', variable.name, 'currentNodeId:', currentNodeId);
   
   return (
     <div className="space-y-2 p-3 border border-border rounded-lg bg-card">

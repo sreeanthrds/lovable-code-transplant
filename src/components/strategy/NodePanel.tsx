@@ -56,10 +56,7 @@ const getNodeDisplayName = (node: Node): string => {
 };
 
 const NodePanel: React.FC<NodePanelProps> = ({ node, updateNodeData, onClose, isReadOnly = false, onReset }) => {
-  console.log('🔍 NodePanel received node:', node);
-  
   if (!node) {
-    console.log('❌ NodePanel: No node provided');
     return (
       <div className="h-full w-full flex items-center justify-center p-4">
         <div className="text-center text-muted-foreground">
@@ -71,7 +68,6 @@ const NodePanel: React.FC<NodePanelProps> = ({ node, updateNodeData, onClose, is
 
   // Handle special panels - check both id and type
   if (node.id === 'position-store' || node.type === 'positionStore') {
-    console.log('📋 Rendering PositionStorePanel');
     return <PositionStorePanel onClose={onClose} />;
   }
   
@@ -79,7 +75,6 @@ const NodePanel: React.FC<NodePanelProps> = ({ node, updateNodeData, onClose, is
   if (node.type === 'strategyOverview' || 
       node.data?.isStrategyOverview || 
       node.id?.includes('strategy-overview')) {
-    console.log('📋 Rendering StrategyOverviewPanel for node:', node);
     return <StrategyOverviewPanel onClose={onClose} />;
   }
 

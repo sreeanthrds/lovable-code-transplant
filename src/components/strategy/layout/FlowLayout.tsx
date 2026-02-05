@@ -16,11 +16,6 @@ const FlowLayout: React.FC<FlowLayoutProps> = ({
   selectedNode,
   nodePanelComponent,
 }) => {
-  console.log('🏗️ FlowLayout rendering - isPanelOpen:', isPanelOpen);
-  console.log('🏗️ FlowLayout - selectedNode:', selectedNode);
-  console.log('🏗️ FlowLayout - nodePanelComponent exists:', !!nodePanelComponent);
-  console.log('🏗️ FlowLayout - nodePanelComponent:', nodePanelComponent);
-  
   return (
     <div className="h-full w-full strategy-flow-container">
       <ResizablePanelGroup direction="horizontal" className="h-full">
