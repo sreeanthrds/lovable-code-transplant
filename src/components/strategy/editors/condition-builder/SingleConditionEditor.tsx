@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Condition, Expression } from '../../utils/conditions';
+import { Condition, Expression, createConstantExpression } from '../../utils/conditions';
 import ExpressionEditorDialogTrigger from './ExpressionEditorDialogTrigger';
 import ComparisonOperatorSelector from '@/components/ui/form/ComparisonOperatorSelector';
 import type { ComparisonOperator } from '@/components/ui/form/ComparisonOperatorSelector';
@@ -33,6 +33,7 @@ const SingleConditionEditor: React.FC<SingleConditionEditorProps> = ({
 
   const leftExpression = condition.lhs || getDefaultExpression();
   const rightExpression = condition.rhs || getDefaultExpression();
+  const upperExpression = condition.rhsUpper || getDefaultExpression();
 
   const updateLeft = (expr: Expression) => {
     updateCondition({
@@ -48,10 +49,20 @@ const SingleConditionEditor: React.FC<SingleConditionEditorProps> = ({
     });
   };
 
-  const updateOperator = (operator: ComparisonOperator) => {
+  const updateRhsUpper = (expr: Expression) => {
     updateCondition({
       ...condition,
-      operator
+      rhsUpper: expr
+    });
+  };
+
+  const updateOperator = (operator: ComparisonOperator) => {
+    // When switching to 'between', initialize rhsUpper if not present
+    const needsUpper = operator === 'between' || operator === 'not_between';
+    updateCondition({
+      ...condition,
+      operator,
+      rhsUpper: needsUpper && !condition.rhsUpper ? createConstantExpression('number', 0) : condition.rhsUpper
     });
   };
 
@@ -63,8 +74,16 @@ const SingleConditionEditor: React.FC<SingleConditionEditorProps> = ({
     });
   };
 
+  const isBetweenOperator = condition.operator === 'between' || condition.operator === 'not_between';
+  const allOperators: ComparisonOperator[] = ['>', '<', '>=', '<=', '==', '!=', 'crosses_above', 'crosses_below', 'between', 'not_between'];
+
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center min-w-fit">
+    <div className={cn(
+      "gap-4 items-center min-w-fit",
+      isBetweenOperator 
+        ? "grid grid-cols-[1fr_auto_1fr_auto_1fr]" 
+        : "grid grid-cols-[1fr_auto_1fr]"
+    )}>
       {/* Left Expression */}
       <div className="min-w-0">
         <ExpressionEditorDialogTrigger
@@ -82,20 +101,23 @@ const SingleConditionEditor: React.FC<SingleConditionEditorProps> = ({
           value={condition.operator}
           onValueChange={updateOperator}
           className="h-10 w-20"
+          operators={allOperators}
         />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={handleSwap}
-          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-          title="Swap left and right sides"
-        >
-          <ArrowLeftRight className="h-4 w-4" />
-        </Button>
+        {!isBetweenOperator && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={handleSwap}
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            title="Swap left and right sides"
+          >
+            <ArrowLeftRight className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
-      {/* Right Expression */}
+      {/* Right Expression (Lower bound for between) */}
       <div className="min-w-0">
         <ExpressionEditorDialogTrigger
           expression={rightExpression}
@@ -105,6 +127,24 @@ const SingleConditionEditor: React.FC<SingleConditionEditorProps> = ({
           className="w-full"
         />
       </div>
+
+      {/* Between: AND label and Upper bound */}
+      {isBetweenOperator && (
+        <>
+          <div className="flex items-center justify-center px-2">
+            <span className="text-sm font-medium text-muted-foreground">AND</span>
+          </div>
+          <div className="min-w-0">
+            <ExpressionEditorDialogTrigger
+              expression={upperExpression}
+              updateExpression={updateRhsUpper}
+              required={required}
+              currentNodeId={currentNodeId}
+              className="w-full"
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 };

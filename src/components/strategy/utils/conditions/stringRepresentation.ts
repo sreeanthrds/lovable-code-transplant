@@ -36,6 +36,7 @@ export const conditionToString = (condition: Condition, nodeData?: any): string 
   try {
     const lhs = condition.lhs;
     const rhs = condition.rhs;
+    const rhsUpper = condition.rhsUpper;
     
     if (!lhs || !rhs) {
       return "Incomplete condition";
@@ -43,6 +44,13 @@ export const conditionToString = (condition: Condition, nodeData?: any): string 
 
     const leftStr = expressionToString(lhs, nodeData);
     const rightStr = expressionToString(rhs, nodeData);
+    
+    // Handle between operator
+    if ((condition.operator === 'between' || condition.operator === 'not_between') && rhsUpper) {
+      const upperStr = expressionToString(rhsUpper, nodeData);
+      const op = condition.operator === 'between' ? 'between' : 'not between';
+      return `${leftStr} ${op} ${rightStr} AND ${upperStr}`;
+    }
     
     return `${leftStr} ${condition.operator} ${rightStr}`;
   } catch (error) {
@@ -270,7 +278,52 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
           return `(${itemStrs.join(' ')})`;
         }
         return 'Math Expression';
-        
+      
+      case 'position_time':
+        const timeField = expression.timeField === 'entryTime' ? 'Entry Time' : 'Exit Time';
+        if (expression.vpi) {
+          return `${timeField} (${expression.vpi})`;
+        }
+        return timeField;
+      
+      case 'time_offset':
+        const baseStr = expression.baseTime ? expressionToString(expression.baseTime, nodeData) : 'Current Time';
+        const offsetVal = expression.offsetValue || 0;
+        const offsetUnit = expression.offsetType || 'minutes';
+        const dir = expression.direction === 'before' ? 'before' : 'after';
+        return `${offsetVal} ${offsetUnit} ${dir} ${baseStr}`;
+      
+      case 'candle_range':
+        if (expression.rangeType === 'by_count') {
+          return `Candles[${expression.startIndex ?? 0}:${expression.endIndex ?? 5}]`;
+        } else if (expression.rangeType === 'by_time') {
+          return `Candles[${expression.startTime || '09:15'}-${expression.endTime || '15:30'}]`;
+        } else {
+          const refType = expression.referenceType || 'time';
+          const count = expression.candleCount || 5;
+          const dir = expression.direction || 'after';
+          return `${count} candles ${dir} ${refType}`;
+        }
+      
+      case 'aggregation':
+        const aggType = expression.aggregationType?.toUpperCase() || 'MAX';
+        if (expression.sourceType === 'candle_range' && expression.candleRange) {
+          const rangeStr = expressionToString(expression.candleRange, nodeData);
+          const field = expression.ohlcvField?.toUpperCase() || 'CLOSE';
+          return `${aggType}(${field} of ${rangeStr})`;
+        } else if (expression.expressions && expression.expressions.length > 0) {
+          const exprStrs = expression.expressions.map(e => expressionToString(e, nodeData)).join(', ');
+          return `${aggType}(${exprStrs})`;
+        }
+        return `${aggType}()`;
+      
+      case 'list':
+        if (expression.items && expression.items.length > 0) {
+          const itemStrs = expression.items.map(e => expressionToString(e, nodeData));
+          return `[${itemStrs.join(', ')}]`;
+        }
+        return '[]';
+      
       default:
         return 'Unknown Expression';
     }

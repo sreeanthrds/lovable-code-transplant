@@ -23,7 +23,10 @@ import {
   Zap,
   Database,
   ChevronDown,
-  Edit3
+  Edit3,
+  Timer,
+  BarChart3,
+  List
 } from 'lucide-react';
 
 interface TabbedExpressionTypeSelectorProps {
@@ -145,6 +148,34 @@ const TabbedExpressionTypeSelector: React.FC<TabbedExpressionTypeSelectorProps> 
         type: 'function',
         functionName: 'max',
         expressions: []
+      },
+      position_time: {
+        type: 'position_time',
+        timeField: 'entryTime'
+      },
+      time_offset: {
+        type: 'time_offset',
+        offsetType: 'minutes',
+        offsetValue: 0,
+        direction: 'after',
+        baseTime: { type: 'current_time' }
+      },
+      candle_range: {
+        type: 'candle_range',
+        rangeType: 'by_count',
+        startIndex: 0,
+        endIndex: 5,
+        instrumentType: 'TI'
+      },
+      aggregation: {
+        type: 'aggregation',
+        aggregationType: 'max',
+        sourceType: 'candle_range',
+        ohlcvField: 'close'
+      },
+      list: {
+        type: 'list',
+        items: []
       }
     };
 
@@ -239,6 +270,40 @@ const TabbedExpressionTypeSelector: React.FC<TabbedExpressionTypeSelectorProps> 
           label: 'Current Time',
           description: 'Current market time',
           icon: Clock
+        },
+        {
+          type: 'position_time',
+          label: 'Position Entry/Exit Time',
+          description: 'Entry or exit time of a position',
+          icon: Timer
+        },
+        {
+          type: 'time_offset',
+          label: 'Time Offset',
+          description: 'Time +/- days/hours/minutes/candles',
+          icon: Timer
+        }
+      ]
+    },
+    candles: {
+      label: 'Candle Ranges & Aggregations',
+      icon: BarChart3,
+      color: 'text-cyan-600 dark:text-cyan-400',
+      bgColor: 'bg-cyan-50/70 hover:bg-cyan-100 dark:bg-cyan-950/30 dark:hover:bg-cyan-900/50',
+      borderColor: 'border-cyan-200 dark:border-cyan-800',
+      iconBg: 'bg-cyan-100 dark:bg-cyan-900/50',
+      options: [
+        {
+          type: 'candle_range',
+          label: 'Candle Range',
+          description: 'Range of candles by count, time, or relative to reference',
+          icon: BarChart3
+        },
+        {
+          type: 'aggregation',
+          label: 'Aggregation (Min/Max/Avg)',
+          description: 'Min, Max, Avg, Sum, First, Last on candle range or list',
+          icon: Calculator
         }
       ]
     },
@@ -261,6 +326,12 @@ const TabbedExpressionTypeSelector: React.FC<TabbedExpressionTypeSelectorProps> 
           label: 'Node Variables',
           description: 'Variables from other nodes',
           icon: Database
+        },
+        {
+          type: 'list',
+          label: 'List',
+          description: 'List of values for aggregation or membership check',
+          icon: List
         }
       ]
     },

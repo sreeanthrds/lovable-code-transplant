@@ -15,9 +15,14 @@ import {
   UnderlyingPnLExpression,
   Condition,
   GroupCondition,
-  ComparisonOperator,
+  ExtendedComparisonOperator,
   MathExpression,
-  MathExpressionItem
+  MathExpressionItem,
+  PositionTimeExpression,
+  TimeOffsetExpression,
+  CandleRangeExpression,
+  AggregationExpression,
+  ListExpression
 } from './types';
 
 // Expression factory functions
@@ -161,6 +166,62 @@ export const createUnderlyingPnLExpression = (
   vpi
 });
 
+// Position Time Expression factory
+export const createPositionTimeExpression = (
+  timeField: 'entryTime' | 'exitTime' = 'entryTime',
+  vpi?: string
+): PositionTimeExpression => ({
+  type: 'position_time',
+  timeField,
+  vpi
+});
+
+// Time Offset Expression factory
+export const createTimeOffsetExpression = (
+  baseTime?: Expression,
+  offsetType: 'days' | 'hours' | 'minutes' | 'seconds' | 'candles' = 'minutes',
+  offsetValue: number = 0,
+  direction: 'before' | 'after' = 'after'
+): TimeOffsetExpression => ({
+  type: 'time_offset',
+  baseTime: baseTime || createCurrentTimeExpression(),
+  offsetType,
+  offsetValue,
+  direction
+});
+
+// Candle Range Expression factory
+export const createCandleRangeExpression = (
+  rangeType: 'by_count' | 'by_time' | 'relative' = 'by_count'
+): CandleRangeExpression => ({
+  type: 'candle_range',
+  rangeType,
+  startIndex: 0,
+  endIndex: 5,
+  instrumentType: 'TI'
+});
+
+// Aggregation Expression factory
+export const createAggregationExpression = (
+  aggregationType: 'min' | 'max' | 'avg' | 'sum' | 'first' | 'last' | 'count' = 'max',
+  sourceType: 'candle_range' | 'expression_list' = 'candle_range'
+): AggregationExpression => ({
+  type: 'aggregation',
+  aggregationType,
+  sourceType,
+  ohlcvField: 'close',
+  candleRange: sourceType === 'candle_range' ? createCandleRangeExpression() : undefined,
+  expressions: sourceType === 'expression_list' ? [createConstantExpression('number', 0)] : undefined
+});
+
+// List Expression factory
+export const createListExpression = (
+  items?: Expression[]
+): ListExpression => ({
+  type: 'list',
+  items: items || [createConstantExpression('number', 0)]
+});
+
 // Math expression factory - creates flat array based expression
 export const createMathExpression = (
   items?: MathExpressionItem[]
@@ -249,14 +310,16 @@ export const migrateLegacyGroupCondition = (groupCondition: any): GroupCondition
 
 // Condition factory functions - ensures new conditions always use lhs/rhs
 export const createCondition = (
-  operator: ComparisonOperator = '>',
+  operator: ExtendedComparisonOperator = '>',
   lhs?: Expression,
-  rhs?: Expression
+  rhs?: Expression,
+  rhsUpper?: Expression
 ): Condition => ({
   id: `condition-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
   operator,
   lhs: lhs || createConstantExpression('number', 0),
-  rhs: rhs || createConstantExpression('number', 0)
+  rhs: rhs || createConstantExpression('number', 0),
+  rhsUpper: rhsUpper
 });
 
 export const createGroupCondition = (
@@ -292,7 +355,12 @@ export const expressionFactoryMap: Record<string, () => Expression> = {
   node_variable: () => createNodeVariableExpression(),
   pnl_data: () => createPnLExpression(),
   underlying_pnl: () => createUnderlyingPnLExpression(),
-  math_expression: () => createMathExpression()
+  math_expression: () => createMathExpression(),
+  position_time: () => createPositionTimeExpression(),
+  time_offset: () => createTimeOffsetExpression(),
+  candle_range: () => createCandleRangeExpression(),
+  aggregation: () => createAggregationExpression(),
+  list: () => createListExpression()
 };
 
 // Helper function to create default expressions

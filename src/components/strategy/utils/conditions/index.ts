@@ -27,5 +27,10 @@ export {
   migrateLegacyGroupCondition,
   createMathExpression,
   addMathExpressionItem,
-  removeMathExpressionItem
+  removeMathExpressionItem,
+  createPositionTimeExpression,
+  createTimeOffsetExpression,
+  createCandleRangeExpression,
+  createAggregationExpression,
+  createListExpression
 } from './factories';
