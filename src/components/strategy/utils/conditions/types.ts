@@ -232,27 +232,30 @@ export interface NodeVariable {
    direction: 'before' | 'after';
  }
  
- // Candle Range Expression - for specifying a range of candles
- export interface CandleRangeExpression extends BaseExpression {
-   type: 'candle_range';
-  rangeType: 'by_count' | 'by_time' | 'relative' | 'to_current';
-   // For by_count: candles from index startIndex to endIndex (0 = current, 1 = previous)
-   startIndex?: number;
-   endIndex?: number;
-   // For by_time: candles between startTime and endTime
-   startTime?: string; // HH:MM format
-   endTime?: string; // HH:MM format
-   // For relative: N candles before/after a reference
-   referenceType?: 'time' | 'candle_number' | 'position_entry' | 'position_exit' | 'current_candle';
-   referenceTime?: string; // HH:MM if referenceType is 'time'
-   referenceCandleNumber?: number; // If referenceType is 'candle_number'
-   referenceVpi?: string; // If referenceType is 'position_entry' or 'position_exit'
-   candleCount?: number; // Number of candles
-   direction?: 'before' | 'after';
-   // Instrument context
-   instrumentType?: 'TI' | 'SI';
-   timeframeId?: string;
- }
+  // Candle Range Expression - for specifying a range of candles
+  export interface CandleRangeExpression extends BaseExpression {
+    type: 'candle_range';
+    rangeType: 'by_count' | 'by_time' | 'relative' | 'to_current';
+    // For by_count: candles from index startIndex to endIndex (0 = current, 1 = previous)
+    startIndex?: number;
+    endIndex?: number;
+    // For by_time: candles between startTime and endTime
+    startTime?: string; // HH:MM format
+    endTime?: string; // HH:MM format
+    // For relative: N candles before/after a reference
+    referenceType?: 'time' | 'candle_number' | 'position_entry' | 'position_exit' | 'current_candle';
+    referenceTime?: string; // HH:MM if referenceType is 'time'
+    referenceCandleNumber?: number; // If referenceType is 'candle_number'
+    referenceVpi?: string; // If referenceType is 'position_entry' or 'position_exit'
+    candleCount?: number; // Number of candles
+    direction?: 'before' | 'after';
+    // Instrument context
+    instrumentType?: 'TI' | 'SI';
+    timeframeId?: string;
+    // Aggregation options (applied directly to this range)
+    ohlcvField?: 'open' | 'high' | 'low' | 'close' | 'volume';
+    aggregationType?: 'min' | 'max' | 'avg' | 'sum' | 'first' | 'last' | 'count' | 'none';
+  }
  
  // Aggregation Expression - min/max/avg/first/last on a list or range
  export interface AggregationExpression extends BaseExpression {
@@ -266,8 +269,10 @@ export interface NodeVariable {
    ohlcvField?: 'open' | 'high' | 'low' | 'close' | 'volume';
  }
  
- // List Expression - for 'in' / 'not in' checks or aggregation input
- export interface ListExpression extends BaseExpression {
-   type: 'list';
-   items: Expression[];
- }
+  // List Expression - for 'in' / 'not in' checks or aggregation input
+  export interface ListExpression extends BaseExpression {
+    type: 'list';
+    items: Expression[];
+    // Aggregation options (applied directly to this list)
+    aggregationType?: 'min' | 'max' | 'avg' | 'sum' | 'first' | 'last' | 'count' | 'none';
+  }
