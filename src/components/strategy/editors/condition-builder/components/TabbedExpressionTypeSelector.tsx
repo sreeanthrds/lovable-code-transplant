@@ -167,12 +167,6 @@ const TabbedExpressionTypeSelector: React.FC<TabbedExpressionTypeSelectorProps> 
         endIndex: 5,
         instrumentType: 'TI'
       },
-      aggregation: {
-        type: 'aggregation',
-        aggregationType: 'max',
-        sourceType: 'candle_range',
-        ohlcvField: 'close'
-      },
       list: {
         type: 'list',
         items: []
@@ -296,14 +290,8 @@ const TabbedExpressionTypeSelector: React.FC<TabbedExpressionTypeSelectorProps> 
         {
           type: 'candle_range',
           label: 'Candle Range',
-          description: 'Range of candles by count, time, or relative to reference',
+          description: 'Range of candles with inline aggregation (Min/Max/Avg)',
           icon: BarChart3
-        },
-        {
-          type: 'aggregation',
-          label: 'Aggregation (Min/Max/Avg)',
-          description: 'Min, Max, Avg, Sum, First, Last on candle range or list',
-          icon: Calculator
         }
       ]
     },

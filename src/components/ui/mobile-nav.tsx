@@ -99,16 +99,6 @@ const MobileNav: React.FC<MobileNavProps> = ({ toggleMenu }) => {
             Features
           </Link>
           
-          <Link 
-            to="/pricing" 
-            className={`py-3 text-base hover:text-primary transition-colors ${isActive('/pricing') 
-              ? 'text-primary font-medium' 
-              : 'text-foreground/80'}`}
-            onClick={toggleMenu}
-          >
-            Pricing
-          </Link>
-          
           
           {/* Auth Section */}
           <div className="flex flex-col space-y-4 pt-6 border-t border-border mt-auto">

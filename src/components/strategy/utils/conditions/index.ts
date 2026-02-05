@@ -31,6 +31,5 @@ export {
   createPositionTimeExpression,
   createTimeOffsetExpression,
   createCandleRangeExpression,
-  createAggregationExpression,
   createListExpression
 } from './factories';
