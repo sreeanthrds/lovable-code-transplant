@@ -41,6 +41,7 @@ export interface QuotaInfo {
   plan: PlanType;
   planName: string;
   isExpired: boolean;
+  expiresAt?: string;
   canBuyAddons: boolean;
 }
 
@@ -51,6 +52,7 @@ const DEFAULT_QUOTA_INFO: QuotaInfo = {
   plan: 'FREE',
   planName: 'Free',
   isExpired: false,
+  expiresAt: undefined,
   canBuyAddons: false,
 };
 
@@ -124,10 +126,13 @@ export const useQuota = () => {
         return;
       }
 
-      // If no plan or expired, use FREE defaults
+      // Check plan status
       const plan = data as unknown as UserPlan | null;
       const isExpired = plan?.expires_at ? new Date(plan.expires_at) < new Date() : false;
-      const effectivePlan: PlanType = (!plan || isExpired) ? 'FREE' : (plan.plan as PlanType);
+      
+      // For expired plans: keep the original plan type for display but note the expiry
+      // Only fall back to FREE if there's genuinely no plan record
+      const effectivePlan: PlanType = !plan ? 'FREE' : (plan.plan as PlanType);
       const config = PLAN_CONFIGS[effectivePlan];
 
       setUserPlan(plan);
@@ -203,6 +208,7 @@ export const useQuota = () => {
         plan: effectivePlan,
         planName: config.name,
         isExpired,
+        expiresAt: plan?.expires_at,
         canBuyAddons: config.can_buy_addons,
       });
     } catch (err) {
@@ -223,7 +229,9 @@ export const useQuota = () => {
     
     const { backtests, isExpired, plan } = quotaInfo;
     
-    if (isExpired) {
+    // Allow expired plans with unlimited quotas to continue (grace period behavior)
+    // They'll see a warning banner but won't be blocked
+    if (isExpired && backtests.remaining !== -1 && backtests.remaining <= 0) {
       return { allowed: false, reason: 'Your plan has expired. Please renew to continue.' };
     }
 
