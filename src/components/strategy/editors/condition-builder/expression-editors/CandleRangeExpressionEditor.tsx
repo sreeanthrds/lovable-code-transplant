@@ -39,30 +39,24 @@
  
    const candleRangeExpr = expression as CandleRangeExpression;
  
-   // Get timeframe options from strategy
-   const getTimeframeOptions = () => {
-     const startNode = nodes.find(node => node.type === 'startNode');
-     const instrumentType = candleRangeExpr.instrumentType || 'TI';
-     
-     let timeframes = [];
-     if (instrumentType === 'TI') {
-       timeframes = (startNode?.data as any)?.tradingInstrumentConfig?.timeframes || [];
-     } else {
-       timeframes = (startNode?.data as any)?.supportingInstrumentConfig?.timeframes || [];
-     }
-     
-     if (timeframes.length === 0) {
-       timeframes = [
-         { id: 'default-1m', timeframe: '1m' },
-         { id: 'default-5m', timeframe: '5m' }
-       ];
-     }
-     
-     return timeframes.map((tf: any) => ({
-       value: tf.id,
-       label: tf.timeframe
-     }));
-   };
+    // Get timeframe options from strategy
+    const getTimeframeOptions = () => {
+      const startNode = nodes.find(node => node.type === 'startNode');
+      const instrumentType = candleRangeExpr.instrumentType || 'TI';
+      
+      let timeframes = [];
+      if (instrumentType === 'TI') {
+        timeframes = (startNode?.data as any)?.tradingInstrumentConfig?.timeframes || [];
+      } else {
+        timeframes = (startNode?.data as any)?.supportingInstrumentConfig?.timeframes || [];
+      }
+      
+      // Only return configured timeframes - no fallback to avoid showing unconfigured options
+      return timeframes.map((tf: any) => ({
+        value: tf.id || tf.timeframe,
+        label: tf.timeframe
+      }));
+    };
  
    const rangeTypeOptions = [
      { value: 'by_count', label: 'By Count (e.g., last 10 candles)' },
