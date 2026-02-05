@@ -14,7 +14,8 @@ import {
   FunctionExpressionEditor,
   PositionDataExpressionEditor,
   ExternalTriggerExpressionEditor,
-  NodeVariableExpressionEditor
+  NodeVariableExpressionEditor,
+  MathExpressionEditor
 } from './expression-editors';
 import PnLExpressionEditor from './expression-editors/PnLExpressionEditor';
 import UnderlyingPnLExpressionEditor from './expression-editors/UnderlyingPnLExpressionEditor';
@@ -170,6 +171,14 @@ const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
               expression={expression}
               updateExpression={updateExpression}
               required={false}
+            />
+          );
+        case 'math_expression':
+          return (
+            <MathExpressionEditor
+              expression={expression}
+              updateExpression={updateExpression}
+              currentNodeId={currentNodeId}
             />
           );
         default:

@@ -24,5 +24,8 @@ export {
   createDefaultExpression,
   expressionFactoryMap,
   migrateLegacyCondition,
-  migrateLegacyGroupCondition
+  migrateLegacyGroupCondition,
+  createMathExpression,
+  addMathExpressionItem,
+  removeMathExpressionItem
 } from './factories';

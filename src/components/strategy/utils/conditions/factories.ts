@@ -15,7 +15,9 @@ import {
   UnderlyingPnLExpression,
   Condition,
   GroupCondition,
-  ComparisonOperator
+  ComparisonOperator,
+  MathExpression,
+  MathExpressionItem
 } from './types';
 
 // Expression factory functions
@@ -159,6 +161,53 @@ export const createUnderlyingPnLExpression = (
   vpi
 });
 
+// Math expression factory - creates flat array based expression
+export const createMathExpression = (
+  items?: MathExpressionItem[]
+): MathExpression => ({
+  type: 'math_expression',
+  items: items || [{
+    expression: createConstantExpression('number', 0)
+  }]
+});
+
+// Helper to add a new item to math expression
+export const addMathExpressionItem = (
+  mathExpr: MathExpression,
+  operator: '+' | '-' | '*' | '/' | '%' | '+%' | '-%' = '+',
+  expression?: Expression
+): MathExpression => ({
+  ...mathExpr,
+  items: [
+    ...mathExpr.items,
+    {
+      operator,
+      expression: expression || createConstantExpression('number', 0)
+    }
+  ]
+});
+
+// Helper to remove an item from math expression
+export const removeMathExpressionItem = (
+  mathExpr: MathExpression,
+  index: number
+): MathExpression => {
+  const newItems = [...mathExpr.items];
+  newItems.splice(index, 1);
+  
+  // If we removed the first item, clear the operator from the new first item
+  if (index === 0 && newItems.length > 0) {
+    newItems[0] = { ...newItems[0], operator: undefined };
+  }
+  
+  return {
+    ...mathExpr,
+    items: newItems.length > 0 ? newItems : [{
+      expression: createConstantExpression('number', 0)
+    }]
+  };
+};
+
 // Migration function to convert legacy conditions
 export const migrateLegacyCondition = (condition: any): Condition => {
   const migratedCondition: Condition = {
@@ -242,7 +291,8 @@ export const expressionFactoryMap: Record<string, () => Expression> = {
   external_trigger: () => createExternalTriggerExpression(),
   node_variable: () => createNodeVariableExpression(),
   pnl_data: () => createPnLExpression(),
-  underlying_pnl: () => createUnderlyingPnLExpression()
+  underlying_pnl: () => createUnderlyingPnLExpression(),
+  math_expression: () => createMathExpression()
 };
 
 // Helper function to create default expressions

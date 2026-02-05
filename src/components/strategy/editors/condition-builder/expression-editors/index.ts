@@ -11,3 +11,4 @@ export { default as PositionDataExpressionEditor } from './PositionDataExpressio
 export { default as ExternalTriggerExpressionEditor } from './ExternalTriggerExpressionEditor';
 export { default as NodeVariableExpressionEditor } from './NodeVariableExpressionEditor';
 export { default as PnLExpressionEditor } from './PnLExpressionEditor';
+export { default as MathExpressionEditor } from './MathExpressionEditor';

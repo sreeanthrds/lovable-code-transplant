@@ -258,6 +258,19 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
         }
         return 'Function Expression';
         
+      case 'math_expression':
+        if (expression.items && expression.items.length > 0) {
+          const itemStrs = expression.items.map((item, index) => {
+            const exprStr = expressionToString(item.expression, nodeData);
+            if (index === 0) {
+              return exprStr;
+            }
+            return `${item.operator || '+'} ${exprStr}`;
+          });
+          return `(${itemStrs.join(' ')})`;
+        }
+        return 'Math Expression';
+        
       default:
         return 'Unknown Expression';
     }
