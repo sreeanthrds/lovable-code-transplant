@@ -1,5 +1,5 @@
 import { StrategyData } from '../utils/strategyModel';
-import { adminService, tradelayoutSupabase } from '@/lib/supabase/services/admin-service';
+import { adminService, tradelayoutClient } from '@/lib/supabase/services/admin-service';
 
 /**
  * Admin-only functions for accessing any user's strategies from Supabase
@@ -35,7 +35,7 @@ export const getAllUsersWithStrategies = async (requestingUserId: string): Promi
     }
 
     // Get all strategies from TradeLayout to count per user
-    const { data: strategies, error: strategiesError } = await tradelayoutSupabase
+    const { data: strategies, error: strategiesError } = await tradelayoutClient
       .from('strategies')
       .select('user_id');
 
@@ -86,7 +86,7 @@ export const getStrategiesForUser = async (userId: string): Promise<Array<{id: s
     
     console.log(`getStrategiesForUser: Querying strategies for user ${userId} from TradeLayout`);
     
-    const { data: strategies, error } = await tradelayoutSupabase
+    const { data: strategies, error } = await tradelayoutClient
       .from('strategies')
       .select('id, name, created_at')
       .eq('user_id', userId)
@@ -128,7 +128,7 @@ export const loadUserStrategy = async (userId: string, strategyId: string): Prom
     
     console.log(`loadUserStrategy: Loading strategy ${strategyId} for user ${userId} from TradeLayout`);
     
-    const { data: strategy, error } = await tradelayoutSupabase
+    const { data: strategy, error } = await tradelayoutClient
       .from('strategies')
       .select('*')
       .eq('user_id', userId)

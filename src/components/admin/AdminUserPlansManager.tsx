@@ -45,8 +45,8 @@ import {
   Calendar
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { adminService } from '@/lib/supabase/services/admin-service';
-import { tradelayoutSupabase } from '@/lib/supabase/services/admin-service';
+import { adminService, tradelayoutClient } from '@/lib/supabase/services/admin-service';
+import { getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
 import { UserPlan, PlanType, PlanStatusType, PLAN_CONFIGS } from '@/types/billing';
 import { format } from 'date-fns';
 import UserPlanEditor from './UserPlanEditor';
@@ -120,7 +120,8 @@ const AdminUserPlansManager: React.FC = () => {
     if (!deletingPlan) return;
     
     try {
-      const { error } = await tradelayoutSupabase
+      const authClient = await getAuthenticatedTradelayoutClient();
+      const { error } = await (authClient as any)
         .from('user_plans')
         .delete()
         .eq('user_id', deletingPlan.id);

@@ -1,19 +1,12 @@
 // ============================================
-// ADMIN SERVICE v5 - 2026-01-04
-// Uses TradeLayout Supabase directly
-// Added Plan Management for Admins
+// ADMIN SERVICE v6 - 2026-02-05
+// Uses authenticated TradeLayout Supabase client
+// Added Plan Management for Admins with proper RLS
 // ============================================
-import { createClient } from '@supabase/supabase-js';
 import type { UserPlan, PlanType, PlanStatusType, BillingCycle } from '@/types/billing';
+import { tradelayoutClient, getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
 
-const ADMIN_SERVICE_VERSION = 'v5';
-
-// TradeLayout Supabase credentials
-const TRADELAYOUT_URL = "https://oonepfqgzpdssfzvokgk.supabase.co";
-const TRADELAYOUT_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vbmVwZnFnenBkc3NmenZva2drIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxOTk5MTQsImV4cCI6MjA2NTc3NTkxNH0.lDCxgwj36EniiZthzZxhM_8coXQhXlrvv9UzemyYu6A";
-
-// Create TradeLayout Supabase client
-const tradelayoutSupabase = createClient(TRADELAYOUT_URL, TRADELAYOUT_KEY);
+const ADMIN_SERVICE_VERSION = 'v6';
 
 export interface UserProfile {
   id: string;
@@ -42,7 +35,7 @@ export const getAllUserProfiles = async (userId: string): Promise<UserProfile[]>
   
   try {
     // Query user_profiles directly from TradeLayout
-    const { data, error } = await tradelayoutSupabase
+    const { data, error } = await tradelayoutClient
       .from('user_profiles')
       .select('*')
       .order('created_at', { ascending: false });
@@ -88,7 +81,7 @@ export const getAllUsersWithPlans = async (userId: string): Promise<UserWithPlan
  */
 export const getAllUserPlans = async (): Promise<UserPlan[]> => {
   try {
-    const { data, error } = await tradelayoutSupabase
+    const { data, error } = await (tradelayoutClient as any)
       .from('user_plans')
       .select('*')
       .order('updated_at', { ascending: false });
@@ -98,7 +91,7 @@ export const getAllUserPlans = async (): Promise<UserPlan[]> => {
       return [];
     }
     
-    return data || [];
+    return (data || []) as UserPlan[];
   } catch (error) {
     console.error(`[AdminService ${ADMIN_SERVICE_VERSION}] Failed to fetch plans:`, error);
     return [];
@@ -110,7 +103,7 @@ export const getAllUserPlans = async (): Promise<UserPlan[]> => {
  */
 export const getUserPlan = async (targetUserId: string): Promise<UserPlan | null> => {
   try {
-    const { data, error } = await tradelayoutSupabase
+    const { data, error } = await (tradelayoutClient as any)
       .from('user_plans')
       .select('*')
       .eq('user_id', targetUserId)
@@ -121,7 +114,7 @@ export const getUserPlan = async (targetUserId: string): Promise<UserPlan | null
       return null;
     }
     
-    return data;
+    return data as UserPlan | null;
   } catch (error) {
     console.error(`[AdminService ${ADMIN_SERVICE_VERSION}] Failed to get plan:`, error);
     return null;
@@ -129,7 +122,7 @@ export const getUserPlan = async (targetUserId: string): Promise<UserPlan | null
 };
 
 /**
- * Create or update user plan (admin only)
+ * Create or update user plan (admin only) - uses authenticated client for RLS
  */
 export const upsertUserPlan = async (
   targetUserId: string,
@@ -137,8 +130,11 @@ export const upsertUserPlan = async (
   adminUserId: string
 ): Promise<UserPlan | null> => {
   try {
+    // Use authenticated client to pass admin's JWT for RLS check
+    const authClient = await getAuthenticatedTradelayoutClient();
+    
     // Note: removed updated_by as it doesn't exist in user_plans table schema
-    const { data, error } = await tradelayoutSupabase
+    const { data, error } = await (authClient as any)
       .from('user_plans')
       .upsert({
         user_id: targetUserId,
@@ -164,7 +160,7 @@ export const upsertUserPlan = async (
 };
 
 /**
- * Update user plan (admin only)
+ * Update user plan (admin only) - uses authenticated client for RLS
  */
 export const updateUserPlan = async (
   targetUserId: string,
@@ -172,8 +168,11 @@ export const updateUserPlan = async (
   adminUserId: string
 ): Promise<void> => {
   try {
+    // Use authenticated client to pass admin's JWT for RLS check
+    const authClient = await getAuthenticatedTradelayoutClient();
+    
     // Note: removed updated_by as it doesn't exist in user_plans table schema
-    const { error } = await tradelayoutSupabase
+    const { error } = await (authClient as any)
       .from('user_plans')
       .update({
         ...updates,
@@ -218,15 +217,18 @@ export const assignPlanToUser = async (
 };
 
 /**
- * Reset user usage (admin only)
+ * Reset user usage (admin only) - uses authenticated client for RLS
  */
 export const resetUserUsage = async (
   targetUserId: string,
   adminUserId: string
 ): Promise<void> => {
   try {
+    // Use authenticated client to pass admin's JWT for RLS check
+    const authClient = await getAuthenticatedTradelayoutClient();
+    
     // Note: removed updated_by as it doesn't exist in user_plans table schema
-    const { error } = await tradelayoutSupabase
+    const { error } = await (authClient as any)
       .from('user_plans')
       .update({
         backtests_used: 0,
@@ -245,7 +247,7 @@ export const resetUserUsage = async (
 };
 
 /**
- * Add add-ons to user (admin only)
+ * Add add-ons to user (admin only) - uses authenticated client for RLS
  */
 export const addUserAddons = async (
   targetUserId: string,
@@ -268,7 +270,10 @@ export const addUserAddons = async (
       updates.addon_live_executions = (currentPlan?.addon_live_executions || 0) + addons.live_executions;
     }
     
-    const { error } = await tradelayoutSupabase
+    // Use authenticated client to pass admin's JWT for RLS check
+    const authClient = await getAuthenticatedTradelayoutClient();
+    
+    const { error } = await (authClient as any)
       .from('user_plans')
       .update(updates)
       .eq('user_id', targetUserId);
@@ -282,14 +287,16 @@ export const addUserAddons = async (
 };
 
 /**
- * Update user profile (admin only)
+ * Update user profile (admin only) - uses authenticated client for RLS
  */
 export const updateUserProfileAdmin = async (
   userId: string, 
   updates: Partial<UserProfile>
 ): Promise<void> => {
   try {
-    const { error } = await tradelayoutSupabase
+    const authClient = await getAuthenticatedTradelayoutClient();
+    
+    const { error } = await (authClient as any)
       .from('user_profiles')
       .update(updates)
       .eq('id', userId);
@@ -306,7 +313,9 @@ export const updateUserProfileAdmin = async (
  */
 export const deleteUserProfileAdmin = async (userId: string): Promise<void> => {
   try {
-    const { error } = await tradelayoutSupabase
+    const authClient = await getAuthenticatedTradelayoutClient();
+    
+    const { error } = await (authClient as any)
       .rpc('delete_user_profile_admin', { target_user_id: userId });
 
     if (error) throw error;
@@ -321,7 +330,7 @@ export const deleteUserProfileAdmin = async (userId: string): Promise<void> => {
  */
 export const getAllStrategiesAdmin = async () => {
   try {
-    const { data, error } = await tradelayoutSupabase
+    const { data, error } = await tradelayoutClient
       .from('strategies')
       .select(`
         id,
@@ -342,7 +351,7 @@ export const getAllStrategiesAdmin = async () => {
 };
 
 // Export TradeLayout client for use in other modules
-export { tradelayoutSupabase };
+export { tradelayoutClient };
 
 export const adminService = {
   getAllUserProfiles,
