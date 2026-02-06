@@ -79,13 +79,16 @@ const CandleOffsetSelector: React.FC<CandleOffsetSelectorProps> = ({
   };
 
   const handleModeChange = (mode: CandleSelectionMode) => {
-    onSelectionModeChange?.(mode);
-    // Reset values when switching modes
+    // Set default values for each mode
     if (mode === 'offset') {
       onOffsetChange(-1);
+    } else if (mode === 'by_time') {
+      onCandleTimeChange?.('09:15');
     } else if (mode === 'by_number') {
       onCandleNumberChange?.(1);
     }
+    // Update mode after setting values to avoid state conflicts
+    onSelectionModeChange?.(mode);
   };
 
   // Render offset selector content
