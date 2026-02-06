@@ -75,10 +75,10 @@ const MarketDataSelector: React.FC<MarketDataSelectorProps> = ({
     updateExpression({
       ...marketDataExpr,
       candleSelectionMode: mode,
-      // Reset other fields based on mode
-      offset: mode === 'offset' ? (marketDataExpr.offset || -1) : undefined,
-      candleTime: mode === 'by_time' ? (marketDataExpr.candleTime || '') : undefined,
-      candleNumber: mode === 'by_number' ? (marketDataExpr.candleNumber || 1) : undefined
+      // Set appropriate defaults for each mode
+      offset: mode === 'offset' ? (marketDataExpr.offset || -1) : marketDataExpr.offset,
+      candleTime: mode === 'by_time' ? (marketDataExpr.candleTime || '09:15') : marketDataExpr.candleTime,
+      candleNumber: mode === 'by_number' ? (marketDataExpr.candleNumber || 1) : marketDataExpr.candleNumber
     });
   };
 
