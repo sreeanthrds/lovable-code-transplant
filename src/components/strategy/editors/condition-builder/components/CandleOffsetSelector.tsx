@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { RotateCcw, Clock, Hash } from 'lucide-react';
@@ -35,6 +35,8 @@ const CandleOffsetSelector: React.FC<CandleOffsetSelectorProps> = ({
   candleNumber = 1,
   onCandleNumberChange
 }) => {
+  // Generate unique IDs for this component instance to avoid conflicts
+  const instanceId = useId();
   const [inputMode, setInputMode] = useState<'preset' | 'custom'>('preset');
   const isEnhancedMode = !!onSelectionModeChange;
   
@@ -213,9 +215,9 @@ const CandleOffsetSelector: React.FC<CandleOffsetSelectorProps> = ({
         className="flex flex-wrap gap-2"
       >
         <div className="flex items-center">
-          <RadioGroupItem value="offset" id="mode-offset" className="peer sr-only" />
+          <RadioGroupItem value="offset" id={`${instanceId}-mode-offset`} className="peer sr-only" />
           <Label
-            htmlFor="mode-offset"
+            htmlFor={`${instanceId}-mode-offset`}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-md border cursor-pointer transition-colors text-sm",
               selectionMode === 'offset'
@@ -229,9 +231,9 @@ const CandleOffsetSelector: React.FC<CandleOffsetSelectorProps> = ({
         </div>
 
         <div className="flex items-center">
-          <RadioGroupItem value="by_time" id="mode-time" className="peer sr-only" />
+          <RadioGroupItem value="by_time" id={`${instanceId}-mode-time`} className="peer sr-only" />
           <Label
-            htmlFor="mode-time"
+            htmlFor={`${instanceId}-mode-time`}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-md border cursor-pointer transition-colors text-sm",
               selectionMode === 'by_time'
@@ -245,9 +247,9 @@ const CandleOffsetSelector: React.FC<CandleOffsetSelectorProps> = ({
         </div>
 
         <div className="flex items-center">
-          <RadioGroupItem value="by_number" id="mode-number" className="peer sr-only" />
+          <RadioGroupItem value="by_number" id={`${instanceId}-mode-number`} className="peer sr-only" />
           <Label
-            htmlFor="mode-number"
+            htmlFor={`${instanceId}-mode-number`}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-md border cursor-pointer transition-colors text-sm",
               selectionMode === 'by_number'
