@@ -29,6 +29,10 @@ export interface MarketDataExpression extends BaseExpression {
   timeframe?: string; // Legacy support - will be migrated to timeframeId
   field?: string;
   offset?: number;
+  // Enhanced candle selection
+  candleSelectionMode?: 'offset' | 'by_time' | 'by_number'; // How to select the candle
+  candleTime?: string; // HH:MM format for 'by_time' mode
+  candleNumber?: number; // 1-based index from start of day for 'by_number' mode
 }
 
 export interface LiveDataExpression extends BaseExpression {

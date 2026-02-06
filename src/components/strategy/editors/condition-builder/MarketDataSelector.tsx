@@ -4,7 +4,7 @@ import {
   Expression, 
   MarketDataExpression
 } from '../../utils/conditions';
-import CandleOffsetSelector from './components/CandleOffsetSelector';
+import CandleOffsetSelector, { CandleSelectionMode } from './components/CandleOffsetSelector';
 import MultilevelDropdown from './components/MultilevelDropdown';
 import { useStrategyStore } from '@/hooks/use-strategy-store';
 import { RadioGroupField } from '../shared';
@@ -67,6 +67,34 @@ const MarketDataSelector: React.FC<MarketDataSelectorProps> = ({
     updateExpression({
       ...marketDataExpr,
       offset: value
+    });
+  };
+
+  // Update candle selection mode
+  const updateSelectionMode = (mode: CandleSelectionMode) => {
+    updateExpression({
+      ...marketDataExpr,
+      candleSelectionMode: mode,
+      // Reset other fields based on mode
+      offset: mode === 'offset' ? (marketDataExpr.offset || -1) : undefined,
+      candleTime: mode === 'by_time' ? (marketDataExpr.candleTime || '') : undefined,
+      candleNumber: mode === 'by_number' ? (marketDataExpr.candleNumber || 1) : undefined
+    });
+  };
+
+  // Update candle time (for by_time mode)
+  const updateCandleTime = (time: string) => {
+    updateExpression({
+      ...marketDataExpr,
+      candleTime: time
+    });
+  };
+
+  // Update candle number (for by_number mode)
+  const updateCandleNumber = (num: number) => {
+    updateExpression({
+      ...marketDataExpr,
+      candleNumber: num
     });
   };
   
@@ -191,7 +219,13 @@ const MarketDataSelector: React.FC<MarketDataSelectorProps> = ({
           <CandleOffsetSelector 
             offset={marketDataExpr.offset || 0}
             onOffsetChange={updateOffset}
-            label="Look back:"
+            label="Candle Selection:"
+            selectionMode={marketDataExpr.candleSelectionMode || 'offset'}
+            onSelectionModeChange={updateSelectionMode}
+            candleTime={marketDataExpr.candleTime || ''}
+            onCandleTimeChange={updateCandleTime}
+            candleNumber={marketDataExpr.candleNumber || 1}
+            onCandleNumberChange={updateCandleNumber}
           />
         </div>
       )}
