@@ -35,6 +35,7 @@ interface SignalNodeData {
 
 export const useSignalNodeForm = ({ node, updateNodeData }: UseSignalNodeFormProps) => {
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingUpdatesRef = useRef<Partial<SignalNodeData>>({});
   const { getNodes } = useReactFlow();
 
   // Safely cast node.data with default fallback
@@ -143,8 +144,14 @@ export const useSignalNodeForm = ({ node, updateNodeData }: UseSignalNodeFormPro
   const nodeDataRef = useRef(nodeData);
   nodeDataRef.current = nodeData;
 
-  // Debounced update function - uses ref to avoid stale closure issues
+  // Debounced update function - accumulates pending updates to avoid losing changes
   const debouncedUpdate = useCallback((updates: Partial<SignalNodeData>) => {
+    // Accumulate updates instead of overwriting
+    pendingUpdatesRef.current = {
+      ...pendingUpdatesRef.current,
+      ...updates
+    };
+    
     if (updateTimeoutRef.current) {
       clearTimeout(updateTimeoutRef.current);
     }
@@ -152,9 +159,14 @@ export const useSignalNodeForm = ({ node, updateNodeData }: UseSignalNodeFormPro
     updateTimeoutRef.current = setTimeout(() => {
       // Use ref to get latest nodeData, avoiding stale closure
       const currentNodeData = nodeDataRef.current;
+      const accumulatedUpdates = pendingUpdatesRef.current;
+      
+      // Clear pending updates before the async operation
+      pendingUpdatesRef.current = {};
+      
       updateNodeData(node.id, { 
         ...currentNodeData,
-        ...updates,
+        ...accumulatedUpdates,
         _lastUpdated: Date.now()
       });
       updateTimeoutRef.current = null;
@@ -304,14 +316,26 @@ export const useSignalNodeForm = ({ node, updateNodeData }: UseSignalNodeFormPro
     debouncedUpdate({ reEntryExitConditions: processedConditions });
   }, [formData.conditions, debouncedUpdate]);
 
-  // Clean up timeouts on unmount
+  // Clean up timeouts and flush pending updates on unmount
   useEffect(() => {
     return () => {
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
+        
+        // Flush any pending updates before unmounting
+        const accumulatedUpdates = pendingUpdatesRef.current;
+        if (Object.keys(accumulatedUpdates).length > 0) {
+          const currentNodeData = nodeDataRef.current;
+          updateNodeData(node.id, { 
+            ...currentNodeData,
+            ...accumulatedUpdates,
+            _lastUpdated: Date.now()
+          });
+        }
       }
+      pendingUpdatesRef.current = {};
     };
-  }, []);
+  }, [node.id, updateNodeData]);
 
   console.log(`useSignalNodeForm for node ${node.id} - current conditions:`, formData.conditions);
 
