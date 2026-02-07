@@ -312,7 +312,7 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
           rangeStr = `[0:5]`;
         }
         
-        // Get field name (OHLCV)
+        // Get field name (OHLCV) - capitalize first letter
         const candleField = expression.ohlcvField 
           ? expression.ohlcvField.charAt(0).toUpperCase() + expression.ohlcvField.slice(1) 
           : 'Close';
@@ -321,10 +321,7 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
         const aggregation = expression.aggregationType || 'none';
         const aggDisplay = aggregation !== 'none' ? aggregation.charAt(0).toUpperCase() + aggregation.slice(1) : '';
         
-        // Get instrument type
-        const instrType = expression.instrumentType === 'SI' ? 'Supporting' : 'Trading';
-        
-        // Get timeframe display
+        // Get timeframe display - same logic as candle_data
         let candleRangeTfDisplay = '';
         if (expression.timeframeId && nodeData) {
           const tradingTimeframes = nodeData.tradingInstrumentConfig?.timeframes || [];
@@ -339,22 +336,17 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
           candleRangeTfDisplay = TimeframeResolver.getDisplayValue(expression.timeframeId);
         }
         
-        // Build the complete display string
-        // Format: Aggregation(Field) [range] (Instrument, Timeframe)
-        let candleRangeDisplay = '';
-        if (aggDisplay) {
-          candleRangeDisplay = `${aggDisplay}(${candleField})`;
-        } else {
-          candleRangeDisplay = candleField;
-        }
-        candleRangeDisplay += ` ${rangeStr}`;
+        // Use formatExpressionDisplayName for consistent formatting with candle_data
+        // Format: TI.1m.High[1:5].Max or TI.1m.High[1:5] (if no aggregation)
+        const baseDisplayName = formatExpressionDisplayName(candleField, {
+          instrumentType: expression.instrumentType,
+          timeframe: candleRangeTfDisplay
+        });
         
-        // Add instrument and timeframe context
-        const contextParts = [];
-        if (instrType) contextParts.push(instrType);
-        if (candleRangeTfDisplay) contextParts.push(candleRangeTfDisplay);
-        if (contextParts.length > 0) {
-          candleRangeDisplay += ` (${contextParts.join(', ')})`;
+        // Append range and aggregation
+        let candleRangeDisplay = `${baseDisplayName}${rangeStr}`;
+        if (aggDisplay) {
+          candleRangeDisplay += `.${aggDisplay}`;
         }
         
         return candleRangeDisplay;
