@@ -294,16 +294,70 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
         return `${offsetVal} ${offsetUnit} ${dir} ${baseStr}`;
       
       case 'candle_range':
+        // Build range string based on type
+        let rangeStr = '';
         if (expression.rangeType === 'by_count') {
-          return `Candles[${expression.startIndex ?? 0}:${expression.endIndex ?? 5}]`;
+          rangeStr = `[${expression.startIndex ?? 0}:${expression.endIndex ?? 5}]`;
         } else if (expression.rangeType === 'by_time') {
-          return `Candles[${expression.startTime || '09:15'}-${expression.endTime || '15:30'}]`;
-        } else {
-          const refType = expression.referenceType || 'time';
+          rangeStr = `[${expression.startTime || '09:15'}-${expression.endTime || '15:30'}]`;
+        } else if (expression.rangeType === 'relative') {
+          const refType = expression.referenceType || 'entry';
           const count = expression.candleCount || 5;
           const dir = expression.direction || 'after';
-          return `${count} candles ${dir} ${refType}`;
+          rangeStr = `[${count} ${dir} ${refType}]`;
+        } else if (expression.rangeType === 'to_current') {
+          const refType = expression.referenceType || 'entry';
+          rangeStr = `[${refType} → now]`;
+        } else {
+          rangeStr = `[0:5]`;
         }
+        
+        // Get field name (OHLCV)
+        const candleField = expression.ohlcvField 
+          ? expression.ohlcvField.charAt(0).toUpperCase() + expression.ohlcvField.slice(1) 
+          : 'Close';
+        
+        // Get aggregation function
+        const aggregation = expression.aggregationType || 'none';
+        const aggDisplay = aggregation !== 'none' ? aggregation.charAt(0).toUpperCase() + aggregation.slice(1) : '';
+        
+        // Get instrument type
+        const instrType = expression.instrumentType === 'SI' ? 'Supporting' : 'Trading';
+        
+        // Get timeframe display
+        let candleRangeTfDisplay = '';
+        if (expression.timeframeId && nodeData) {
+          const tradingTimeframes = nodeData.tradingInstrumentConfig?.timeframes || [];
+          const supportingTimeframes = nodeData.supportingInstrumentConfig?.timeframes || [];
+          const allTimeframes = [...tradingTimeframes, ...supportingTimeframes];
+          const matchedTimeframe = allTimeframes.find((tf: any) => tf.id === expression.timeframeId);
+          if (matchedTimeframe) {
+            candleRangeTfDisplay = matchedTimeframe.timeframe || '';
+          }
+        }
+        if (!candleRangeTfDisplay && expression.timeframeId) {
+          candleRangeTfDisplay = TimeframeResolver.getDisplayValue(expression.timeframeId);
+        }
+        
+        // Build the complete display string
+        // Format: Aggregation(Field) [range] (Instrument, Timeframe)
+        let candleRangeDisplay = '';
+        if (aggDisplay) {
+          candleRangeDisplay = `${aggDisplay}(${candleField})`;
+        } else {
+          candleRangeDisplay = candleField;
+        }
+        candleRangeDisplay += ` ${rangeStr}`;
+        
+        // Add instrument and timeframe context
+        const contextParts = [];
+        if (instrType) contextParts.push(instrType);
+        if (candleRangeTfDisplay) contextParts.push(candleRangeTfDisplay);
+        if (contextParts.length > 0) {
+          candleRangeDisplay += ` (${contextParts.join(', ')})`;
+        }
+        
+        return candleRangeDisplay;
       
       
       case 'list':
