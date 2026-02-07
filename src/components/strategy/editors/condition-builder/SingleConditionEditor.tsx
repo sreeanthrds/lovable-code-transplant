@@ -59,9 +59,16 @@ const SingleConditionEditor: React.FC<SingleConditionEditorProps> = ({
   const updateOperator = (operator: ComparisonOperator) => {
     // When switching to 'between', initialize rhsUpper if not present
     const needsUpper = operator === 'between' || operator === 'not_between';
+    // When switching to 'in'/'not_in', set RHS to list expression if not already
+    const needsList = operator === 'in' || operator === 'not_in';
+    const newRhs = needsList && condition.rhs?.type !== 'list' 
+      ? { type: 'list' as const, items: [createConstantExpression('number', 0)], aggregationType: 'none' as const }
+      : condition.rhs;
+    
     updateCondition({
       ...condition,
       operator,
+      rhs: newRhs,
       rhsUpper: needsUpper && !condition.rhsUpper ? createConstantExpression('number', 0) : condition.rhsUpper
     });
   };
@@ -75,7 +82,8 @@ const SingleConditionEditor: React.FC<SingleConditionEditorProps> = ({
   };
 
   const isBetweenOperator = condition.operator === 'between' || condition.operator === 'not_between';
- const allOperators: ComparisonOperator[] = ['>', '<', '>=', '<=', '==', '!=', 'crosses_above', 'crosses_below', 'between', 'not_between', 'in', 'not_in'];
+  const isInOperator = condition.operator === 'in' || condition.operator === 'not_in';
+  const allOperators: ComparisonOperator[] = ['>', '<', '>=', '<=', '==', '!=', 'crosses_above', 'crosses_below', 'between', 'not_between', 'in', 'not_in'];
 
   return (
     <div className={cn(
@@ -103,7 +111,7 @@ const SingleConditionEditor: React.FC<SingleConditionEditorProps> = ({
           className="h-10 w-20"
           operators={allOperators}
         />
-        {!isBetweenOperator && (
+        {!isBetweenOperator && !isInOperator && (
           <Button
             type="button"
             variant="ghost"
