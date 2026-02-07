@@ -249,16 +249,16 @@ const CandleRangeExpressionEditor: React.FC<CandleRangeExpressionEditorProps> = 
              />
            </div>
  
-           {candleRangeExpr.referenceType === 'time' && (
-             <div className="p-3 border border-slate-200 rounded-lg bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/30">
-               <Label className="text-sm font-medium mb-2 block">Reference Time</Label>
-               <Input
-                 type="time"
-                 value={candleRangeExpr.referenceTime || '09:15'}
-                 onChange={(e) => updateField('referenceTime', e.target.value)}
-               />
-             </div>
-           )}
+          {(candleRangeExpr.referenceType === 'time' || !candleRangeExpr.referenceType) && (
+            <div className="p-3 border border-slate-200 rounded-lg bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/30">
+              <Label className="text-sm font-medium mb-2 block">Reference Time</Label>
+              <Input
+                type="time"
+                value={candleRangeExpr.referenceTime || '09:15'}
+                onChange={(e) => updateField('referenceTime', e.target.value)}
+              />
+            </div>
+          )}
  
            {candleRangeExpr.referenceType === 'candle_number' && (
              <div className="p-3 border border-slate-200 rounded-lg bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/30">
