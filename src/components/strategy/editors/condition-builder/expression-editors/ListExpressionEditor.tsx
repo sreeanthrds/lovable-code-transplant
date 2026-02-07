@@ -3,7 +3,6 @@ import { Expression, ListExpression, createConstantExpression } from '../../../u
 import { Button } from '@/components/ui/button';
 import { Plus, X } from 'lucide-react';
 import ExpressionEditorDialogTrigger from '../ExpressionEditorDialogTrigger';
-import { RadioGroupField } from '../../shared';
 
 interface ListExpressionEditorProps {
   expression: Expression;
@@ -24,21 +23,6 @@ const ListExpressionEditor: React.FC<ListExpressionEditorProps> = ({
 
   const listExpr = expression as ListExpression;
 
-  const aggregationOptions = [
-    { value: 'none', label: 'None (Raw List)' },
-    { value: 'min', label: 'Min' },
-    { value: 'max', label: 'Max' },
-    { value: 'avg', label: 'Average' },
-    { value: 'sum', label: 'Sum' },
-    { value: 'first', label: 'First' },
-    { value: 'last', label: 'Last' },
-    { value: 'count', label: 'Count' }
-  ];
-
-  const updateField = (field: string, value: any) => {
-    updateExpression({ ...listExpr, [field]: value });
-  };
-
   const addItem = () => {
     const newItems = [...(listExpr.items || []), createConstantExpression('number', 0)];
     updateExpression({ ...listExpr, items: newItems });
@@ -58,17 +42,6 @@ const ListExpressionEditor: React.FC<ListExpressionEditorProps> = ({
 
   return (
     <div className="space-y-3">
-      {/* Aggregation */}
-      <div className="p-3 border border-violet-200 rounded-lg bg-violet-50/50 dark:border-violet-800 dark:bg-violet-950/30">
-        <RadioGroupField
-          label="Aggregation"
-          value={listExpr.aggregationType || 'none'}
-          onChange={(v) => updateField('aggregationType', v)}
-          options={aggregationOptions}
-          layout="horizontal"
-        />
-      </div>
-
       {/* List Items */}
       <div className="p-3 border border-purple-200 rounded-lg bg-purple-50/50 dark:border-purple-800 dark:bg-purple-950/30">
         <div className="text-sm font-medium text-purple-700 dark:text-purple-400 mb-3">
