@@ -564,9 +564,9 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
           }
           
           // For EXIT flow: Include exit events and walk up ONLY through exit-type parents
-          const exitFlowIds = new Set<string>();
+          const exitOnlyFlowIds = new Set<string>();
           for (const exitId of exitEvents) {
-            exitFlowIds.add(exitId);
+            exitOnlyFlowIds.add(exitId);
             
             // Walk up parent chain but STOP when we hit a non-exit node type
             let current = exitId;
@@ -574,7 +574,7 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
               const parentId = parentMap.get(current)!;
               const parentEvent = eventsHistory[parentId] as any;
               if (parentEvent && isExitNodeType(parentEvent.node_type)) {
-                exitFlowIds.add(parentId);
+                exitOnlyFlowIds.add(parentId);
                 current = parentId;
               } else {
                 // Stop walking up when we hit non-exit node (e.g., StartNode, EntryNode)
@@ -593,17 +593,24 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
             });
           };
           
+          // EXIT flow = Entry flow (complete path) + Exit-specific nodes
+          // This shows the full journey: StartNode → EntrySignal → Entry → ExitSignal → Exit
+          const sortedEntryFlowIds = sortByTimestamp(Array.from(entryFlowIds));
+          const sortedExitOnlyIds = sortByTimestamp(Array.from(exitOnlyFlowIds));
+          const fullExitFlowIds = [...sortedEntryFlowIds, ...sortedExitOnlyIds];
+          
           if (isFirstTrade) {
             console.log(`=== DEBUG: Built flow IDs for trade ${positionId} ===`);
             console.log('Entry events found:', entryEvents.length);
             console.log('Exit events found:', exitEvents.length);
-            console.log('Entry flow IDs (with parents):', Array.from(entryFlowIds));
-            console.log('Exit flow IDs (exit nodes only):', Array.from(exitFlowIds));
+            console.log('Entry flow IDs:', sortedEntryFlowIds);
+            console.log('Exit-only flow IDs:', sortedExitOnlyIds);
+            console.log('Full exit flow IDs (entry + exit):', fullExitFlowIds);
           }
           
           return {
-            entryFlowIds: sortByTimestamp(Array.from(entryFlowIds)),
-            exitFlowIds: sortByTimestamp(Array.from(exitFlowIds))
+            entryFlowIds: sortedEntryFlowIds,
+            exitFlowIds: fullExitFlowIds
           };
         };
         
