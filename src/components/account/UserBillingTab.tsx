@@ -29,10 +29,15 @@ function getPlanConfigFromDefinition(plan: PlanDefinition | undefined, fallbackC
       price_yearly: plan.price_yearly,
       can_buy_addons: plan.can_buy_addons,
       color: plan.ui_color,
+      features: plan.features || [],
     };
   }
   // Fallback to hardcoded config
-  return PLAN_CONFIGS[fallbackCode as PlanType] || PLAN_CONFIGS.FREE;
+  const fallback = PLAN_CONFIGS[fallbackCode as PlanType] || PLAN_CONFIGS.FREE;
+  return {
+    ...fallback,
+    features: fallback.features || [],
+  };
 }
 
 const UserBillingTab: React.FC = () => {
@@ -309,9 +314,17 @@ const UserBillingTab: React.FC = () => {
                       or ₹{planDef.price_yearly}/year (save 17%)
                     </p>
                     <ul className="text-sm text-white/70 space-y-1 mb-4">
-                      <li>• {planDef.backtests_monthly_limit === -1 ? 'Unlimited' : planDef.backtests_monthly_limit} backtests/mo</li>
-                      <li>• {planDef.live_executions_monthly_limit === -1 ? 'Unlimited' : planDef.live_executions_monthly_limit} live executions/mo</li>
-                      <li>• {planDef.paper_trading_monthly_limit === -1 ? 'Unlimited' : planDef.paper_trading_monthly_limit} paper trades</li>
+                      {(planDef.features && planDef.features.length > 0) ? (
+                        planDef.features.map((feature, idx) => (
+                          <li key={idx}>• {feature}</li>
+                        ))
+                      ) : (
+                        <>
+                          <li>• {planDef.backtests_monthly_limit === -1 ? 'Unlimited' : planDef.backtests_monthly_limit} backtests/mo</li>
+                          <li>• {planDef.live_executions_monthly_limit === -1 ? 'Unlimited' : planDef.live_executions_monthly_limit} live executions/mo</li>
+                          <li>• {planDef.paper_trading_monthly_limit === -1 ? 'Unlimited' : planDef.paper_trading_monthly_limit} paper trades</li>
+                        </>
+                      )}
                     </ul>
                     {!isCurrentPlan && (
                       <div className="flex gap-2">

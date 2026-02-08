@@ -79,6 +79,7 @@ export interface PlanConfig {
   duration_months?: number;  // For promo plans like LAUNCH
   can_buy_addons: boolean;
   color: string;
+  features?: string[]; // Display bullet points for pricing page
 }
 
 export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
@@ -93,6 +94,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     price_yearly: 0,
     can_buy_addons: false,
     color: 'secondary',
+    features: ['2 backtests per day', '14 backtests per month', 'Paper trading access'],
   },
   LAUNCH: {
     name: 'Launch',
@@ -106,6 +108,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     duration_months: 2,  // 2 month promo
     can_buy_addons: false,
     color: 'default',
+    features: ['Unlimited strategies', 'Full backtest access', 'Paper trading', 'Priority support', 'Your ₹500 adjusts when you upgrade to Pro'],
   },
   PRO: {
     name: 'Pro',
@@ -118,6 +121,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     price_yearly: 4999,
     can_buy_addons: true,
     color: 'default',
+    features: ['100 backtests per month', '50 live executions per month', 'Unlimited paper trading', 'Priority support', 'Add-on purchases'],
   },
   ENTERPRISE: {
     name: 'Enterprise',
@@ -130,6 +134,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     price_yearly: 19999,
     can_buy_addons: true,
     color: 'destructive',
+    features: ['Unlimited backtests', 'Unlimited live executions', 'Unlimited paper trading', 'Dedicated support', 'Custom integrations', 'API access'],
   },
   CUSTOM: {
     name: 'Custom',
@@ -142,6 +147,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     price_yearly: 0,
     can_buy_addons: false,
     color: 'outline',
+    features: [],
   },
 };
 

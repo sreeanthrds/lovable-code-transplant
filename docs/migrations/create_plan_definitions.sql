@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS public.plan_definitions (
   -- Features
   can_buy_addons BOOLEAN DEFAULT false,
   feature_flags JSONB DEFAULT '{}',
+  features JSONB DEFAULT '[]',  -- Array of feature bullet points for pricing page
   ui_color VARCHAR(20) DEFAULT 'default',
   ui_icon VARCHAR(50),
   
@@ -147,14 +148,14 @@ BEGIN
 END $$;
 
 -- 6. Seed initial plan definitions from PLAN_CONFIGS
-INSERT INTO public.plan_definitions (code, name, description, tier_level, is_active, is_public, duration_type, backtests_daily_limit, backtests_monthly_limit, live_executions_monthly_limit, paper_trading_daily_limit, paper_trading_monthly_limit, price_monthly, price_yearly, can_buy_addons, ui_color, sort_order)
+INSERT INTO public.plan_definitions (code, name, description, tier_level, is_active, is_public, duration_type, backtests_daily_limit, backtests_monthly_limit, live_executions_monthly_limit, paper_trading_daily_limit, paper_trading_monthly_limit, price_monthly, price_yearly, can_buy_addons, ui_color, sort_order, features)
 VALUES 
-  ('FREE', 'Free', 'Basic free tier with limited access', 0, true, true, 'subscription', 2, 14, 0, -1, 2, 0, 0, false, 'secondary', 0),
-  ('LAUNCH', 'Launch', 'Promotional 2-month unlimited plan', 1, true, true, 'fixed', -1, -1, 0, -1, -1, 1, 1, false, 'default', 1),
-  ('PRO', 'Pro', 'Professional trading with higher limits', 2, true, true, 'subscription', -1, 100, 50, 2, -1, 499, 4999, true, 'default', 2),
-  ('ENTERPRISE', 'Enterprise', 'Unlimited access for power users', 3, true, true, 'subscription', -1, -1, -1, -1, -1, 1999, 19999, true, 'destructive', 3),
-  ('CUSTOM', 'Custom', 'Custom configuration for special cases', 4, false, false, 'subscription', 0, 0, 0, 0, 0, 0, 0, false, 'outline', 4)
-ON CONFLICT (code) DO NOTHING;
+  ('FREE', 'Free', 'Basic free tier with limited access', 0, true, true, 'subscription', 2, 14, 0, -1, 2, 0, 0, false, 'secondary', 0, '["2 backtests per day", "14 backtests per month", "Paper trading access"]'),
+  ('LAUNCH', 'Launch', 'Promotional 2-month unlimited plan', 1, true, true, 'fixed', -1, -1, 0, -1, -1, 1, 1, false, 'default', 1, '["Unlimited strategies", "Full backtest access", "Paper trading", "Priority support", "Your ₹500 adjusts when you upgrade to Pro"]'),
+  ('PRO', 'Pro', 'Professional trading with higher limits', 2, true, true, 'subscription', -1, 100, 50, 2, -1, 499, 4999, true, 'default', 2, '["100 backtests per month", "50 live executions per month", "Unlimited paper trading", "Priority support", "Add-on purchases"]'),
+  ('ENTERPRISE', 'Enterprise', 'Unlimited access for power users', 3, true, true, 'subscription', -1, -1, -1, -1, -1, 1999, 19999, true, 'destructive', 3, '["Unlimited backtests", "Unlimited live executions", "Unlimited paper trading", "Dedicated support", "Custom integrations", "API access"]'),
+  ('CUSTOM', 'Custom', 'Custom configuration for special cases', 4, false, false, 'subscription', 0, 0, 0, 0, 0, 0, 0, false, 'outline', 4, '[]')
+ON CONFLICT (code) DO UPDATE SET features = EXCLUDED.features;
 
 -- 7. Update LAUNCH plan duration_days
 UPDATE public.plan_definitions 

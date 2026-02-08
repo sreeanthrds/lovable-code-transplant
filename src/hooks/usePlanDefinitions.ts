@@ -64,6 +64,7 @@ function convertPlanConfigsToDefinitions(): PlanDefinition[] {
     
     can_buy_addons: config.can_buy_addons,
     feature_flags: {},
+    features: config.features || [],
     ui_color: config.color,
     ui_icon: null,
     

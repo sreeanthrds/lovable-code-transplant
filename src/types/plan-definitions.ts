@@ -48,6 +48,7 @@ export interface PlanDefinition {
   // Features
   can_buy_addons: boolean;
   feature_flags: Record<string, boolean>;
+  features: string[]; // Display bullet points for pricing page
   ui_color: string;
   ui_icon: string | null;
   
@@ -94,6 +95,7 @@ export interface CreatePlanInput {
   
   can_buy_addons?: boolean;
   feature_flags?: Record<string, boolean>;
+  features?: string[];
   ui_color?: string;
   ui_icon?: string | null;
   
@@ -138,6 +140,7 @@ export const DEFAULT_FREE_PLAN: Omit<PlanDefinition, 'id' | 'created_at' | 'upda
   
   can_buy_addons: false,
   feature_flags: {},
+  features: [],
   ui_color: 'secondary',
   ui_icon: null,
   
@@ -194,6 +197,7 @@ export interface PlanFormState {
   // Features
   can_buy_addons: boolean;
   feature_flags: Record<string, boolean>;
+  features: string[]; // Display bullet points for pricing page
   ui_color: string;
   ui_icon: string;
 }
@@ -235,6 +239,7 @@ export function formStateToPlanInput(state: PlanFormState): CreatePlanInput {
     
     can_buy_addons: state.can_buy_addons,
     feature_flags: state.feature_flags,
+    features: state.features,
     ui_color: state.ui_color,
     ui_icon: state.ui_icon || null,
     
@@ -285,6 +290,7 @@ export function planToFormState(plan: PlanDefinition): PlanFormState {
     
     can_buy_addons: plan.can_buy_addons,
     feature_flags: plan.feature_flags || {},
+    features: plan.features || [],
     ui_color: plan.ui_color,
     ui_icon: plan.ui_icon || '',
   };
@@ -332,6 +338,7 @@ export const INITIAL_FORM_STATE: PlanFormState = {
   
   can_buy_addons: false,
   feature_flags: {},
+  features: [],
   ui_color: 'default',
   ui_icon: '',
 };
