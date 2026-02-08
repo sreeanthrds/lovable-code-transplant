@@ -431,7 +431,14 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
         console.log('Trades date:', trades.date);
         console.log('Trades array length:', tradesArray.length);
         console.log('First trade keys:', firstTrade ? Object.keys(firstTrade) : 'no trade');
-        console.log('First trade sample:', firstTrade ? JSON.stringify(firstTrade).slice(0, 200) : 'none');
+        console.log('First trade sample:', firstTrade ? JSON.stringify(firstTrade).slice(0, 500) : 'none');
+        
+        // Check specifically for flow IDs
+        console.log('=== DEBUG: Flow ID Analysis ===');
+        console.log('First trade entry_flow_ids:', firstTrade?.entry_flow_ids);
+        console.log('First trade exit_flow_ids:', firstTrade?.exit_flow_ids);
+        console.log('Diagnostics events_history count:', eventKeys.length);
+        console.log('Diagnostics sample keys:', eventKeys.slice(0, 5));
         
         // Ensure trades have flow_ids arrays and proper typing - with defensive array check
         const normalizedTrades: TradesDaily = {
@@ -449,6 +456,13 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
             exit_flow_ids: t.exit_flow_ids || [],
           })),
         };
+        
+        // Log normalized data
+        const firstNormalized = normalizedTrades.trades[0];
+        console.log('=== DEBUG: Normalized Trade Flow IDs ===');
+        console.log('Normalized entry_flow_ids:', firstNormalized?.entry_flow_ids);
+        console.log('Normalized exit_flow_ids:', firstNormalized?.exit_flow_ids);
+        
         setSelectedDayData({ trades: normalizedTrades, diagnostics });
       } else {
         console.error('Missing data - trades:', !!trades, 'diagnostics:', !!diagnostics);
