@@ -145,16 +145,31 @@ export function PlanPreviewCard({ formState }: PlanPreviewCardProps) {
           </div>
         </div>
 
-        {/* Features */}
+        {/* Feature Highlights (bullet points) */}
+        {formState.features && formState.features.length > 0 && (
+          <div className="space-y-3 pt-2 border-t">
+            <h4 className="text-sm font-semibold">What's Included</h4>
+            <div className="space-y-1">
+              {formState.features.map((feature, index) => (
+                <div key={index} className="flex items-center gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0" />
+                  <span>{feature}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Feature Flags */}
         {hasActiveFeatures && (
           <div className="space-y-3 pt-2 border-t">
-            <h4 className="text-sm font-semibold">Features</h4>
+            <h4 className="text-sm font-semibold text-muted-foreground">Feature Flags</h4>
             <div className="space-y-1">
               {Object.entries(formState.feature_flags)
                 .filter(([_, enabled]) => enabled)
                 .map(([key]) => (
-                  <div key={key} className="flex items-center gap-2 text-sm">
-                    <Check className="h-4 w-4 text-primary" />
+                  <div key={key} className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Check className="h-4 w-4 text-primary/60" />
                     <span className="capitalize">{key.replace(/_/g, ' ')}</span>
                   </div>
                 ))}

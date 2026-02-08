@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, X, Sparkles } from 'lucide-react';
+import { Plus, X, Sparkles, List, GripVertical } from 'lucide-react';
 import type { PlanFormState } from '@/types/plan-definitions';
 
 interface PlanFeaturesSectionProps {
@@ -48,6 +48,7 @@ const UI_ICONS = [
 export function PlanFeaturesSection({ formState, onChange }: PlanFeaturesSectionProps) {
   const [newFeatureKey, setNewFeatureKey] = useState('');
   const [newFeatureValue, setNewFeatureValue] = useState(true);
+  const [newBulletPoint, setNewBulletPoint] = useState('');
 
   const toggleFeature = (key: string, enabled: boolean) => {
     onChange({
@@ -76,8 +77,87 @@ export function PlanFeaturesSection({ formState, onChange }: PlanFeaturesSection
     setNewFeatureKey('');
   };
 
+  // Feature bullet points management
+  const addBulletPoint = () => {
+    if (!newBulletPoint.trim()) return;
+    onChange({
+      features: [...(formState.features || []), newBulletPoint.trim()],
+    });
+    setNewBulletPoint('');
+  };
+
+  const removeBulletPoint = (index: number) => {
+    const newFeatures = [...(formState.features || [])];
+    newFeatures.splice(index, 1);
+    onChange({ features: newFeatures });
+  };
+
+  const updateBulletPoint = (index: number, value: string) => {
+    const newFeatures = [...(formState.features || [])];
+    newFeatures[index] = value;
+    onChange({ features: newFeatures });
+  };
+
   return (
     <div className="space-y-6">
+      {/* Feature Bullet Points - Display on Pricing Page */}
+      <div className="space-y-4">
+        <h4 className="text-sm font-semibold flex items-center gap-2">
+          <List className="h-4 w-4" />
+          Feature Highlights (Pricing Page)
+        </h4>
+        <p className="text-xs text-muted-foreground">
+          These bullet points are displayed to users on the pricing page and upgrade dialogs.
+        </p>
+        
+        <div className="space-y-2">
+          {(formState.features || []).map((feature, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
+              <Input
+                value={feature}
+                onChange={(e) => updateBulletPoint(index, e.target.value)}
+                placeholder="Feature description..."
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => removeBulletPoint(index)}
+                className="text-destructive hover:text-destructive"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="Add new feature highlight..."
+            value={newBulletPoint}
+            onChange={(e) => setNewBulletPoint(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addBulletPoint();
+              }
+            }}
+            className="flex-1"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addBulletPoint}
+            disabled={!newBulletPoint.trim()}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add
+          </Button>
+        </div>
+      </div>
+
       {/* Predefined Features */}
       <div className="space-y-4">
         <h4 className="text-sm font-semibold flex items-center gap-2">

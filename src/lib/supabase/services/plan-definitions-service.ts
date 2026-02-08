@@ -161,6 +161,7 @@ export const planDefinitionsService = {
         // Features
         can_buy_addons: input.can_buy_addons ?? false,
         feature_flags: input.feature_flags || {},
+        features: input.features || [],
         ui_color: input.ui_color || 'default',
         ui_icon: input.ui_icon === 'none' ? null : (input.ui_icon || null),
         
@@ -211,7 +212,7 @@ export const planDefinitionsService = {
         'live_executions_monthly_limit', 'paper_trading_daily_limit', 'paper_trading_monthly_limit',
         'reset_type', 'daily_reset_hour', 'reset_timezone',
         'price_monthly', 'price_yearly', 'currency', 'discount_percentage',
-        'can_buy_addons', 'feature_flags', 'ui_color', 'ui_icon', 'sort_order'
+        'can_buy_addons', 'feature_flags', 'features', 'ui_color', 'ui_icon', 'sort_order'
       ];
       
       for (const key of allowedFields) {
@@ -346,6 +347,7 @@ export const planDefinitionsService = {
         
         can_buy_addons: original.can_buy_addons,
         feature_flags: original.feature_flags,
+        features: original.features || [],
         ui_color: original.ui_color,
         ui_icon: original.ui_icon,
         
