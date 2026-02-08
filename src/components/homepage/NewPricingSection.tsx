@@ -10,6 +10,18 @@ import { PlanType, BillingCycle } from '@/types/billing';
 import AuthModal from '../auth/AuthModal';
 import { usePublicPlans } from '@/hooks/usePlanDefinitions';
 
+// Helper functions - defined outside component for stable hook count
+const formatPrice = (amount: number, currency: string = 'INR') => {
+  if (amount === 0) return '₹0';
+  return currency === 'INR' ? `₹${amount.toLocaleString('en-IN')}` : `$${amount}`;
+};
+
+const calculatePriceWithGst = (basePrice: number, gstPercentage: number = 18) => {
+  const gstAmount = Math.round(basePrice * (gstPercentage / 100) * 100) / 100;
+  const total = Math.round((basePrice + gstAmount) * 100) / 100;
+  return { basePrice, gstAmount, total, gstPercentage };
+};
+
 const NewPricingSection = () => {
   const [showYearly, setShowYearly] = useState(false);
   const { isAuthenticated } = useAppAuth();
@@ -78,19 +90,6 @@ const NewPricingSection = () => {
     } finally {
       setProcessingPlan(null);
     }
-  };
-
-  // Format price with currency
-  const formatPrice = (amount: number, currency: string = 'INR') => {
-    if (amount === 0) return '₹0';
-    return currency === 'INR' ? `₹${amount.toLocaleString('en-IN')}` : `$${amount}`;
-  };
-
-  // Calculate price with GST
-  const calculatePriceWithGst = (basePrice: number, gstPercentage: number = 18) => {
-    const gstAmount = Math.round(basePrice * (gstPercentage / 100) * 100) / 100;
-    const total = Math.round((basePrice + gstAmount) * 100) / 100;
-    return { basePrice, gstAmount, total, gstPercentage };
   };
 
   // Get plan display data from database plans
