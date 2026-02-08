@@ -424,8 +424,9 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
       if (trades && diagnostics) {
         // Debug: Log the structure of the data with actual string values
         const tradesArray = trades.trades || [];
-        const firstTrade = tradesArray[0];
-        const eventKeys = diagnostics.events_history ? Object.keys(diagnostics.events_history) : [];
+        const firstTrade: any = tradesArray[0];
+        const eventsHistory = diagnostics.events_history || {};
+        const eventKeys = Object.keys(eventsHistory);
         
         console.log('=== DEBUG: Final Trade Data Analysis ===');
         console.log('Trades date:', trades.date);
@@ -437,24 +438,110 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
         console.log('=== DEBUG: Flow ID Analysis ===');
         console.log('First trade entry_flow_ids:', firstTrade?.entry_flow_ids);
         console.log('First trade exit_flow_ids:', firstTrade?.exit_flow_ids);
+        console.log('First trade entry_node_id:', firstTrade?.entry_node_id);
+        console.log('First trade position_id:', firstTrade?.position_id);
         console.log('Diagnostics events_history count:', eventKeys.length);
         console.log('Diagnostics sample keys:', eventKeys.slice(0, 5));
+        
+        // Helper function to build flow IDs from events_history
+        // When trades don't have entry_flow_ids/exit_flow_ids, we need to find them
+        // by matching position_id and node relationships
+        const buildFlowIdsForTrade = (trade: any): { entryFlowIds: string[], exitFlowIds: string[] } => {
+          // If trade already has flow IDs, use them
+          if (trade.entry_flow_ids?.length > 0 || trade.exit_flow_ids?.length > 0) {
+            return {
+              entryFlowIds: trade.entry_flow_ids || [],
+              exitFlowIds: trade.exit_flow_ids || []
+            };
+          }
+          
+          const positionId = trade.position_id;
+          const entryNodeId = trade.entry_node_id;
+          
+          const entryFlowIds: string[] = [];
+          const exitFlowIds: string[] = [];
+          
+          // Search through all events to find those related to this trade
+          for (const [executionId, event] of Object.entries(eventsHistory)) {
+            const e = event as any;
+            
+            // Check if event is related to this position
+            const eventPositionId = e.position?.position_id || e.action?.target_position_id;
+            const isRelatedToPosition = eventPositionId === positionId;
+            
+            // Check if this is an entry-related node
+            const isEntryNode = e.node_type === 'StartNode' || 
+                               e.node_type === 'EntrySignalNode' || 
+                               e.node_type === 'EntryNode';
+            
+            // Check if this is an exit-related node
+            const isExitNode = e.node_type === 'ExitSignalNode' || 
+                              e.node_type === 'ExitNode' || 
+                              e.node_type === 'SquareOffNode' ||
+                              e.node_type === 'ReEntrySignalNode';
+            
+            // Match by node_id if we have entry_node_id
+            const matchesEntryNodeId = entryNodeId && e.node_id === entryNodeId;
+            
+            // Add to appropriate flow based on node type and position relationship
+            if (isRelatedToPosition || matchesEntryNodeId) {
+              if (isEntryNode) {
+                entryFlowIds.push(executionId);
+              } else if (isExitNode) {
+                exitFlowIds.push(executionId);
+              }
+            }
+            
+            // Also check if entry/exit nodes have matching timestamp or parent-child relationships
+            // Look for nodes that have this position in their context
+            if (e.position?.position_id === positionId) {
+              if (isEntryNode && !entryFlowIds.includes(executionId)) {
+                entryFlowIds.push(executionId);
+              } else if (isExitNode && !exitFlowIds.includes(executionId)) {
+                exitFlowIds.push(executionId);
+              }
+            }
+          }
+          
+          // Sort by timestamp to maintain execution order
+          const sortByTimestamp = (ids: string[]) => {
+            return ids.sort((a, b) => {
+              const eventA = eventsHistory[a] as any;
+              const eventB = eventsHistory[b] as any;
+              if (!eventA?.timestamp || !eventB?.timestamp) return 0;
+              return new Date(eventA.timestamp).getTime() - new Date(eventB.timestamp).getTime();
+            });
+          };
+          
+          console.log(`Built flow IDs for position ${positionId}:`, {
+            entryFlowIds: entryFlowIds.length,
+            exitFlowIds: exitFlowIds.length
+          });
+          
+          return {
+            entryFlowIds: sortByTimestamp(entryFlowIds),
+            exitFlowIds: sortByTimestamp(exitFlowIds)
+          };
+        };
         
         // Ensure trades have flow_ids arrays and proper typing - with defensive array check
         const normalizedTrades: TradesDaily = {
           ...trades,
-          trades: tradesArray.map((t: any): Trade => ({
-            ...t,
-            side: t.side?.toUpperCase() === 'BUY' ? 'BUY' : 
-                  t.side?.toUpperCase() === 'SELL' ? 'SELL' : 
-                  t.side?.toLowerCase() === 'buy' ? 'buy' : 'sell',
-            status: t.status === 'open' ? 'open' : 'closed',
-            exit_price: t.exit_price ?? null,
-            exit_time: t.exit_time ?? null,
-            exit_reason: t.exit_reason ?? null,
-            entry_flow_ids: t.entry_flow_ids || [],
-            exit_flow_ids: t.exit_flow_ids || [],
-          })),
+          trades: tradesArray.map((t: any): Trade => {
+            const { entryFlowIds, exitFlowIds } = buildFlowIdsForTrade(t);
+            return {
+              ...t,
+              side: t.side?.toUpperCase() === 'BUY' ? 'BUY' : 
+                    t.side?.toUpperCase() === 'SELL' ? 'SELL' : 
+                    t.side?.toLowerCase() === 'buy' ? 'buy' : 'sell',
+              status: t.status === 'open' ? 'open' : 'closed',
+              exit_price: t.exit_price ?? null,
+              exit_time: t.exit_time ?? null,
+              exit_reason: t.exit_reason ?? null,
+              entry_flow_ids: entryFlowIds,
+              exit_flow_ids: exitFlowIds,
+            };
+          }),
         };
         
         // Log normalized data
