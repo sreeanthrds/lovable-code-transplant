@@ -39,7 +39,7 @@ const SubscriptionExpiredBanner: React.FC<SubscriptionExpiredBannerProps> = ({
           Kindly renew to continue accessing premium features.
         </span>
         <div className="flex items-center gap-2">
-          <a href="/#pricing">
+          <a href="/app/account?tab=billing">
             <Button size="sm" variant="default" className="gap-1.5">
               <RefreshCw className="w-3.5 h-3.5" />
               Renew Now
