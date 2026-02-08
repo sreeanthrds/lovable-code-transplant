@@ -458,20 +458,7 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
           const entryNodeId = trade.entry_node_id;
           const tradeReEntryNum = trade.re_entry_num || 0;
           
-          // Debug: Log all unique node_types to understand the data
-          if (isFirstTrade && eventKeys.length > 0) {
-            const nodeTypes = new Set<string>();
-            for (const key of eventKeys) {
-              const e = eventsHistory[key] as any;
-              if (e.node_type) nodeTypes.add(e.node_type);
-            }
-            console.log('=== DEBUG: All node_types in events_history ===');
-            console.log('Node types found:', Array.from(nodeTypes));
-            console.log('Looking for position_id:', positionId);
-            console.log('Looking for entry_node_id:', entryNodeId);
-          }
-          
-          // Classify node types
+          // Classify node types - define BEFORE using
           const isEntryNodeType = (nodeType: string) => 
             nodeType === 'StartNode' || 
             nodeType === 'EntrySignalNode' || 
@@ -481,6 +468,39 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
             nodeType === 'ExitSignalNode' || 
             nodeType === 'ExitNode' || 
             nodeType === 'SquareOffNode';
+          
+          // Debug: Log all unique node_types and exit event structure
+          if (isFirstTrade && eventKeys.length > 0) {
+            const nodeTypes = new Set<string>();
+            const exitEventSamples: any[] = [];
+            
+            for (const key of eventKeys) {
+              const e = eventsHistory[key] as any;
+              if (e.node_type) nodeTypes.add(e.node_type);
+              
+              // Collect samples of exit-type events to understand their structure
+              if (isExitNodeType(e.node_type) && exitEventSamples.length < 3) {
+                exitEventSamples.push({
+                  execution_id: key,
+                  node_type: e.node_type,
+                  node_id: e.node_id,
+                  node_name: e.node_name,
+                  position: e.position,
+                  action: e.action,
+                  exit_config: e.exit_config,
+                  exit_result: e.exit_result
+                });
+              }
+            }
+            console.log('=== DEBUG: All node_types in events_history ===');
+            console.log('Node types found:', Array.from(nodeTypes));
+            console.log('Looking for position_id:', positionId);
+            console.log('Looking for entry_node_id:', entryNodeId);
+            console.log('=== DEBUG: Sample EXIT events structure ===');
+            exitEventSamples.forEach((sample, i) => {
+              console.log(`Exit sample ${i + 1}:`, JSON.stringify(sample, null, 2));
+            });
+          }
           
           // Build parent chain lookup
           const parentMap = new Map<string, string>();
