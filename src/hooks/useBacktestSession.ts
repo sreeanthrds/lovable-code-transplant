@@ -535,10 +535,11 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
               }
             }
             
-            // For EXIT matching: ONLY use action.target_position_id - this is specific to exit actions
-            // This is stricter - only exit nodes that explicitly target this position
+            // For EXIT matching: use action.target_position_id AND position.re_entry_num
+            // Must match both position AND re_entry_num to avoid matching exits for re-entries
             const exitTargetPositionId = e.action?.target_position_id;
-            const matchesExitTarget = exitTargetPositionId === positionId;
+            const exitPositionReEntryNum = e.position?.re_entry_num ?? 0;
+            const matchesExitTarget = exitTargetPositionId === positionId && exitPositionReEntryNum === tradeReEntryNum;
             
             if (matchesExitTarget && isExitNodeType(nodeType)) {
               exitEvents.push(executionId);
