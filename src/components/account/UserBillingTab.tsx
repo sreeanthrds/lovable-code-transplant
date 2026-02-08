@@ -126,6 +126,11 @@ const UserBillingTab: React.FC = () => {
             title: 'Payment Processing...',
             description: 'Please wait while we confirm your payment. This may take a moment for UPI/QR payments.',
           });
+        },
+        () => {
+          // onDismiss callback - reset button state when user cancels/closes
+          console.log('[UserBillingTab] Payment dismissed - resetting upgrade state');
+          setUpgrading(false);
         }
       );
     } catch (error) {
