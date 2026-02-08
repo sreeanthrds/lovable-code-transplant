@@ -1,15 +1,17 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
-
-// TradeLayout Supabase project credentials (primary database)
-const TRADELAYOUT_URL = "https://oonepfqgzpdssfzvokgk.supabase.co";
-const TRADELAYOUT_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vbmVwZnFnenBkc3NmenZva2drIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxOTk5MTQsImV4cCI6MjA2NTc3NTkxNH0.lDCxgwj36EniiZthzZxhM_8coXQhXlrvv9UzemyYu6A";
+import { config } from '@/config/environment';
 
 /**
  * Unauthenticated TradeLayout Supabase client
  * Use this for public queries that don't require authentication
+ * 
+ * Uses environment-based configuration for dev/prod switching
  */
-export const tradelayoutClient = createClient<Database>(TRADELAYOUT_URL, TRADELAYOUT_ANON_KEY);
+export const tradelayoutClient = createClient<Database>(
+  config.supabase.url,
+  config.supabase.anonKey
+);
 
 /**
  * Get Clerk JWT token for Supabase authentication
@@ -50,7 +52,7 @@ export async function getAuthenticatedTradelayoutClient(): Promise<SupabaseClien
     }
 
     // Create client with Clerk JWT in Authorization header
-    const client = createClient<Database>(TRADELAYOUT_URL, TRADELAYOUT_ANON_KEY, {
+    const client = createClient<Database>(config.supabase.url, config.supabase.anonKey, {
       global: {
         headers: {
           Authorization: `Bearer ${token}`,

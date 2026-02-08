@@ -2,16 +2,14 @@
 // NOTE: Auth is handled by Clerk, not Supabase. Session persistence is disabled.
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+import { config } from '@/config/environment';
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
 // Auth is managed by Clerk - disable Supabase's built-in auth to prevent
 // double sign-in prompts and session conflicts
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient<Database>(config.supabase.url, config.supabase.anonKey, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,
