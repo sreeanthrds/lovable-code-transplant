@@ -159,8 +159,37 @@ export const ViewTradesModalV2: React.FC<ViewTradesModalV2Props> = ({
 
       setBacktestTrades(tradesDaily);
       // Use diagnostics from streaming data if available, otherwise empty
-      const diagnostics = streamingTradesData.diagnostics || { events_history: {} };
-      console.log('[ViewTradesModalV2] Streaming diagnostics events_history keys:', Object.keys(diagnostics.events_history || {}).length);
+      // Handle potential structure variations in diagnostics data
+      let diagnostics = streamingTradesData.diagnostics || { events_history: {} };
+      
+      // Ensure events_history exists and is properly structured
+      if (!diagnostics.events_history && typeof diagnostics === 'object') {
+        // Check if diagnostics itself is the events_history
+        const sampleKey = Object.keys(diagnostics)[0];
+        const sampleValue = sampleKey ? (diagnostics as any)[sampleKey] : null;
+        if (sampleValue && typeof sampleValue === 'object' && 'execution_id' in sampleValue) {
+          console.log('[ViewTradesModalV2] Diagnostics appears to be events_history at root, wrapping');
+          diagnostics = { events_history: diagnostics as any };
+        }
+      }
+      
+      const eventsHistoryKeys = Object.keys(diagnostics.events_history || {});
+      console.log('[ViewTradesModalV2] Streaming diagnostics structure:', {
+        hasEventsHistory: 'events_history' in diagnostics,
+        eventsHistoryCount: eventsHistoryKeys.length,
+        sampleKeys: eventsHistoryKeys.slice(0, 5),
+        rawDiagnosticsKeys: Object.keys(streamingTradesData.diagnostics || {})
+      });
+      
+      // Log sample trade flow IDs for comparison
+      if (streamingTradesData.trades?.length > 0) {
+        const firstTrade = streamingTradesData.trades[0];
+        console.log('[ViewTradesModalV2] Sample trade flow IDs:', {
+          entry_flow_ids: firstTrade.entry_flow_ids?.slice(0, 3),
+          exit_flow_ids: firstTrade.exit_flow_ids?.slice(0, 3)
+        });
+      }
+      
       setBacktestDiagnostics(diagnostics);
       setBacktestLoading(false);
       return;

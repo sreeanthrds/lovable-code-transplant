@@ -40,29 +40,59 @@ const BacktestReport: React.FC<BacktestReportProps> = ({
 
   // Use external data if provided, otherwise use hook data
   const tradesData = externalTradesData || hookTradesData;
-  const allNodes = externalDiagnosticsData?.events_history || hookAllNodes;
+  
+  // Handle diagnostics - ensure events_history exists
+  let resolvedAllNodes: Record<string, ExecutionNode> = {};
+  if (externalDiagnosticsData) {
+    if (externalDiagnosticsData.events_history) {
+      resolvedAllNodes = externalDiagnosticsData.events_history;
+    } else if (typeof externalDiagnosticsData === 'object') {
+      // Check if externalDiagnosticsData IS the events_history
+      const sampleKey = Object.keys(externalDiagnosticsData)[0];
+      const sampleValue = sampleKey ? (externalDiagnosticsData as any)[sampleKey] : null;
+      if (sampleValue && typeof sampleValue === 'object' && 'execution_id' in sampleValue) {
+        console.log('[BacktestReport] External diagnostics is events_history at root level');
+        resolvedAllNodes = externalDiagnosticsData as unknown as Record<string, ExecutionNode>;
+      }
+    }
+  } else {
+    resolvedAllNodes = hookAllNodes;
+  }
+  
+  const allNodes = resolvedAllNodes;
+  
+  // Debug: Log diagnostics state on mount
+  React.useEffect(() => {
+    console.log('[BacktestReport] Diagnostics state:', {
+      hasExternalDiagnostics: !!externalDiagnosticsData,
+      externalDiagnosticsKeys: externalDiagnosticsData ? Object.keys(externalDiagnosticsData) : [],
+      resolvedAllNodesCount: Object.keys(resolvedAllNodes).length,
+      sampleNodeKeys: Object.keys(resolvedAllNodes).slice(0, 5)
+    });
+  }, [externalDiagnosticsData, resolvedAllNodes]);
   
   const getFlowNodes = (executionIds: string[]): ExecutionNode[] => {
-    if (externalDiagnosticsData?.events_history) {
-      const availableKeys = Object.keys(externalDiagnosticsData.events_history);
-      const resolved = executionIds
-        .map(id => externalDiagnosticsData.events_history[id])
-        .filter((node): node is ExecutionNode => node !== undefined);
-      
-      // Debug: Log mismatch details
-      if (executionIds.length > 0 && resolved.length === 0) {
-        console.log('🔴 Flow ID mismatch detected:', {
-          requestedIds: executionIds.slice(0, 3),
-          availableKeySamples: availableKeys.slice(0, 5),
-          totalAvailableKeys: availableKeys.length,
-          requestedCount: executionIds.length,
-          resolvedCount: resolved.length
-        });
-      }
-      
-      return resolved;
+    const resolved = executionIds
+      .map(id => allNodes[id])
+      .filter((node): node is ExecutionNode => node !== undefined);
+    
+    // Debug: Log mismatch details
+    if (executionIds.length > 0 && resolved.length === 0) {
+      console.log('🔴 Flow ID mismatch detected:', {
+        requestedIds: executionIds.slice(0, 3),
+        availableKeySamples: Object.keys(allNodes).slice(0, 5),
+        totalAvailableKeys: Object.keys(allNodes).length,
+        requestedCount: executionIds.length,
+        resolvedCount: resolved.length
+      });
+    } else if (executionIds.length > 0 && resolved.length > 0) {
+      console.log('✅ Flow nodes resolved:', {
+        requestedCount: executionIds.length,
+        resolvedCount: resolved.length
+      });
     }
-    return hookGetFlowNodes(executionIds);
+    
+    return resolved;
   };
 
   const handleNodeClick = (node: ExecutionNode) => {

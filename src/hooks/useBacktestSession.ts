@@ -388,7 +388,36 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
             }
           }
         } else if (fileName.includes('diagnostics_export')) {
-          diagnostics = decodePossiblyGzippedJson(fileData, fileName);
+          const parsed = decodePossiblyGzippedJson(fileData, fileName);
+          console.log('=== DEBUG: Parsed diagnostics_export structure ===');
+          console.log('Parsed diagnostics keys:', Object.keys(parsed));
+          console.log('Has events_history:', 'events_history' in parsed);
+          
+          // Handle different possible structures from the API
+          // The diagnostics might have events_history at root, or might need extraction
+          if (parsed.events_history && typeof parsed.events_history === 'object') {
+            // Standard structure with events_history
+            diagnostics = parsed;
+            console.log('Events history count:', Object.keys(parsed.events_history).length);
+            console.log('Sample event keys:', Object.keys(parsed.events_history).slice(0, 5));
+          } else if (typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+            // The parsed object might BE the events_history directly
+            // Check if keys look like execution IDs (contain hyphens or underscores)
+            const sampleKey = Object.keys(parsed)[0];
+            const sampleValue = parsed[sampleKey];
+            if (sampleValue && typeof sampleValue === 'object' && 'execution_id' in sampleValue) {
+              // This looks like events_history is at root level
+              console.log('Diagnostics appears to be events_history at root level');
+              diagnostics = { events_history: parsed };
+            } else {
+              // Unknown structure, wrap as-is
+              console.warn('Unknown diagnostics structure, using as-is:', Object.keys(parsed));
+              diagnostics = parsed;
+            }
+          } else {
+            console.warn('Empty or invalid diagnostics structure');
+            diagnostics = { events_history: {} };
+          }
         }
       }
 
