@@ -4,6 +4,7 @@
 // ============================================
 import { tradelayoutClient } from '@/lib/supabase/tradelayout-client';
 import { PlanType, BillingCycle, PLAN_CONFIGS } from '@/types/billing';
+import { planDefinitionsService } from '@/lib/supabase/services/plan-definitions-service';
 
 declare global {
   interface Window {
@@ -63,21 +64,42 @@ export const createPaymentOrder = async (
   userEmail: string,
   planType: PlanType,
   billingCycle: BillingCycle
-): Promise<{ success: boolean; order_id?: string; key_id?: string; amount?: number; error?: string }> => {
+): Promise<{ success: boolean; order_id?: string; key_id?: string; amount?: number; baseAmount?: number; gstAmount?: number; gstPercentage?: number; error?: string }> => {
   try {
-    const planConfig = PLAN_CONFIGS[planType];
-    const amount = billingCycle === 'yearly' ? planConfig.price_yearly : planConfig.price_monthly;
+    // First try to fetch plan from database for accurate pricing + GST
+    let baseAmount: number;
+    let gstPercentage = 18; // Default GST
+    
+    const dbPlan = await planDefinitionsService.getPlanByCode(planType);
+    
+    if (dbPlan) {
+      baseAmount = billingCycle === 'yearly' ? dbPlan.price_yearly : dbPlan.price_monthly;
+      gstPercentage = dbPlan.gst_percentage ?? 18;
+      console.log(`[PaymentService] Using DB plan: ${planType}, Base: ₹${baseAmount}, GST: ${gstPercentage}%`);
+    } else {
+      // Fallback to hardcoded PLAN_CONFIGS
+      const planConfig = PLAN_CONFIGS[planType];
+      baseAmount = billingCycle === 'yearly' ? planConfig.price_yearly : planConfig.price_monthly;
+      console.log(`[PaymentService] Using fallback config: ${planType}, Base: ₹${baseAmount}, GST: ${gstPercentage}%`);
+    }
+    
+    // Calculate GST amount
+    const gstAmount = Math.round(baseAmount * (gstPercentage / 100) * 100) / 100;
+    const totalAmount = Math.round((baseAmount + gstAmount) * 100) / 100;
 
-    console.log(`[PaymentService] Creating order for ${planType} ${billingCycle}: ₹${amount}`);
+    console.log(`[PaymentService] Creating order for ${planType} ${billingCycle}: Base ₹${baseAmount} + GST ₹${gstAmount} = ₹${totalAmount}`);
 
     const { data, error } = await tradelayoutClient.functions.invoke('razorpay-create-order', {
       body: {
-        amount,
+        amount: totalAmount,
         currency: 'INR',
         plan_type: planType,
         billing_cycle: billingCycle,
         user_id: userId,
         user_email: userEmail,
+        base_amount: baseAmount,
+        gst_amount: gstAmount,
+        gst_percentage: gstPercentage,
       },
     });
 
@@ -95,6 +117,9 @@ export const createPaymentOrder = async (
       order_id: data.order_id,
       key_id: data.key_id,
       amount: data.amount,
+      baseAmount,
+      gstAmount,
+      gstPercentage,
     };
   } catch (error: any) {
     console.error('[PaymentService] Error:', error);
@@ -160,14 +185,18 @@ export const initiatePayment = async (
       throw new Error('Failed to load Razorpay');
     }
 
-    // Create order
+    // Create order (this now fetches GST from database)
     const orderResult = await createPaymentOrder(userId, userEmail, planType, billingCycle);
     if (!orderResult.success) {
       throw new Error(orderResult.error || 'Failed to create order');
     }
 
-    const planConfig = PLAN_CONFIGS[planType];
-    const amount = billingCycle === 'yearly' ? planConfig.price_yearly : planConfig.price_monthly;
+    // Get plan name for display
+    const dbPlan = await planDefinitionsService.getPlanByCode(planType);
+    const planName = dbPlan?.name || PLAN_CONFIGS[planType].name;
+    const baseAmount = orderResult.baseAmount || 0;
+    const gstAmount = orderResult.gstAmount || 0;
+    const totalAmount = baseAmount + gstAmount;
     const orderId = orderResult.order_id!;
 
     let paymentCompleted = false;
@@ -195,7 +224,7 @@ export const initiatePayment = async (
           userId,
           planType,
           billingCycle,
-          amount,
+          totalAmount,
           () => {
             paymentCompleted = true;
             stopPolling();
@@ -215,17 +244,22 @@ export const initiatePayment = async (
       }, 5000); // Poll every 5 seconds
     };
 
-    // Open Razorpay checkout
+    // Open Razorpay checkout with GST-inclusive amount
     const options = {
       key: orderResult.key_id,
       amount: orderResult.amount,
       currency: 'INR',
       name: 'TradeLayout',
-      description: `${planConfig.name} Plan - ${billingCycle === 'yearly' ? 'Annual' : 'Monthly'}`,
+      description: `${planName} Plan - ${billingCycle === 'yearly' ? 'Annual' : 'Monthly'} (incl. GST)`,
       order_id: orderId,
       prefill: {
         name: userName,
         email: userEmail,
+      },
+      notes: {
+        base_amount: baseAmount,
+        gst_amount: gstAmount,
+        gst_percentage: orderResult.gstPercentage,
       },
       theme: {
         color: '#6366f1',
@@ -248,7 +282,10 @@ export const initiatePayment = async (
               user_id: userId,
               plan_type: planType,
               billing_cycle: billingCycle,
-              amount,
+              amount: totalAmount,
+              base_amount: baseAmount,
+              gst_amount: gstAmount,
+              gst_percentage: orderResult.gstPercentage,
             },
           });
 
