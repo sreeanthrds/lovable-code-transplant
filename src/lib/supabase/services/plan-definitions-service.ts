@@ -157,6 +157,7 @@ export const planDefinitionsService = {
         price_yearly: input.price_yearly ?? 0,
         currency: input.currency || 'INR',
         discount_percentage: input.discount_percentage ?? 0,
+        gst_percentage: input.gst_percentage ?? 18,
         
         // Features
         can_buy_addons: input.can_buy_addons ?? false,
@@ -211,7 +212,7 @@ export const planDefinitionsService = {
         'backtests_daily_limit', 'backtests_monthly_limit', 'backtests_total_limit',
         'live_executions_monthly_limit', 'paper_trading_daily_limit', 'paper_trading_monthly_limit',
         'reset_type', 'daily_reset_hour', 'reset_timezone',
-        'price_monthly', 'price_yearly', 'currency', 'discount_percentage',
+        'price_monthly', 'price_yearly', 'currency', 'discount_percentage', 'gst_percentage',
         'can_buy_addons', 'feature_flags', 'features', 'ui_color', 'ui_icon', 'sort_order'
       ];
       

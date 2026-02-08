@@ -86,6 +86,13 @@ const NewPricingSection = () => {
     return currency === 'INR' ? `₹${amount.toLocaleString('en-IN')}` : `$${amount}`;
   };
 
+  // Calculate price with GST
+  const calculatePriceWithGst = (basePrice: number, gstPercentage: number = 18) => {
+    const gstAmount = Math.round(basePrice * (gstPercentage / 100) * 100) / 100;
+    const total = Math.round((basePrice + gstAmount) * 100) / 100;
+    return { basePrice, gstAmount, total, gstPercentage };
+  };
+
   // Get plan display data from database plans
   const getFreePlan = () => {
     const freePlan = dbPlans.find(p => p.code === 'FREE');
@@ -105,6 +112,7 @@ const NewPricingSection = () => {
       ],
       cta: 'Start Free',
       highlighted: false,
+      gstPercentage: freePlan.gst_percentage ?? 18,
     };
   };
 
@@ -116,10 +124,15 @@ const NewPricingSection = () => {
       ? `for ${Math.round(launchPlan.duration_days / 30)} months`
       : '/month';
     
+    const pricing = calculatePriceWithGst(launchPlan.price_monthly, launchPlan.gst_percentage);
+    
     return {
       name: launchPlan.name,
       planType: 'LAUNCH' as PlanType,
-      price: formatPrice(launchPlan.price_monthly, launchPlan.currency),
+      basePrice: launchPlan.price_monthly,
+      price: formatPrice(pricing.total, launchPlan.currency),
+      priceBreakdown: pricing,
+      currency: launchPlan.currency,
       period: durationText,
       badge: 'Early Adopter Access',
       description: launchPlan.description || "We're early. You're early. Let's grow together.",
@@ -132,6 +145,7 @@ const NewPricingSection = () => {
       note: 'Your ₹500 adjusts when you upgrade to Pro',
       cta: 'Claim Offer',
       highlighted: true,
+      gstPercentage: launchPlan.gst_percentage ?? 18,
     };
   };
 
@@ -148,20 +162,28 @@ const NewPricingSection = () => {
       'API access'
     ];
     
-    const yearlySavings = (proPlan.price_monthly * 12) - proPlan.price_yearly;
+    const monthlyPricing = calculatePriceWithGst(proPlan.price_monthly, proPlan.gst_percentage);
+    const yearlyPricing = calculatePriceWithGst(proPlan.price_yearly, proPlan.gst_percentage);
+    const yearlySavings = (monthlyPricing.total * 12) - yearlyPricing.total;
     
     return {
       name: proPlan.name,
       planType: 'PRO' as PlanType,
+      currency: proPlan.currency,
+      gstPercentage: proPlan.gst_percentage ?? 18,
       monthly: {
-        price: formatPrice(proPlan.price_monthly, proPlan.currency),
+        basePrice: proPlan.price_monthly,
+        price: formatPrice(monthlyPricing.total, proPlan.currency),
+        priceBreakdown: monthlyPricing,
         period: '/month',
         description: proPlan.description || 'Full power for serious traders',
         features: proPlan.features?.length ? proPlan.features : defaultFeatures,
         cta: 'Get Pro Monthly',
       },
       yearly: {
-        price: formatPrice(proPlan.price_yearly, proPlan.currency),
+        basePrice: proPlan.price_yearly,
+        price: formatPrice(yearlyPricing.total, proPlan.currency),
+        priceBreakdown: yearlyPricing,
         period: '/year',
         description: proPlan.description || 'Best value for committed traders',
         features: proPlan.features?.length ? proPlan.features : defaultFeatures,
@@ -268,6 +290,11 @@ const NewPricingSection = () => {
                   <span className="text-4xl font-bold text-foreground">{launchPlan.price}</span>
                   <span className="text-muted-foreground text-sm">{launchPlan.period}</span>
                 </div>
+                {launchPlan.basePrice > 0 && launchPlan.priceBreakdown && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Base: {formatPrice(launchPlan.basePrice, launchPlan.currency)} + {launchPlan.gstPercentage}% GST
+                  </p>
+                )}
                 <p className="text-sm text-muted-foreground mt-2">{launchPlan.description}</p>
               </div>
 
@@ -342,7 +369,7 @@ const NewPricingSection = () => {
                   >
                     Yearly
                     {proPlan.yearly.savings && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500 text-white font-semibold whitespace-nowrap">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success text-success-foreground font-semibold whitespace-nowrap">
                         Save more
                       </span>
                     )}
@@ -353,9 +380,14 @@ const NewPricingSection = () => {
                   <span className="text-4xl font-bold text-foreground">{currentPro.price}</span>
                   <span className="text-muted-foreground text-sm">{currentPro.period}</span>
                 </div>
+                {currentPro.basePrice > 0 && currentPro.priceBreakdown && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Base: {formatPrice(currentPro.basePrice, proPlan.currency)} + {proPlan.gstPercentage}% GST
+                  </p>
+                )}
                 <p className="text-sm text-muted-foreground mt-2">{currentPro.description}</p>
                 {showYearly && proPlan.yearly.savings && (
-                  <p className="text-xs text-success mt-1">Save {proPlan.yearly.savings} annually</p>
+                  <p className="text-xs text-success mt-1">Save {proPlan.yearly.savings} annually (incl. GST)</p>
                 )}
               </div>
 
