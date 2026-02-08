@@ -499,29 +499,29 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
             const e = event as any;
             const nodeType = e.node_type || '';
             
-            // Check various ways an event can be related to this trade
-            const eventPositionId = e.position?.position_id || e.action?.target_position_id;
+            // For ENTRY matching: use position.position_id
+            const entryPositionId = e.position?.position_id;
             const eventReEntryNum = e.position?.re_entry_num || e.entry_config?.re_entry_num || 0;
             
-            // Match by position_id
-            const matchesPosition = eventPositionId === positionId && eventReEntryNum === tradeReEntryNum;
+            // Match entry events by position_id in position object
+            const matchesEntryPosition = entryPositionId === positionId && eventReEntryNum === tradeReEntryNum;
             
             // Match by entry_node_id (for entry events)
             const matchesEntryNode = entryNodeId && e.node_id === entryNodeId && eventReEntryNum === tradeReEntryNum;
             
-            // Match by action.target_position_id (for exit events targeting this position)
-            const matchesExitTarget = e.action?.target_position_id === positionId;
-            
-            if (matchesPosition || matchesEntryNode) {
+            if (matchesEntryPosition || matchesEntryNode) {
               if (isEntryNodeType(nodeType)) {
                 entryEvents.push(executionId);
               }
             }
             
-            if (matchesPosition || matchesExitTarget) {
-              if (isExitNodeType(nodeType)) {
-                exitEvents.push(executionId);
-              }
+            // For EXIT matching: ONLY use action.target_position_id - this is specific to exit actions
+            // This is stricter - only exit nodes that explicitly target this position
+            const exitTargetPositionId = e.action?.target_position_id;
+            const matchesExitTarget = exitTargetPositionId === positionId;
+            
+            if (matchesExitTarget && isExitNodeType(nodeType)) {
+              exitEvents.push(executionId);
             }
           }
           
@@ -542,18 +542,22 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
             }
           }
           
-          // For EXIT flow: Only include the exit events and their immediate signal parent
-          // Do NOT walk all the way to root (that would include entry nodes)
+          // For EXIT flow: Include exit events and walk up ONLY through exit-type parents
           const exitFlowIds = new Set<string>();
           for (const exitId of exitEvents) {
             exitFlowIds.add(exitId);
             
-            // Check immediate parent - if it's an exit signal, include it
-            if (parentMap.has(exitId)) {
-              const parentId = parentMap.get(exitId)!;
+            // Walk up parent chain but STOP when we hit a non-exit node type
+            let current = exitId;
+            while (parentMap.has(current)) {
+              const parentId = parentMap.get(current)!;
               const parentEvent = eventsHistory[parentId] as any;
               if (parentEvent && isExitNodeType(parentEvent.node_type)) {
                 exitFlowIds.add(parentId);
+                current = parentId;
+              } else {
+                // Stop walking up when we hit non-exit node (e.g., StartNode, EntryNode)
+                break;
               }
             }
           }
