@@ -250,6 +250,9 @@ const Backtesting = () => {
   const isUnlimitedPlan = quotaInfo.backtests.remaining === -1;
   const isQuotaExhausted = !quotaLoading && !isUnlimitedPlan && quotaInfo.backtests.remaining === 0;
   const showExpiryWarning = quotaInfo.isExpired;
+  
+  // Block backtesting when subscription is expired (unless unlimited plan)
+  const isSubscriptionBlocked = !quotaLoading && !isUnlimitedPlan && quotaInfo.isExpired;
 
   return (
     <AppLayout>
@@ -290,8 +293,8 @@ const Backtesting = () => {
             </div>
           )}
 
-          {/* Configuration Form - hidden when quota exhausted */}
-          {!session && !isQuotaExhausted && (
+          {/* Configuration Form - hidden when quota exhausted OR subscription expired */}
+          {!session && !isQuotaExhausted && !isSubscriptionBlocked && (
             <div className="mb-6">
               <BacktestForm 
                 onSubmit={handleBacktestSubmit} 
