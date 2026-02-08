@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Sparkles, Loader2 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAppAuth } from '@/contexts/AuthContext';
 import { useUser } from '@clerk/clerk-react';
 import { initiatePayment } from '@/lib/services/payment-service';
 import { toast } from '@/hooks/use-toast';
 import { PlanType, BillingCycle } from '@/types/billing';
 import AuthModal from '../auth/AuthModal';
+import { usePublicPlans } from '@/hooks/usePlanDefinitions';
 
 const NewPricingSection = () => {
   const [showYearly, setShowYearly] = useState(false);
@@ -19,6 +20,9 @@ const NewPricingSection = () => {
     isOpen: false,
     mode: 'signin'
   });
+
+  // Fetch plans from database
+  const { plans: dbPlans, loading } = usePublicPlans();
 
   const handlePayment = async (planType: PlanType, billingCycle: BillingCycle) => {
     if (!isAuthenticated) {
@@ -76,30 +80,50 @@ const NewPricingSection = () => {
     }
   };
 
-  const plans = [
-    {
-      name: 'FREE',
+  // Format price with currency
+  const formatPrice = (amount: number, currency: string = 'INR') => {
+    if (amount === 0) return '₹0';
+    return currency === 'INR' ? `₹${amount.toLocaleString('en-IN')}` : `$${amount}`;
+  };
+
+  // Get plan display data from database plans
+  const getFreePlan = () => {
+    const freePlan = dbPlans.find(p => p.code === 'FREE');
+    if (!freePlan) return null;
+    
+    return {
+      name: freePlan.name,
       planType: 'FREE' as PlanType,
-      price: '₹0',
+      price: formatPrice(freePlan.price_monthly, freePlan.currency),
       period: '/month',
-      description: 'Get started with the basics',
-      features: [
-        '2 strategies backtested per day',
-        '14 total backtests per month',
+      description: freePlan.description || 'Get started with the basics',
+      features: freePlan.features?.length ? freePlan.features : [
+        `${freePlan.backtests_daily_limit} strategies backtested per day`,
+        `${freePlan.backtests_monthly_limit} total backtests per month`,
         'Strategy builder access',
         'Community support'
       ],
       cta: 'Start Free',
       highlighted: false,
-    },
-    {
-      name: 'LAUNCH OFFER',
+    };
+  };
+
+  const getLaunchPlan = () => {
+    const launchPlan = dbPlans.find(p => p.code === 'LAUNCH');
+    if (!launchPlan) return null;
+    
+    const durationText = launchPlan.duration_days 
+      ? `for ${Math.round(launchPlan.duration_days / 30)} months`
+      : '/month';
+    
+    return {
+      name: launchPlan.name,
       planType: 'LAUNCH' as PlanType,
-      price: '₹500',
-      period: 'for 2 months',
+      price: formatPrice(launchPlan.price_monthly, launchPlan.currency),
+      period: durationText,
       badge: 'Early Adopter Access',
-      description: "We're early. You're early. Let's grow together.",
-      features: [
+      description: launchPlan.description || "We're early. You're early. Let's grow together.",
+      features: launchPlan.features?.length ? launchPlan.features : [
         'Unlimited strategies',
         'Full backtest access',
         'Paper trading',
@@ -108,45 +132,63 @@ const NewPricingSection = () => {
       note: 'Your ₹500 adjusts when you upgrade to Pro',
       cta: 'Claim Offer',
       highlighted: true,
-    },
-    {
-      name: 'PRO',
+    };
+  };
+
+  const getProPlan = () => {
+    const proPlan = dbPlans.find(p => p.code === 'PRO');
+    if (!proPlan) return null;
+    
+    const defaultFeatures = [
+      `${proPlan.backtests_monthly_limit === -1 ? 'Unlimited' : proPlan.backtests_monthly_limit} backtests per month`,
+      `${proPlan.paper_trading_daily_limit === -1 ? 'Unlimited' : proPlan.paper_trading_daily_limit} strategies paper trading per day`,
+      `${proPlan.live_executions_monthly_limit === -1 ? 'Unlimited' : proPlan.live_executions_monthly_limit} strategies live trading per day`,
+      'Advanced analytics',
+      'Priority support',
+      'API access'
+    ];
+    
+    const yearlySavings = (proPlan.price_monthly * 12) - proPlan.price_yearly;
+    
+    return {
+      name: proPlan.name,
       planType: 'PRO' as PlanType,
-      isPro: true,
-    },
-  ];
-
-  const proMonthly = {
-    price: '₹2,999',
-    period: '/month',
-    description: 'Full power for serious traders',
-    features: [
-      '100 backtests per month (no daily cap)',
-      '2 strategies paper trading per day',
-      '50 strategies live trading per day',
-      'Advanced analytics',
-      'Priority support',
-      'API access'
-    ],
-    cta: 'Get Pro Monthly',
+      monthly: {
+        price: formatPrice(proPlan.price_monthly, proPlan.currency),
+        period: '/month',
+        description: proPlan.description || 'Full power for serious traders',
+        features: proPlan.features?.length ? proPlan.features : defaultFeatures,
+        cta: 'Get Pro Monthly',
+      },
+      yearly: {
+        price: formatPrice(proPlan.price_yearly, proPlan.currency),
+        period: '/year',
+        description: proPlan.description || 'Best value for committed traders',
+        features: proPlan.features?.length ? proPlan.features : defaultFeatures,
+        cta: 'Get Pro Yearly',
+        savings: yearlySavings > 0 ? formatPrice(yearlySavings, proPlan.currency) : null,
+      },
+    };
   };
 
-  const proYearly = {
-    price: '₹29,999',
-    period: '/year',
-    description: 'Best value for committed traders',
-    features: [
-      '100 backtests per month (refreshes monthly)',
-      '2 strategies paper trading per day',
-      '50 strategies live trading per day',
-      'Advanced analytics',
-      'Priority support',
-      'API access'
-    ],
-    cta: 'Get Pro Yearly',
-  };
+  const freePlan = getFreePlan();
+  const launchPlan = getLaunchPlan();
+  const proPlan = getProPlan();
 
-  const currentPro = showYearly ? proYearly : proMonthly;
+  // Show loading state
+  if (loading) {
+    return (
+      <section id="pricing" className="section-padding bg-card/20">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const currentPro = proPlan ? (showYearly ? proPlan.yearly : proPlan.monthly) : null;
 
   return (
     <section id="pricing" className="section-padding bg-card/20">
@@ -162,144 +204,186 @@ const NewPricingSection = () => {
         </motion.div>
 
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {plans.map((plan, index) => (
+          {/* FREE Plan */}
+          {freePlan && (
             <motion.div
-              key={plan.name}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: index * 0.1 }}
-              className={`relative rounded-2xl p-6 ${
-                plan.highlighted 
-                  ? 'bg-gradient-to-b from-accent/10 to-accent/5 border-2 border-accent/50' 
-                  : 'glass-card'
-              }`}
+              transition={{ delay: 0 }}
+              className="relative rounded-2xl p-6 glass-card"
             >
-              {plan.badge && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-accent text-accent-foreground text-xs font-medium flex items-center gap-1">
+              <div className="text-center mb-6 pt-2">
+                <h3 className="text-lg font-semibold text-foreground mb-2">{freePlan.name}</h3>
+                <div className="flex items-baseline justify-center gap-1">
+                  <span className="text-4xl font-bold text-foreground">{freePlan.price}</span>
+                  <span className="text-muted-foreground text-sm">{freePlan.period}</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">{freePlan.description}</p>
+              </div>
+
+              <ul className="space-y-3 mb-6">
+                {freePlan.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2 text-sm">
+                    <Check className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
+                    <span className="text-foreground">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <button
+                onClick={() => handlePayment('FREE', 'monthly')}
+                disabled={processingPlan === 'FREE-monthly'}
+                className="block w-full text-center py-3 rounded-xl font-medium transition-all btn-ghost disabled:opacity-50"
+              >
+                {processingPlan === 'FREE-monthly' ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </span>
+                ) : (
+                  freePlan.cta
+                )}
+              </button>
+            </motion.div>
+          )}
+
+          {/* LAUNCH Plan */}
+          {launchPlan && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="relative rounded-2xl p-6 bg-gradient-to-b from-accent/10 to-accent/5 border-2 border-accent/50"
+            >
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-accent text-accent-foreground text-xs font-medium flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                {launchPlan.badge}
+              </div>
+
+              <div className="text-center mb-6 pt-2">
+                <h3 className="text-lg font-semibold text-foreground mb-2">{launchPlan.name}</h3>
+                <div className="flex items-baseline justify-center gap-1">
+                  <span className="text-4xl font-bold text-foreground">{launchPlan.price}</span>
+                  <span className="text-muted-foreground text-sm">{launchPlan.period}</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">{launchPlan.description}</p>
+              </div>
+
+              <ul className="space-y-3 mb-6">
+                {launchPlan.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2 text-sm">
+                    <Check className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
+                    <span className="text-foreground">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {launchPlan.note && (
+                <p className="text-xs text-muted-foreground text-center mb-4 italic">{launchPlan.note}</p>
+              )}
+
+              <button
+                onClick={() => handlePayment('LAUNCH', 'monthly')}
+                disabled={processingPlan === 'LAUNCH-monthly'}
+                className="block w-full text-center py-3 rounded-xl font-medium transition-all btn-accent-glow disabled:opacity-50"
+              >
+                {processingPlan === 'LAUNCH-monthly' ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </span>
+                ) : (
+                  launchPlan.cta
+                )}
+              </button>
+            </motion.div>
+          )}
+
+          {/* PRO Plan */}
+          {proPlan && currentPro && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="relative rounded-2xl p-6 glass-card"
+            >
+              {showYearly && proPlan.yearly.savings && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-success text-success-foreground text-xs font-medium flex items-center gap-1">
                   <Sparkles className="w-3 h-3" />
-                  {plan.badge}
+                  Save {proPlan.yearly.savings}
                 </div>
               )}
-
-              {/* Pro card with toggle */}
-              {plan.isPro ? (
-                <>
-                  {showYearly && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-success text-success-foreground text-xs font-medium flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" />
-                      2 Months Free
-                    </div>
-                  )}
-                  
-                  <div className="text-center mb-4 pt-2">
-                    <h3 className="text-lg font-semibold text-foreground mb-3">{plan.name}</h3>
-                    
-                    {/* Toggle inside the card */}
-                    <div className="flex items-center justify-center gap-2 mb-4 p-1.5 bg-muted/50 rounded-full">
-                      <button 
-                        onClick={() => setShowYearly(false)}
-                        className={`px-4 py-2 text-sm font-medium rounded-full transition-all ${
-                          !showYearly 
-                            ? 'bg-primary text-primary-foreground' 
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        Monthly
-                      </button>
-                      <button 
-                        onClick={() => setShowYearly(true)}
-                        className={`px-4 py-2 text-sm font-medium rounded-full transition-all flex items-center gap-1.5 ${
-                          showYearly 
-                            ? 'bg-primary text-primary-foreground' 
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        Yearly
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500 text-white font-semibold whitespace-nowrap">
-                          2 free months
-                        </span>
-                      </button>
-                    </div>
-
-                    <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-4xl font-bold text-foreground">{currentPro.price}</span>
-                      <span className="text-muted-foreground text-sm">{currentPro.period}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-2">{currentPro.description}</p>
-                    {showYearly && (
-                      <p className="text-xs text-success mt-1">Save ₹5,989 annually</p>
-                    )}
-                  </div>
-
-                  <ul className="space-y-3 mb-6">
-                    {currentPro.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-2 text-sm">
-                        <Check className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
-                        <span className="text-foreground">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <button
-                    onClick={() => handlePayment('PRO', showYearly ? 'yearly' : 'monthly')}
-                    disabled={processingPlan === `PRO-${showYearly ? 'yearly' : 'monthly'}`}
-                    className="block w-full text-center py-3 rounded-xl font-medium transition-all btn-ghost disabled:opacity-50"
-                  >
-                    {processingPlan === `PRO-${showYearly ? 'yearly' : 'monthly'}` ? (
-                      <span className="inline-flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Processing...
-                      </span>
-                    ) : (
-                      currentPro.cta
-                    )}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="text-center mb-6 pt-2">
-                    <h3 className="text-lg font-semibold text-foreground mb-2">{plan.name}</h3>
-                    <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-4xl font-bold text-foreground">{plan.price}</span>
-                      <span className="text-muted-foreground text-sm">{plan.period}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-2">{plan.description}</p>
-                  </div>
-
-                  <ul className="space-y-3 mb-6">
-                    {plan.features?.map((feature) => (
-                      <li key={feature} className="flex items-start gap-2 text-sm">
-                        <Check className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
-                        <span className="text-foreground">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  {plan.note && (
-                    <p className="text-xs text-muted-foreground text-center mb-4 italic">{plan.note}</p>
-                  )}
-
-                  <button
-                    onClick={() => handlePayment(plan.planType, 'monthly')}
-                    disabled={processingPlan === `${plan.planType}-monthly`}
-                    className={`block w-full text-center py-3 rounded-xl font-medium transition-all disabled:opacity-50 ${
-                      plan.highlighted ? 'btn-accent-glow' : 'btn-ghost'
+              
+              <div className="text-center mb-4 pt-2">
+                <h3 className="text-lg font-semibold text-foreground mb-3">{proPlan.name}</h3>
+                
+                {/* Toggle inside the card */}
+                <div className="flex items-center justify-center gap-2 mb-4 p-1.5 bg-muted/50 rounded-full">
+                  <button 
+                    onClick={() => setShowYearly(false)}
+                    className={`px-4 py-2 text-sm font-medium rounded-full transition-all ${
+                      !showYearly 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    {processingPlan === `${plan.planType}-monthly` ? (
-                      <span className="inline-flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Processing...
+                    Monthly
+                  </button>
+                  <button 
+                    onClick={() => setShowYearly(true)}
+                    className={`px-4 py-2 text-sm font-medium rounded-full transition-all flex items-center gap-1.5 ${
+                      showYearly 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Yearly
+                    {proPlan.yearly.savings && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500 text-white font-semibold whitespace-nowrap">
+                        Save more
                       </span>
-                    ) : (
-                      plan.cta
                     )}
                   </button>
-                </>
-              )}
+                </div>
+
+                <div className="flex items-baseline justify-center gap-1">
+                  <span className="text-4xl font-bold text-foreground">{currentPro.price}</span>
+                  <span className="text-muted-foreground text-sm">{currentPro.period}</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">{currentPro.description}</p>
+                {showYearly && proPlan.yearly.savings && (
+                  <p className="text-xs text-success mt-1">Save {proPlan.yearly.savings} annually</p>
+                )}
+              </div>
+
+              <ul className="space-y-3 mb-6">
+                {currentPro.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2 text-sm">
+                    <Check className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
+                    <span className="text-foreground">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <button
+                onClick={() => handlePayment('PRO', showYearly ? 'yearly' : 'monthly')}
+                disabled={processingPlan === `PRO-${showYearly ? 'yearly' : 'monthly'}`}
+                className="block w-full text-center py-3 rounded-xl font-medium transition-all btn-ghost disabled:opacity-50"
+              >
+                {processingPlan === `PRO-${showYearly ? 'yearly' : 'monthly'}` ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </span>
+                ) : (
+                  currentPro.cta
+                )}
+              </button>
             </motion.div>
-          ))}
+          )}
         </div>
       </div>
 
