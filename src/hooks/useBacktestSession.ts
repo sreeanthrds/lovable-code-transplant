@@ -469,22 +469,31 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
             console.log('Node types found:', Array.from(nodeTypes));
             console.log('Looking for position_id:', positionId);
             console.log('Looking for entry_node_id:', entryNodeId);
-            
-            // Show sample event structure
-            const sampleEvent = eventsHistory[eventKeys[0]] as any;
-            console.log('Sample event:', {
-              node_type: sampleEvent.node_type,
-              node_id: sampleEvent.node_id,
-              node_name: sampleEvent.node_name,
-              execution_id: sampleEvent.execution_id,
-              parent_execution_id: sampleEvent.parent_execution_id,
-              position: sampleEvent.position,
-              action: sampleEvent.action
-            });
+          }
+          
+          // Classify node types
+          const isEntryNodeType = (nodeType: string) => 
+            nodeType === 'StartNode' || 
+            nodeType === 'EntrySignalNode' || 
+            nodeType === 'EntryNode';
+          
+          const isExitNodeType = (nodeType: string) => 
+            nodeType === 'ExitSignalNode' || 
+            nodeType === 'ExitNode' || 
+            nodeType === 'SquareOffNode';
+          
+          // Build parent chain lookup
+          const parentMap = new Map<string, string>();
+          for (const [executionId, event] of Object.entries(eventsHistory)) {
+            const e = event as any;
+            if (e.parent_execution_id) {
+              parentMap.set(executionId, e.parent_execution_id);
+            }
           }
           
           // Find all events related to this trade's position
-          const relatedEvents: { id: string; event: any; isEntry: boolean }[] = [];
+          const entryEvents: string[] = [];
+          const exitEvents: string[] = [];
           
           for (const [executionId, event] of Object.entries(eventsHistory)) {
             const e = event as any;
@@ -503,54 +512,49 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
             // Match by action.target_position_id (for exit events targeting this position)
             const matchesExitTarget = e.action?.target_position_id === positionId;
             
-            if (matchesPosition || matchesEntryNode || matchesExitTarget) {
-              // Classify as entry or exit based on node type and event context
-              const isEntryType = 
-                nodeType === 'StartNode' || 
-                nodeType === 'EntrySignalNode' || 
-                nodeType === 'EntryNode' ||
-                nodeType === 'ReEntrySignalNode' ||
-                (e.action?.type === 'place_order' && e.action?.action_type === 'entry');
-              
-              relatedEvents.push({ id: executionId, event: e, isEntry: isEntryType });
-            }
-          }
-          
-          // Now traverse parent chain to build complete flow for each matched event
-          const entryFlowIds = new Set<string>();
-          const exitFlowIds = new Set<string>();
-          
-          // Build parent chain lookup
-          const parentMap = new Map<string, string>();
-          const childrenMap = new Map<string, string[]>();
-          for (const [executionId, event] of Object.entries(eventsHistory)) {
-            const e = event as any;
-            if (e.parent_execution_id) {
-              parentMap.set(executionId, e.parent_execution_id);
-              if (!childrenMap.has(e.parent_execution_id)) {
-                childrenMap.set(e.parent_execution_id, []);
+            if (matchesPosition || matchesEntryNode) {
+              if (isEntryNodeType(nodeType)) {
+                entryEvents.push(executionId);
               }
-              childrenMap.get(e.parent_execution_id)!.push(executionId);
+            }
+            
+            if (matchesPosition || matchesExitTarget) {
+              if (isExitNodeType(nodeType)) {
+                exitEvents.push(executionId);
+              }
             }
           }
           
-          // For each related event, walk up to find the complete chain from root
-          for (const { id, event, isEntry } of relatedEvents) {
+          // For ENTRY flow: Walk up parent chain to include complete path from root
+          const entryFlowIds = new Set<string>();
+          for (const entryId of entryEvents) {
+            // Add the entry event itself
+            entryFlowIds.add(entryId);
+            
             // Walk up to root
-            const chain: string[] = [id];
-            let current = id;
+            let current = entryId;
             while (parentMap.has(current)) {
               const parent = parentMap.get(current)!;
               if (eventsHistory[parent]) {
-                chain.unshift(parent);
+                entryFlowIds.add(parent);
               }
               current = parent;
             }
+          }
+          
+          // For EXIT flow: Only include the exit events and their immediate signal parent
+          // Do NOT walk all the way to root (that would include entry nodes)
+          const exitFlowIds = new Set<string>();
+          for (const exitId of exitEvents) {
+            exitFlowIds.add(exitId);
             
-            // Add all events in chain to appropriate flow
-            const targetSet = isEntry ? entryFlowIds : exitFlowIds;
-            for (const chainId of chain) {
-              targetSet.add(chainId);
+            // Check immediate parent - if it's an exit signal, include it
+            if (parentMap.has(exitId)) {
+              const parentId = parentMap.get(exitId)!;
+              const parentEvent = eventsHistory[parentId] as any;
+              if (parentEvent && isExitNodeType(parentEvent.node_type)) {
+                exitFlowIds.add(parentId);
+              }
             }
           }
           
@@ -566,9 +570,10 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
           
           if (isFirstTrade) {
             console.log(`=== DEBUG: Built flow IDs for trade ${positionId} ===`);
-            console.log('Related events found:', relatedEvents.length);
-            console.log('Entry flow IDs:', Array.from(entryFlowIds));
-            console.log('Exit flow IDs:', Array.from(exitFlowIds));
+            console.log('Entry events found:', entryEvents.length);
+            console.log('Exit events found:', exitEvents.length);
+            console.log('Entry flow IDs (with parents):', Array.from(entryFlowIds));
+            console.log('Exit flow IDs (exit nodes only):', Array.from(exitFlowIds));
           }
           
           return {
