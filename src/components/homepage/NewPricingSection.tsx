@@ -72,6 +72,7 @@ const NewPricingSection = () => {
             description: `Your ${planType} plan has been activated.`,
           });
           navigate('/app/strategies');
+          setProcessingPlan(null);
         },
         (error) => {
           toast({
@@ -79,6 +80,14 @@ const NewPricingSection = () => {
             description: error,
             variant: "destructive"
           });
+          setProcessingPlan(null);
+        },
+        () => {
+          // onPending - payment is being processed
+        },
+        () => {
+          // onDismiss - user closed the modal without completing payment
+          setProcessingPlan(null);
         }
       );
     } catch (error: any) {
@@ -87,7 +96,6 @@ const NewPricingSection = () => {
         description: error.message || "Failed to initiate payment",
         variant: "destructive"
       });
-    } finally {
       setProcessingPlan(null);
     }
   };

@@ -176,7 +176,8 @@ export const initiatePayment = async (
   billingCycle: BillingCycle,
   onSuccess: () => void,
   onError: (error: string) => void,
-  onPending?: () => void
+  onPending?: () => void,
+  onDismiss?: () => void
 ): Promise<void> => {
   try {
     // Load Razorpay script
@@ -209,7 +210,7 @@ export const initiatePayment = async (
       }
     };
 
-    const startPolling = () => {
+    const startPolling = (shouldCallDismiss: boolean = false) => {
       if (pollingInterval) return;
       
       let pollCount = 0;
@@ -239,6 +240,10 @@ export const initiatePayment = async (
           stopPolling();
           if (!completed && pollCount >= maxPolls) {
             console.log('[PaymentService] Payment polling timed out');
+            // If we were waiting after modal dismiss and no payment detected, call onDismiss
+            if (shouldCallDismiss && !paymentCompleted) {
+              onDismiss?.();
+            }
           }
         }
       }, 5000); // Poll every 5 seconds
@@ -311,11 +316,39 @@ export const initiatePayment = async (
       },
       modal: {
         ondismiss: () => {
-          console.log('[PaymentService] Payment modal dismissed - starting status polling');
+          console.log('[PaymentService] Payment modal dismissed');
           // For UPI/QR payments, start polling to check if payment completed
           if (!paymentCompleted) {
-            startPolling();
-            onPending?.();
+            // Start short polling (3 polls max) to check if UPI payment went through
+            let dismissPollCount = 0;
+            const maxDismissPolls = 3;
+            
+            const dismissPolling = setInterval(async () => {
+              dismissPollCount++;
+              console.log(`[PaymentService] Quick check after dismiss (${dismissPollCount}/${maxDismissPolls})...`);
+              
+              const completed = await checkPaymentStatus(
+                orderId,
+                userId,
+                planType,
+                billingCycle,
+                totalAmount,
+                () => {
+                  paymentCompleted = true;
+                  clearInterval(dismissPolling);
+                  onSuccess();
+                },
+                () => {} // Don't show pending toast during quick check
+              );
+
+              if (completed || dismissPollCount >= maxDismissPolls) {
+                clearInterval(dismissPolling);
+                if (!completed) {
+                  console.log('[PaymentService] No payment detected after dismiss - resetting state');
+                  onDismiss?.();
+                }
+              }
+            }, 2000); // Quick polls every 2 seconds
           }
         },
       },
