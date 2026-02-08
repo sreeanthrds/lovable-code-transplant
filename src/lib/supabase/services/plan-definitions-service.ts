@@ -124,19 +124,50 @@ export const planDefinitionsService = {
       // Use authenticated client for write operations (RLS requires admin role)
       const authClient = await getAuthenticatedTradelayoutClient();
       
+      // Build clean payload with only valid DB columns
       const planData: Record<string, any> = {
-        ...input,
         code: input.code.toUpperCase(),
+        name: input.name,
+        description: input.description || null,
+        tier_level: input.tier_level ?? 0,
+        is_active: input.is_active ?? true,
+        is_public: input.is_public ?? true,
+        
+        // Validity (only duration_days, not valid_till which may not exist)
+        duration_type: input.duration_type || 'subscription',
+        duration_days: input.duration_days || null,
+        trial_days: input.trial_days ?? 0,
+        grace_period_days: input.grace_period_days ?? 0,
+        
+        // Limits
+        backtests_daily_limit: input.backtests_daily_limit ?? 2,
+        backtests_monthly_limit: input.backtests_monthly_limit ?? 14,
+        backtests_total_limit: input.backtests_total_limit ?? -1,
+        live_executions_monthly_limit: input.live_executions_monthly_limit ?? 0,
+        paper_trading_daily_limit: input.paper_trading_daily_limit ?? -1,
+        paper_trading_monthly_limit: input.paper_trading_monthly_limit ?? 2,
+        
+        // Reset Rules
+        reset_type: input.reset_type || 'calendar',
+        daily_reset_hour: input.daily_reset_hour ?? 0,
+        reset_timezone: input.reset_timezone || 'Asia/Kolkata',
+        
+        // Pricing
+        price_monthly: input.price_monthly ?? 0,
+        price_yearly: input.price_yearly ?? 0,
+        currency: input.currency || 'INR',
+        discount_percentage: input.discount_percentage ?? 0,
+        
+        // Features
+        can_buy_addons: input.can_buy_addons ?? false,
+        feature_flags: input.feature_flags || {},
+        ui_color: input.ui_color || 'default',
+        ui_icon: input.ui_icon === 'none' ? null : (input.ui_icon || null),
+        
+        sort_order: input.sort_order ?? 0,
       };
       
-      // Remove created_by/updated_by to avoid UUID type mismatch with Clerk string IDs
-      delete planData.created_by;
-      delete planData.updated_by;
-      
-      // Convert 'none' icon value back to null for database
-      if (planData.ui_icon === 'none') {
-        planData.ui_icon = null;
-      }
+      console.log('📝 Insert payload:', JSON.stringify(planData, null, 2));
 
       const { data, error } = await (authClient as any)
         .from('plan_definitions')
@@ -146,7 +177,7 @@ export const planDefinitionsService = {
 
       if (error) {
         console.error('❌ Error creating plan:', error);
-        throw error;
+        throw new Error(`Failed to create plan: ${error.message || error.code}`);
       }
 
       console.log('✅ Plan created successfully:', data.id);
@@ -167,20 +198,34 @@ export const planDefinitionsService = {
       // Use authenticated client for write operations
       const authClient = await getAuthenticatedTradelayoutClient();
       
+      // Build clean update payload - only include fields that are explicitly set
       const updateData: Record<string, any> = {
-        ...input,
         updated_at: new Date().toISOString(),
       };
-
-      // Remove undefined values and excluded fields
-      Object.keys(updateData).forEach(key => {
-        if (updateData[key] === undefined) {
-          delete updateData[key];
+      
+      // Copy over only defined values, excluding problematic fields
+      const allowedFields = [
+        'name', 'description', 'tier_level', 'is_active', 'is_public',
+        'duration_type', 'duration_days', 'trial_days', 'grace_period_days',
+        'backtests_daily_limit', 'backtests_monthly_limit', 'backtests_total_limit',
+        'live_executions_monthly_limit', 'paper_trading_daily_limit', 'paper_trading_monthly_limit',
+        'reset_type', 'daily_reset_hour', 'reset_timezone',
+        'price_monthly', 'price_yearly', 'currency', 'discount_percentage',
+        'can_buy_addons', 'feature_flags', 'ui_color', 'ui_icon', 'sort_order'
+      ];
+      
+      for (const key of allowedFields) {
+        if (input[key as keyof UpdatePlanInput] !== undefined) {
+          updateData[key] = input[key as keyof UpdatePlanInput];
         }
-      });
-      // Remove created_by/updated_by to avoid UUID type mismatch with Clerk string IDs
-      delete updateData.created_by;
-      delete updateData.updated_by;
+      }
+      
+      // Normalize ui_icon
+      if (updateData.ui_icon === 'none') {
+        updateData.ui_icon = null;
+      }
+
+      console.log('📝 Update payload:', JSON.stringify(updateData, null, 2));
 
       const { data, error } = await (authClient as any)
         .from('plan_definitions')
@@ -191,7 +236,7 @@ export const planDefinitionsService = {
 
       if (error) {
         console.error('❌ Error updating plan:', error);
-        throw error;
+        throw new Error(`Failed to update plan: ${error.message || error.code}`);
       }
 
       console.log('✅ Plan updated successfully:', data.id);

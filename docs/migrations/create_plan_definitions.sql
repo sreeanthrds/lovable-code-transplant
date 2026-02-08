@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS public.plan_definitions (
   -- Validity
   duration_type VARCHAR(20) DEFAULT 'subscription' CHECK (duration_type IN ('subscription', 'fixed', 'lifetime')),
   duration_days INTEGER,
+  valid_till TIMESTAMPTZ,
   trial_days INTEGER DEFAULT 0,
   grace_period_days INTEGER DEFAULT 0,
   
@@ -41,6 +42,7 @@ CREATE TABLE IF NOT EXISTS public.plan_definitions (
   price_yearly DECIMAL(10,2) DEFAULT 0,
   currency VARCHAR(3) DEFAULT 'INR',
   discount_percentage INTEGER DEFAULT 0,
+  gst_percentage INTEGER DEFAULT 18,
   
   -- Features
   can_buy_addons BOOLEAN DEFAULT false,
