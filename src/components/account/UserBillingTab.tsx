@@ -27,6 +27,8 @@ function getPlanConfigFromDefinition(plan: PlanDefinition | undefined, fallbackC
       paper_trading_monthly_limit: plan.paper_trading_monthly_limit,
       price_monthly: plan.price_monthly,
       price_yearly: plan.price_yearly,
+      gst_percentage: plan.gst_percentage ?? 18,
+      currency: plan.currency || 'INR',
       can_buy_addons: plan.can_buy_addons,
       color: plan.ui_color,
       features: plan.features || [],
@@ -36,8 +38,23 @@ function getPlanConfigFromDefinition(plan: PlanDefinition | undefined, fallbackC
   const fallback = PLAN_CONFIGS[fallbackCode as PlanType] || PLAN_CONFIGS.FREE;
   return {
     ...fallback,
+    gst_percentage: 18,
+    currency: 'INR',
     features: fallback.features || [],
   };
+}
+
+// Helper to calculate price with GST
+function calculatePriceWithGst(basePrice: number, gstPercentage: number = 18) {
+  const gstAmount = Math.round(basePrice * (gstPercentage / 100) * 100) / 100;
+  const total = Math.round((basePrice + gstAmount) * 100) / 100;
+  return { basePrice, gstAmount, total, gstPercentage };
+}
+
+// Helper to format price
+function formatPrice(amount: number, currency: string = 'INR') {
+  if (amount === 0) return '₹0';
+  return currency === 'INR' ? `₹${amount.toLocaleString('en-IN')}` : `$${amount}`;
 }
 
 const UserBillingTab: React.FC = () => {
@@ -151,7 +168,7 @@ const UserBillingTab: React.FC = () => {
     <div className="space-y-6">
       {/* Realtime Status Indicator */}
       <div className="flex items-center gap-2 text-xs text-white/50">
-        <Wifi className="w-3 h-3 text-green-500" />
+        <Wifi className="w-3 h-3 text-success" />
         <span>Live updates enabled</span>
       </div>
 
@@ -292,6 +309,13 @@ const UserBillingTab: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {upgradePlans.map((planDef) => {
                 const isCurrentPlan = planDef.code === currentPlanCode;
+                const gstRate = planDef.gst_percentage ?? 18;
+                const monthlyWithGst = calculatePriceWithGst(planDef.price_monthly, gstRate);
+                const yearlyWithGst = calculatePriceWithGst(planDef.price_yearly, gstRate);
+                const yearlySavings = (monthlyWithGst.total * 12) - yearlyWithGst.total;
+                const savingsPercentage = monthlyWithGst.total > 0 
+                  ? Math.round((yearlySavings / (monthlyWithGst.total * 12)) * 100)
+                  : 0;
 
                 return (
                   <div
@@ -307,11 +331,17 @@ const UserBillingTab: React.FC = () => {
                       {isCurrentPlan && <Badge>Current</Badge>}
                     </div>
                     <p className="text-2xl font-bold text-primary mb-1">
-                      ₹{planDef.price_monthly}
+                      {formatPrice(monthlyWithGst.total, planDef.currency)}
                       <span className="text-sm font-normal text-white/60">/mo</span>
                     </p>
+                    {planDef.price_monthly > 0 && (
+                      <p className="text-xs text-white/40 mb-1">
+                        Base: {formatPrice(planDef.price_monthly, planDef.currency)} + {gstRate}% GST
+                      </p>
+                    )}
                     <p className="text-xs text-white/50 mb-4">
-                      or ₹{planDef.price_yearly}/year (save 17%)
+                      or {formatPrice(yearlyWithGst.total, planDef.currency)}/year 
+                      {savingsPercentage > 0 && ` (save ${savingsPercentage}%)`}
                     </p>
                     <ul className="text-sm text-white/70 space-y-1 mb-4">
                       {(planDef.features && planDef.features.length > 0) ? (
