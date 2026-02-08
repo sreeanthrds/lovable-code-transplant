@@ -170,27 +170,28 @@ export function usePublicPlans() {
   const [plans, setPlans] = useState<PlanDefinition[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchActivePlans() {
-      try {
-        const data = await planDefinitionsService.getActivePlans();
-        
-        if (data.length === 0) {
-          // Fallback to hardcoded configs
-          setPlans(convertPlanConfigsToDefinitions().filter(p => p.is_public));
-        } else {
-          setPlans(data);
-        }
-      } catch (error) {
-        console.error('Error fetching active plans:', error);
+  const fetchActivePlans = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await planDefinitionsService.getActivePlans();
+      
+      if (data.length === 0) {
+        // Fallback to hardcoded configs
         setPlans(convertPlanConfigsToDefinitions().filter(p => p.is_public));
-      } finally {
-        setLoading(false);
+      } else {
+        setPlans(data);
       }
+    } catch (error) {
+      console.error('Error fetching active plans:', error);
+      setPlans(convertPlanConfigsToDefinitions().filter(p => p.is_public));
+    } finally {
+      setLoading(false);
     }
-
-    fetchActivePlans();
   }, []);
 
-  return { plans, loading };
+  useEffect(() => {
+    fetchActivePlans();
+  }, [fetchActivePlans]);
+
+  return { plans, loading, refreshPlans: fetchActivePlans };
 }
