@@ -444,8 +444,7 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
         console.log('Diagnostics sample keys:', eventKeys.slice(0, 5));
         
         // Helper function to build flow IDs from events_history
-        // When trades don't have entry_flow_ids/exit_flow_ids, we need to find them
-        // by matching position_id and node relationships
+        // Build complete execution flow by traversing parent-child relationships
         const buildFlowIdsForTrade = (trade: any, isFirstTrade: boolean): { entryFlowIds: string[], exitFlowIds: string[] } => {
           // If trade already has flow IDs, use them
           if (trade.entry_flow_ids?.length > 0 || trade.exit_flow_ids?.length > 0) {
@@ -457,67 +456,101 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
           
           const positionId = trade.position_id;
           const entryNodeId = trade.entry_node_id;
+          const tradeReEntryNum = trade.re_entry_num || 0;
           
-          // Debug: Log first event structure to understand the data
+          // Debug: Log all unique node_types to understand the data
           if (isFirstTrade && eventKeys.length > 0) {
-            const sampleEvent = eventsHistory[eventKeys[0]] as any;
-            console.log('=== DEBUG: Sample Event Structure ===');
-            console.log('Sample event keys:', Object.keys(sampleEvent));
-            console.log('Sample event node_type:', sampleEvent.node_type);
-            console.log('Sample event node_id:', sampleEvent.node_id);
-            console.log('Sample event position:', sampleEvent.position);
-            console.log('Sample event action:', sampleEvent.action);
+            const nodeTypes = new Set<string>();
+            for (const key of eventKeys) {
+              const e = eventsHistory[key] as any;
+              if (e.node_type) nodeTypes.add(e.node_type);
+            }
+            console.log('=== DEBUG: All node_types in events_history ===');
+            console.log('Node types found:', Array.from(nodeTypes));
             console.log('Looking for position_id:', positionId);
             console.log('Looking for entry_node_id:', entryNodeId);
+            
+            // Show sample event structure
+            const sampleEvent = eventsHistory[eventKeys[0]] as any;
+            console.log('Sample event:', {
+              node_type: sampleEvent.node_type,
+              node_id: sampleEvent.node_id,
+              node_name: sampleEvent.node_name,
+              execution_id: sampleEvent.execution_id,
+              parent_execution_id: sampleEvent.parent_execution_id,
+              position: sampleEvent.position,
+              action: sampleEvent.action
+            });
           }
           
-          const entryFlowIds: string[] = [];
-          const exitFlowIds: string[] = [];
+          // Find all events related to this trade's position
+          const relatedEvents: { id: string; event: any; isEntry: boolean }[] = [];
           
-          // Search through all events to find those related to this trade
           for (const [executionId, event] of Object.entries(eventsHistory)) {
             const e = event as any;
-            
-            // Multiple ways to match events to trades:
-            // 1. By position_id in event.position
-            // 2. By position_id in event.action.target_position_id
-            // 3. By node_id matching entry_node_id
-            // 4. By re_entry_num matching (for re-entry scenarios)
-            
-            const eventPositionId = e.position?.position_id || e.action?.target_position_id;
-            const isRelatedToPosition = eventPositionId === positionId;
-            
-            // Check by node_id - the entry_node_id from trade should match node_id in events
-            const matchesNodeId = entryNodeId && e.node_id === entryNodeId;
-            
-            // Check if re_entry_num matches (important for re-entry trades)
-            const tradeReEntryNum = trade.re_entry_num || 0;
-            const eventReEntryNum = e.position?.re_entry_num || e.entry_config?.re_entry_num || 0;
-            const matchesReEntry = tradeReEntryNum === eventReEntryNum;
-            
-            // Node type classification
             const nodeType = e.node_type || '';
-            const isEntryNode = nodeType === 'StartNode' || 
-                               nodeType === 'EntrySignalNode' || 
-                               nodeType === 'EntryNode';
-            const isExitNode = nodeType === 'ExitSignalNode' || 
-                              nodeType === 'ExitNode' || 
-                              nodeType === 'SquareOffNode' ||
-                              nodeType === 'ReEntrySignalNode';
             
-            // Match criteria: position match OR (node match AND re-entry match)
-            const isMatch = isRelatedToPosition || (matchesNodeId && matchesReEntry);
+            // Check various ways an event can be related to this trade
+            const eventPositionId = e.position?.position_id || e.action?.target_position_id;
+            const eventReEntryNum = e.position?.re_entry_num || e.entry_config?.re_entry_num || 0;
             
-            if (isMatch) {
-              if (isEntryNode) {
-                if (!entryFlowIds.includes(executionId)) {
-                  entryFlowIds.push(executionId);
-                }
-              } else if (isExitNode) {
-                if (!exitFlowIds.includes(executionId)) {
-                  exitFlowIds.push(executionId);
-                }
+            // Match by position_id
+            const matchesPosition = eventPositionId === positionId && eventReEntryNum === tradeReEntryNum;
+            
+            // Match by entry_node_id (for entry events)
+            const matchesEntryNode = entryNodeId && e.node_id === entryNodeId && eventReEntryNum === tradeReEntryNum;
+            
+            // Match by action.target_position_id (for exit events targeting this position)
+            const matchesExitTarget = e.action?.target_position_id === positionId;
+            
+            if (matchesPosition || matchesEntryNode || matchesExitTarget) {
+              // Classify as entry or exit based on node type and event context
+              const isEntryType = 
+                nodeType === 'StartNode' || 
+                nodeType === 'EntrySignalNode' || 
+                nodeType === 'EntryNode' ||
+                nodeType === 'ReEntrySignalNode' ||
+                (e.action?.type === 'place_order' && e.action?.action_type === 'entry');
+              
+              relatedEvents.push({ id: executionId, event: e, isEntry: isEntryType });
+            }
+          }
+          
+          // Now traverse parent chain to build complete flow for each matched event
+          const entryFlowIds = new Set<string>();
+          const exitFlowIds = new Set<string>();
+          
+          // Build parent chain lookup
+          const parentMap = new Map<string, string>();
+          const childrenMap = new Map<string, string[]>();
+          for (const [executionId, event] of Object.entries(eventsHistory)) {
+            const e = event as any;
+            if (e.parent_execution_id) {
+              parentMap.set(executionId, e.parent_execution_id);
+              if (!childrenMap.has(e.parent_execution_id)) {
+                childrenMap.set(e.parent_execution_id, []);
               }
+              childrenMap.get(e.parent_execution_id)!.push(executionId);
+            }
+          }
+          
+          // For each related event, walk up to find the complete chain from root
+          for (const { id, event, isEntry } of relatedEvents) {
+            // Walk up to root
+            const chain: string[] = [id];
+            let current = id;
+            while (parentMap.has(current)) {
+              const parent = parentMap.get(current)!;
+              if (eventsHistory[parent]) {
+                chain.unshift(parent);
+              }
+              current = parent;
+            }
+            
+            // Add all events in chain to appropriate flow
+            const targetSet = isEntry ? entryFlowIds : exitFlowIds;
+            for (const chainId of chain) {
+              targetSet.add(chainId);
             }
           }
           
@@ -532,16 +565,15 @@ export function useBacktestSession({ userId, isAdmin = false }: UseBacktestSessi
           };
           
           if (isFirstTrade) {
-            console.log(`=== DEBUG: Built flow IDs for first trade ===`);
-            console.log('Position ID:', positionId);
-            console.log('Entry Node ID:', entryNodeId);
-            console.log('Entry flow IDs found:', entryFlowIds.length, entryFlowIds);
-            console.log('Exit flow IDs found:', exitFlowIds.length, exitFlowIds);
+            console.log(`=== DEBUG: Built flow IDs for trade ${positionId} ===`);
+            console.log('Related events found:', relatedEvents.length);
+            console.log('Entry flow IDs:', Array.from(entryFlowIds));
+            console.log('Exit flow IDs:', Array.from(exitFlowIds));
           }
           
           return {
-            entryFlowIds: sortByTimestamp(entryFlowIds),
-            exitFlowIds: sortByTimestamp(exitFlowIds)
+            entryFlowIds: sortByTimestamp(Array.from(entryFlowIds)),
+            exitFlowIds: sortByTimestamp(Array.from(exitFlowIds))
           };
         };
         
