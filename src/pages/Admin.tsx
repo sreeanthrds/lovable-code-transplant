@@ -8,11 +8,12 @@ import RoleManager from '@/components/admin/RoleManager';
 import StrategyDecryption from '@/components/admin/StrategyDecryption';
 import ApiConfigManager from '@/components/admin/ApiConfigManager';
 import AdminUserPlansManager from '@/components/admin/AdminUserPlansManager';
+import PlanDefinitionsManager from '@/components/admin/PlanDefinitionsManager';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Users, Key, AlertTriangle, Settings, Database, Wallet } from 'lucide-react';
+import { Shield, Users, Key, AlertTriangle, Settings, Database, Wallet, FileText } from 'lucide-react';
 import AppLayout from '@/layouts/AppLayout';
 import JsonToTlsTab from '@/components/admin/decryption/JsonToTlsTab';
 import JwtTestPanel from '@/components/admin/JwtTestPanel';
@@ -81,11 +82,12 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-10">
+          <TabsList className="grid w-full grid-cols-11">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="roles">Roles</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="plans">Plans</TabsTrigger>
+            <TabsTrigger value="plans">User Plans</TabsTrigger>
+            <TabsTrigger value="plan-definitions">Plan Defs</TabsTrigger>
             <TabsTrigger value="api">API Config</TabsTrigger>
             <TabsTrigger value="encryption">Encryption</TabsTrigger>
             <TabsTrigger value="decryption">Decryption</TabsTrigger>
@@ -149,6 +151,10 @@ const Admin = () => {
 
           <TabsContent value="plans" className="space-y-6">
             <AdminUserPlansManager />
+          </TabsContent>
+
+          <TabsContent value="plan-definitions" className="space-y-6">
+            <PlanDefinitionsManager />
           </TabsContent>
 
           <TabsContent value="api" className="space-y-6">
