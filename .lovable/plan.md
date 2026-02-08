@@ -1,242 +1,222 @@
 
 
-# Backtest Usage Meter Implementation Plan
+# Development Environment with Remix + GitHub Sync
 
 ## Overview
-Modify the backtest quota system to only consume quota when a backtest produces actual trades (`total_trades > 0`), and enhance the UI to display remaining quota with reset timing.
 
----
+Using Lovable's **Remix** feature is a practical approach to create an isolated development environment. However, syncing code changes back to production requires **GitHub integration** since Lovable projects don't have a direct "merge" mechanism.
 
-## Current State
+## Architecture
 
-The quota is currently consumed **immediately** when the user clicks "Start Backtest", regardless of the outcome. This means:
-- A backtest with 0 trades still consumes quota
-- Users cannot "preview" if their strategy produces any trades
-
----
-
-## Proposed Changes
-
-### 1. Move Quota Consumption to After Completion
-
-**What changes:**
-Instead of consuming quota when the backtest starts, consume it only when the backtest completes AND `total_trades > 0`.
-
-**Files to modify:**
-- `src/pages/Backtesting.tsx` - Add post-completion quota consumption logic
-- `src/components/backtest/BacktestForm.tsx` - Remove immediate `consumeBacktest()` call
-- `src/hooks/useQuota.ts` - Add a new function for conditional consumption
-
-**Logic flow:**
 ```text
-User clicks "Start Backtest"
-       |
-       v
-Check canRunBacktest() - block if quota = 0
-       |
-       v
-Start backtest (do NOT consume yet)
-       |
-       v
-Poll for status...
-       |
-       v
-Backtest completes with overall_summary
-       |
-       v
-IF overall_summary.total_trades > 0
-   THEN consumeBacktest()
-   Show "1 backtest used" toast
-ELSE
-   Show "No trades generated - quota not consumed" toast
+┌─────────────────────────────────────────────────────────────────────┐
+│                         DEVELOPMENT WORKFLOW                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│   ┌──────────────────┐         ┌──────────────────┐                 │
+│   │  PROD PROJECT    │         │   DEV PROJECT    │                 │
+│   │  (Current)       │         │   (Remix)        │                 │
+│   │                  │         │                  │                 │
+│   │  joy-forge-core  │         │  joy-forge-dev   │                 │
+│   │  .lovable.app    │         │  .lovable.app    │                 │
+│   └────────┬─────────┘         └────────┬─────────┘                 │
+│            │                            │                           │
+│            │   GitHub Integration       │                           │
+│            ▼                            ▼                           │
+│   ┌──────────────────────────────────────────────────┐              │
+│   │              GitHub Repository                   │              │
+│   │  ┌─────────┐              ┌─────────┐            │              │
+│   │  │  main   │◄─── PR ◄────│   dev   │            │              │
+│   │  │ branch  │              │ branch  │            │              │
+│   │  └─────────┘              └─────────┘            │              │
+│   └──────────────────────────────────────────────────┘              │
+│            │                            │                           │
+│            ▼                            ▼                           │
+│   ┌──────────────────┐         ┌──────────────────┐                 │
+│   │  PROD SUPABASE   │         │  DEV SUPABASE    │                 │
+│   │  oonepfqgzpd...  │         │  (New Project)   │                 │
+│   └──────────────────┘         └──────────────────┘                 │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
----
+## Step-by-Step Implementation
 
-### 2. Enhance Quota Display on Backtest Page
+### Phase 1: Create Development Supabase Project
 
-**What to display:**
-- Remaining backtests (already shown in form, but add to main page header)
-- Reset time with timezone (e.g., "Resets at 12 AM IST")
-- Daily vs Monthly remaining (if applicable)
+1. **Create new Supabase project** at https://supabase.com/dashboard
+   - Name: `tradelayout-dev`
+   - Region: Same as production for consistency
+   
+2. **Apply all existing migrations** to the dev database:
+   - Use Supabase CLI: `supabase db push --db-url <dev-db-url>`
+   - Or manually run migration files in order via SQL Editor
 
-**Files to modify:**
-- `src/pages/Backtesting.tsx` - Add quota info banner at top
-- `src/hooks/usePlanDefinitions.ts` - Fetch `daily_reset_hour` and `reset_timezone`
+3. **Copy Clerk JWT configuration**:
+   - In dev Supabase: Settings → API → JWT Settings
+   - Set the same JWT secret as production (or configure Clerk to work with both)
 
-**UI component:**
-```text
-+--------------------------------------------------+
-| Backtests: 5 remaining | Resets at 12 AM IST     |
-| Plan: FREE | Daily: 2/2 used | [Upgrade Button]  |
-+--------------------------------------------------+
-```
+### Phase 2: Connect Both Projects to GitHub
 
----
+1. **Production project** → Settings → GitHub → Connect to `main` branch
+2. **Create remix** of current project
+3. **Dev project (remix)** → Settings → GitHub → Connect to `dev` branch
 
-### 3. Quota Exhausted Enforcement
+This enables:
+- Code pushed to `dev` branch updates the remix project
+- Code pushed to `main` branch updates production
+- Pull Requests for code review before production deployment
 
-**Current behavior:** Already partially implemented in `BacktestForm.tsx`
+### Phase 3: Environment-Based Configuration
 
-**Enhancements needed:**
-- Add a dedicated "Quota Exhausted" modal/card when quota hits 0
-- Different CTAs based on plan type:
-  - FREE plan: "Upgrade to PRO" button (links to /pricing)
-  - LAUNCH plan: "Upgrade to PRO" button
-  - PRO plan: "Buy Add-ons" button + "Upgrade to Enterprise" option
-  - ENTERPRISE: Should never hit this (unlimited)
+Create a centralized config that reads from environment variables:
 
-**Files to modify:**
-- Create new component: `src/components/backtest/QuotaExhaustedCard.tsx`
-- `src/pages/Backtesting.tsx` - Show card when `quotaInfo.backtests.remaining === 0`
-
----
-
-## Technical Implementation Details
-
-### Step 1: Remove Immediate Quota Consumption
-
-**File: `src/components/backtest/BacktestForm.tsx`**
-
-Remove lines 270-274:
+**File: `src/config/environment.ts`**
 ```typescript
-// REMOVE THIS:
-if (config.strategyId !== TEST_STRATEGY_ID) {
-  await consumeBacktest();
-  await refreshQuota();
-}
-```
-
-The form will still check `canRunBacktest()` before allowing submission, but won't consume until results are in.
-
----
-
-### Step 2: Add Conditional Consumption in Backtesting Page
-
-**File: `src/pages/Backtesting.tsx`**
-
-Add effect to watch for backtest completion:
-
-```typescript
-// Import useQuota
-const { consumeBacktest, refreshQuota, quotaInfo } = useQuota();
-
-// Track if quota was consumed for this session
-const [quotaConsumed, setQuotaConsumed] = useState(false);
-
-// Watch for completion and conditionally consume
-useEffect(() => {
-  if (session?.status === 'completed' && 
-      session.overall_summary && 
-      !quotaConsumed) {
-    
-    if (session.overall_summary.total_trades > 0) {
-      // Consume quota
-      consumeBacktest().then(() => {
-        refreshQuota();
-        setQuotaConsumed(true);
-        toast({
-          title: 'Backtest counted',
-          description: `${session.overall_summary.total_trades} trades generated. 1 backtest consumed.`,
-        });
-      });
-    } else {
-      // No trades - don't consume
-      setQuotaConsumed(true);
-      toast({
-        title: 'No quota consumed',
-        description: 'Backtest produced 0 trades.',
-      });
-    }
-  }
-}, [session?.status, session?.overall_summary, quotaConsumed]);
-
-// Reset quotaConsumed when starting new backtest
-const handleReset = () => {
-  reset();
-  setQuotaConsumed(false);
-  // ... rest of reset logic
+// Environment configuration for multi-environment support
+export const config = {
+  supabase: {
+    url: import.meta.env.VITE_SUPABASE_URL,
+    anonKey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+    projectId: import.meta.env.VITE_SUPABASE_PROJECT_ID,
+  },
+  clerk: {
+    publishableKey: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+  },
+  environment: import.meta.env.VITE_ENVIRONMENT || 'production',
+  isDev: import.meta.env.VITE_ENVIRONMENT === 'development',
+  isProd: import.meta.env.VITE_ENVIRONMENT === 'production',
 };
 ```
 
----
-
-### Step 3: Create Quota Info Banner Component
-
-**New file: `src/components/backtest/BacktestQuotaBanner.tsx`**
+**Update Supabase clients to use config:**
 
 ```typescript
-interface BacktestQuotaBannerProps {
-  quotaInfo: QuotaInfo;
-  resetHour: number;
-  resetTimezone: string;
-}
+// src/lib/supabase/tradelayout-client.ts
+import { config } from '@/config/environment';
 
-// Display:
-// - Remaining count with badge
-// - Reset time (convert hour to readable format)
-// - Plan name
-// - Upgrade/Add-on button when low
+export const tradelayoutClient = createClient<Database>(
+  config.supabase.url,
+  config.supabase.anonKey
+);
 ```
 
----
+### Phase 4: Database Migration Workflow
 
-### Step 4: Create Quota Exhausted Card
+Since you have 80+ migrations, you need a proper sync workflow:
 
-**New file: `src/components/backtest/QuotaExhaustedCard.tsx`**
+**Development Flow:**
+```text
+1. Make schema changes in DEV Supabase
+2. Generate migration: supabase db diff --use-migra -f new_migration
+3. Commit migration file to dev branch
+4. Test thoroughly in dev environment
+5. Create PR to main branch
+6. After merge, apply to PROD: supabase db push
+```
 
-Display when `quotaInfo.backtests.remaining === 0`:
-- For FREE: "Upgrade to unlock more backtests"
-- For paid plans: "Purchase add-ons" or "Upgrade to higher tier"
+**Sync Script (optional helper):**
+```bash
+#!/bin/bash
+# scripts/sync-to-production.sh
 
----
+echo "🔄 Syncing migrations to production..."
 
-### Step 5: Fetch Reset Time from Database
+# Set production project
+export SUPABASE_PROJECT_REF="oonepfqgzpdssfzvokgk"
 
-**File: `src/hooks/usePlanDefinitions.ts`**
+# Push migrations
+supabase db push --linked
 
-Ensure the hook returns `daily_reset_hour` and `reset_timezone` for the user's current plan, so we can display "Resets at X:00 AM/PM [Timezone]".
+echo "✅ Production database updated!"
+```
 
----
+### Phase 5: Edge Functions Deployment
 
-## Database Changes Required
+Edge functions are environment-agnostic but need separate secrets:
 
-**None** - All required columns already exist:
-- `plan_definitions.daily_reset_hour` (integer, 0-23)
-- `plan_definitions.reset_timezone` (string, e.g., "Asia/Kolkata")
-- `user_plans.backtests_used_today` (integer)
-- `user_plans.usage_reset_date` (date)
+1. **Dev project**: Set secrets in Supabase Dashboard → Edge Functions → Secrets
+2. **Prod project**: Keep existing secrets
 
----
+When deploying from dev to prod:
+```bash
+# Deploy specific function to production
+supabase functions deploy update-api-config --project-ref oonepfqgzpdssfzvokgk
+```
 
-## Files Summary
+## Deployment Workflow Summary
 
-| File | Action |
-|------|--------|
-| `src/components/backtest/BacktestForm.tsx` | Remove immediate `consumeBacktest()` call |
-| `src/pages/Backtesting.tsx` | Add completion effect + quota banner |
-| `src/components/backtest/BacktestQuotaBanner.tsx` | **NEW** - Quota display component |
-| `src/components/backtest/QuotaExhaustedCard.tsx` | **NEW** - Exhausted state with CTAs |
-| `src/hooks/useQuota.ts` | Minor: ensure daily tracking works |
-| `src/hooks/usePlanDefinitions.ts` | Ensure reset time fields are exposed |
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│                    DEPLOYMENT WORKFLOW                           │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. DEVELOP                                                      │
+│     └─► Make changes in Dev Lovable project                      │
+│     └─► Test with Dev Supabase                                   │
+│                                                                  │
+│  2. COMMIT                                                       │
+│     └─► Changes auto-push to GitHub 'dev' branch                 │
+│                                                                  │
+│  3. REVIEW                                                       │
+│     └─► Create Pull Request: dev → main                          │
+│     └─► Review code changes                                      │
+│                                                                  │
+│  4. MERGE                                                        │
+│     └─► Merge PR to main                                         │
+│     └─► Production Lovable auto-updates from GitHub              │
+│                                                                  │
+│  5. DATABASE                                                     │
+│     └─► Run new migrations on Production Supabase                │
+│         supabase db push --project-ref oonepfqgzpdssfzvokgk      │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
 
----
+## Files to Create/Modify
 
-## Edge Cases Handled
+| File | Action | Purpose |
+|------|--------|---------|
+| `src/config/environment.ts` | Create | Centralized environment config |
+| `src/lib/supabase/tradelayout-client.ts` | Modify | Use environment config |
+| `src/hooks/useSupabaseClient.ts` | Modify | Use environment config |
+| `src/integrations/supabase/client.ts` | Modify | Use environment config |
+| `.env.example` | Create | Document required env vars |
+| `scripts/sync-migrations.sh` | Create | Helper script for DB sync |
+| `docs/DEVELOPMENT_WORKFLOW.md` | Create | Document the workflow |
 
-1. **User starts backtest but leaves page before completion**: Quota not consumed (safe - user can re-run)
-2. **Backtest fails mid-way**: Quota not consumed (only success with trades counts)
-3. **Test strategy**: Already excluded from quota checks
-4. **Multiple rapid submissions**: `canRunBacktest()` gate prevents over-consumption
+## Environment Variables per Project
 
----
+**Production Project (.env):**
+```bash
+VITE_ENVIRONMENT="production"
+VITE_SUPABASE_URL="https://oonepfqgzpdssfzvokgk.supabase.co"
+VITE_SUPABASE_PUBLISHABLE_KEY="eyJ..."
+VITE_SUPABASE_PROJECT_ID="oonepfqgzpdssfzvokgk"
+VITE_CLERK_PUBLISHABLE_KEY="pk_test_..."
+```
 
-## Testing Checklist
+**Development Project (.env) - after remix:**
+```bash
+VITE_ENVIRONMENT="development"
+VITE_SUPABASE_URL="https://YOUR_DEV_PROJECT_ID.supabase.co"
+VITE_SUPABASE_PUBLISHABLE_KEY="YOUR_DEV_ANON_KEY"
+VITE_SUPABASE_PROJECT_ID="YOUR_DEV_PROJECT_ID"
+VITE_CLERK_PUBLISHABLE_KEY="pk_test_..."  # Same Clerk for both
+```
 
-- [ ] Start backtest with 0 trades result - verify quota NOT consumed
-- [ ] Start backtest with trades - verify quota consumed once
-- [ ] Verify remaining count decrements correctly
-- [ ] Verify FREE user sees "Upgrade" when exhausted
-- [ ] Verify PRO user sees "Buy Add-ons" when exhausted
-- [ ] Verify reset time displays correctly per timezone
+## Key Benefits
+
+1. **Complete isolation**: Dev changes never affect production data
+2. **Code review**: PR-based workflow ensures quality control
+3. **Migration tracking**: All DB changes are versioned and reproducible
+4. **Rollback capability**: Git history enables reverting changes
+5. **Team collaboration**: Multiple developers can work on dev branch
+
+## Prerequisites
+
+- GitHub account connected to both Lovable projects
+- Supabase CLI installed (`npm install -g supabase`)
+- Access to create new Supabase projects
+- Clerk configured to accept JWTs from both Supabase projects
 
