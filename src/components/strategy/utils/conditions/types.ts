@@ -233,6 +233,8 @@ export interface NodeVariable {
    offsetType: 'days' | 'hours' | 'minutes' | 'seconds' | 'candles';
    offsetValue: number;
    direction: 'before' | 'after';
+   candleTimeframe?: string; // e.g. '1m', '5m' - only when offsetType is 'candles'
+   candleInstrument?: string; // e.g. 'TI', 'SI' - only when offsetType is 'candles'
  }
  
   // Candle Range Expression - for specifying a range of candles
