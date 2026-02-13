@@ -340,7 +340,7 @@ export const DecryptedResult: React.FC<DecryptedResultProps> = ({ decryptedData,
                 theme={jsonTheme}
                 displayDataTypes={false}
                 enableClipboard={true}
-                collapsed={2}
+                collapsed={false}
                 style={{ 
                   backgroundColor: 'transparent',
                   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
