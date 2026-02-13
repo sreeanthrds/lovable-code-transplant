@@ -32,29 +32,35 @@
    // Get available timeframes and instruments from start node
    const getAvailableTimeframesAndInstruments = () => {
      const startNode = strategyStore.nodes.find(node => node.type === 'startNode');
-     if (!startNode?.data) return { timeframes: [] as string[], instruments: [] as string[] };
+     if (!startNode?.data) return { timeframes: [] as { value: string; label: string }[], instruments: [] as { value: string; label: string }[] };
 
      const data = startNode.data as any;
-     const timeframes: string[] = [];
-     const instruments: string[] = [];
+     const timeframes: { value: string; label: string }[] = [];
+     const instruments: { value: string; label: string }[] = [];
 
      if (data.tradingInstrumentConfig?.timeframes?.length) {
-       instruments.push(data.tradingInstrumentConfig.exchange && data.tradingInstrumentConfig.symbol
-         ? `${data.tradingInstrumentConfig.exchange}:${data.tradingInstrumentConfig.symbol}`
-         : 'Trading Instrument');
+       const tiLabel = data.tradingInstrumentConfig.exchange && data.tradingInstrumentConfig.symbol
+         ? `TI (${data.tradingInstrumentConfig.exchange}:${data.tradingInstrumentConfig.symbol})`
+         : 'Trading Instrument';
+       instruments.push({ value: 'TI', label: tiLabel });
        data.tradingInstrumentConfig.timeframes.forEach((tf: any) => {
          const tfStr = tf.timeframe || tf.id || '';
-         if (tfStr && !timeframes.includes(tfStr)) timeframes.push(tfStr);
+         if (tfStr && !timeframes.some(t => t.value === tfStr)) {
+           timeframes.push({ value: tfStr, label: tfStr });
+         }
        });
      }
 
      if (data.supportingInstrumentConfig?.enabled && data.supportingInstrumentConfig?.timeframes?.length) {
-       instruments.push(data.supportingInstrumentConfig.exchange && data.supportingInstrumentConfig.symbol
-         ? `${data.supportingInstrumentConfig.exchange}:${data.supportingInstrumentConfig.symbol}`
-         : 'Supporting Instrument');
+       const siLabel = data.supportingInstrumentConfig.exchange && data.supportingInstrumentConfig.symbol
+         ? `SI (${data.supportingInstrumentConfig.exchange}:${data.supportingInstrumentConfig.symbol})`
+         : 'Supporting Instrument';
+       instruments.push({ value: 'SI', label: siLabel });
        data.supportingInstrumentConfig.timeframes.forEach((tf: any) => {
          const tfStr = tf.timeframe || tf.id || '';
-         if (tfStr && !timeframes.includes(tfStr)) timeframes.push(tfStr);
+         if (tfStr && !timeframes.some(t => t.value === tfStr)) {
+           timeframes.push({ value: tfStr, label: tfStr });
+         }
        });
      }
 
@@ -62,6 +68,10 @@
    };
 
    const { timeframes, instruments } = isCandles ? getAvailableTimeframesAndInstruments() : { timeframes: [], instruments: [] };
+
+   // Auto-select first timeframe/instrument if not set
+   const selectedTimeframe = timeOffsetExpr.candleTimeframe || (timeframes.length > 0 ? timeframes[0].value : '');
+   const selectedInstrument = timeOffsetExpr.candleInstrument || (instruments.length > 0 ? instruments[0].value : '');
 
    const offsetTypeOptions = [
      { value: 'days', label: 'Days' },
@@ -104,8 +114,21 @@
      });
    };
 
+   const updateCandleTimeframe = (value: string) => {
+     updateExpression({
+       ...timeOffsetExpr,
+       candleTimeframe: value
+     });
+   };
+
+   const updateCandleInstrument = (value: string) => {
+     updateExpression({
+       ...timeOffsetExpr,
+       candleInstrument: value
+     });
+   };
+
    const offsetVal = timeOffsetExpr.offsetValue || 0;
-   const direction = timeOffsetExpr.direction || 'after';
 
    return (
      <div className="space-y-3">
@@ -123,7 +146,7 @@
        </div>
 
        {/* Offset Configuration */}
-       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+       <div className={`grid grid-cols-1 gap-3 ${isCandles ? 'md:grid-cols-5' : 'md:grid-cols-3'}`}>
          {/* Offset Value */}
          <div className="p-3 border border-green-200 rounded-lg bg-green-50/50 dark:border-green-800 dark:bg-green-950/30">
            <Label className="text-sm font-medium text-green-700 dark:text-green-400 mb-2 block">
@@ -159,6 +182,32 @@
              layout="vertical"
            />
          </div>
+
+         {/* Timeframe selector - only when candles */}
+         {isCandles && timeframes.length > 0 && (
+           <div className="p-3 border border-cyan-200 rounded-lg bg-cyan-50/50 dark:border-cyan-800 dark:bg-cyan-950/30">
+             <RadioGroupField
+               label="Timeframe"
+               value={selectedTimeframe}
+               onChange={updateCandleTimeframe}
+               options={timeframes}
+               layout="vertical"
+             />
+           </div>
+         )}
+
+         {/* Instrument selector - only when candles */}
+         {isCandles && instruments.length > 0 && (
+           <div className="p-3 border border-teal-200 rounded-lg bg-teal-50/50 dark:border-teal-800 dark:bg-teal-950/30">
+             <RadioGroupField
+               label="Instrument"
+               value={selectedInstrument}
+               onChange={updateCandleInstrument}
+               options={instruments}
+               layout="vertical"
+             />
+           </div>
+         )}
        </div>
 
        {/* Candle Explanation - shown only when "candles" is selected */}
@@ -172,44 +221,16 @@
            </div>
            <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
              The <strong>current candle is excluded</strong> from the offset count.
-             For example, if the timeframe is <strong>1m</strong> and current time is <strong>10:00</strong>:
+             For example, if the timeframe is <strong>{selectedTimeframe || '1m'}</strong> and current time is <strong>10:00</strong>:
            </p>
            <ul className="text-xs text-amber-700 dark:text-amber-300 space-y-1 ml-4 list-disc">
              <li>
-               <strong>{offsetVal} candle{offsetVal !== 1 ? 's' : ''} before</strong> → returns candle at <strong>
-               {`${10}:${String(60 - offsetVal).padStart(2, '0')}`}</strong> (i.e. 10:00 excluded, count {offsetVal} back)
+               <strong>{offsetVal} candle{offsetVal !== 1 ? 's' : ''} before</strong> → excludes 10:00, counts {offsetVal} back
              </li>
              <li>
-               <strong>{offsetVal} candle{offsetVal !== 1 ? 's' : ''} after</strong> → returns candle at <strong>
-               {`10:${String(offsetVal).padStart(2, '0')}`}</strong> (i.e. 10:00 excluded, count {offsetVal} forward)
+               <strong>{offsetVal} candle{offsetVal !== 1 ? 's' : ''} after</strong> → excludes 10:00, counts {offsetVal} forward
              </li>
            </ul>
-
-           {/* Available Timeframes & Instruments */}
-           {(timeframes.length > 0 || instruments.length > 0) && (
-             <div className="mt-2 pt-2 border-t border-amber-200 dark:border-amber-800 space-y-1.5">
-               {timeframes.length > 0 && (
-                 <div className="flex items-center gap-2 flex-wrap">
-                   <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Available Timeframes:</span>
-                   {timeframes.map(tf => (
-                     <span key={tf} className="text-xs px-1.5 py-0.5 rounded bg-amber-200/60 dark:bg-amber-800/40 text-amber-800 dark:text-amber-200 font-mono">
-                       {tf}
-                     </span>
-                   ))}
-                 </div>
-               )}
-               {instruments.length > 0 && (
-                 <div className="flex items-center gap-2 flex-wrap">
-                   <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Instruments:</span>
-                   {instruments.map(inst => (
-                     <span key={inst} className="text-xs px-1.5 py-0.5 rounded bg-amber-200/60 dark:bg-amber-800/40 text-amber-800 dark:text-amber-200">
-                       {inst}
-                     </span>
-                   ))}
-                 </div>
-               )}
-             </div>
-           )}
          </div>
        )}
      </div>
