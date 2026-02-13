@@ -32,18 +32,16 @@
    // Get available timeframes and instruments from start node
    const getAvailableTimeframesAndInstruments = () => {
      const startNode = strategyStore.nodes.find(node => node.type === 'startNode');
-     if (!startNode?.data) return { timeframes: [] as { value: string; label: string }[], instruments: [] as { value: string; label: string }[] };
-
-     const data = startNode.data as any;
+     const data = startNode?.data as any;
      const timeframes: { value: string; label: string }[] = [];
      const instruments: { value: string; label: string }[] = [];
 
-     if (data.tradingInstrumentConfig?.timeframes?.length) {
-       const tiLabel = data.tradingInstrumentConfig.exchange && data.tradingInstrumentConfig.symbol
-         ? `TI (${data.tradingInstrumentConfig.exchange}:${data.tradingInstrumentConfig.symbol})`
-         : 'Trading Instrument';
-       instruments.push({ value: 'TI', label: tiLabel });
-       data.tradingInstrumentConfig.timeframes.forEach((tf: any) => {
+     const tradingTimeframes = data?.tradingInstrumentConfig?.timeframes || [];
+     const supportingTimeframes = data?.supportingInstrumentConfig?.timeframes || [];
+
+     if (tradingTimeframes.length > 0) {
+       instruments.push({ value: 'TI', label: 'Trading Instrument' });
+       tradingTimeframes.forEach((tf: any) => {
          const tfStr = tf.timeframe || tf.id || '';
          if (tfStr && !timeframes.some(t => t.value === tfStr)) {
            timeframes.push({ value: tfStr, label: tfStr });
@@ -51,17 +49,22 @@
        });
      }
 
-     if (data.supportingInstrumentConfig?.enabled && data.supportingInstrumentConfig?.timeframes?.length) {
-       const siLabel = data.supportingInstrumentConfig.exchange && data.supportingInstrumentConfig.symbol
-         ? `SI (${data.supportingInstrumentConfig.exchange}:${data.supportingInstrumentConfig.symbol})`
-         : 'Supporting Instrument';
-       instruments.push({ value: 'SI', label: siLabel });
-       data.supportingInstrumentConfig.timeframes.forEach((tf: any) => {
+     if (data?.supportingInstrumentEnabled && supportingTimeframes.length > 0) {
+       instruments.push({ value: 'SI', label: 'Supporting Instrument' });
+       supportingTimeframes.forEach((tf: any) => {
          const tfStr = tf.timeframe || tf.id || '';
          if (tfStr && !timeframes.some(t => t.value === tfStr)) {
            timeframes.push({ value: tfStr, label: tfStr });
          }
        });
+     }
+
+     // Fallback defaults
+     if (instruments.length === 0) {
+       instruments.push({ value: 'TI', label: 'Trading Instrument' });
+     }
+     if (timeframes.length === 0) {
+       timeframes.push({ value: '1m', label: '1m' });
      }
 
      return { timeframes, instruments };
