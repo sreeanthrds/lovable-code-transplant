@@ -20,61 +20,75 @@
    currentNodeId,
    required = false
  }) => {
-   if (expression.type !== 'time_offset') {
-     return null;
-   }
+    const timeOffsetExpr = expression as TimeOffsetExpression;
+    const strategyStore = useStrategyStore();
+    const isCandles = expression.type === 'time_offset' && timeOffsetExpr.offsetType === 'candles';
 
-   const timeOffsetExpr = expression as TimeOffsetExpression;
-   const strategyStore = useStrategyStore();
+    // Get available timeframes and instruments from start node
+    const getAvailableTimeframesAndInstruments = () => {
+      const startNode = strategyStore.nodes.find(node => node.type === 'startNode');
+      const data = startNode?.data as any;
+      const timeframes: { value: string; label: string }[] = [];
+      const instruments: { value: string; label: string }[] = [];
 
-   const isCandles = timeOffsetExpr.offsetType === 'candles';
+      const tradingTimeframes = data?.tradingInstrumentConfig?.timeframes || [];
+      const supportingTimeframes = data?.supportingInstrumentConfig?.timeframes || [];
 
-   // Get available timeframes and instruments from start node
-   const getAvailableTimeframesAndInstruments = () => {
-     const startNode = strategyStore.nodes.find(node => node.type === 'startNode');
-     const data = startNode?.data as any;
-     const timeframes: { value: string; label: string }[] = [];
-     const instruments: { value: string; label: string }[] = [];
+      if (tradingTimeframes.length > 0) {
+        instruments.push({ value: 'TI', label: 'Trading Instrument' });
+        tradingTimeframes.forEach((tf: any) => {
+          const tfStr = tf.timeframe || tf.id || '';
+          if (tfStr && !timeframes.some(t => t.value === tfStr)) {
+            timeframes.push({ value: tfStr, label: tfStr });
+          }
+        });
+      }
 
-     const tradingTimeframes = data?.tradingInstrumentConfig?.timeframes || [];
-     const supportingTimeframes = data?.supportingInstrumentConfig?.timeframes || [];
+      if (data?.supportingInstrumentEnabled && supportingTimeframes.length > 0) {
+        instruments.push({ value: 'SI', label: 'Supporting Instrument' });
+        supportingTimeframes.forEach((tf: any) => {
+          const tfStr = tf.timeframe || tf.id || '';
+          if (tfStr && !timeframes.some(t => t.value === tfStr)) {
+            timeframes.push({ value: tfStr, label: tfStr });
+          }
+        });
+      }
 
-     if (tradingTimeframes.length > 0) {
-       instruments.push({ value: 'TI', label: 'Trading Instrument' });
-       tradingTimeframes.forEach((tf: any) => {
-         const tfStr = tf.timeframe || tf.id || '';
-         if (tfStr && !timeframes.some(t => t.value === tfStr)) {
-           timeframes.push({ value: tfStr, label: tfStr });
-         }
-       });
-     }
+      // Fallback defaults
+      if (instruments.length === 0) {
+        instruments.push({ value: 'TI', label: 'Trading Instrument' });
+      }
+      if (timeframes.length === 0) {
+        timeframes.push({ value: '1m', label: '1m' });
+      }
 
-     if (data?.supportingInstrumentEnabled && supportingTimeframes.length > 0) {
-       instruments.push({ value: 'SI', label: 'Supporting Instrument' });
-       supportingTimeframes.forEach((tf: any) => {
-         const tfStr = tf.timeframe || tf.id || '';
-         if (tfStr && !timeframes.some(t => t.value === tfStr)) {
-           timeframes.push({ value: tfStr, label: tfStr });
-         }
-       });
-     }
+      return { timeframes, instruments };
+    };
 
-     // Fallback defaults
-     if (instruments.length === 0) {
-       instruments.push({ value: 'TI', label: 'Trading Instrument' });
-     }
-     if (timeframes.length === 0) {
-       timeframes.push({ value: '1m', label: '1m' });
-     }
+    const { timeframes, instruments } = isCandles ? getAvailableTimeframesAndInstruments() : { timeframes: [], instruments: [] };
 
-     return { timeframes, instruments };
-   };
+    const selectedTimeframe = timeOffsetExpr.candleTimeframe || (timeframes.length > 0 ? timeframes[0].value : '');
+    const selectedInstrument = timeOffsetExpr.candleInstrument || (instruments.length > 0 ? instruments[0].value : '');
 
-   const { timeframes, instruments } = isCandles ? getAvailableTimeframesAndInstruments() : { timeframes: [], instruments: [] };
+    // Auto-persist default timeframe/instrument when candles is selected
+    React.useEffect(() => {
+      if (isCandles) {
+        const needsUpdate =
+          (!timeOffsetExpr.candleTimeframe && selectedTimeframe) ||
+          (!timeOffsetExpr.candleInstrument && selectedInstrument);
+        if (needsUpdate) {
+          updateExpression({
+            ...timeOffsetExpr,
+            candleTimeframe: selectedTimeframe,
+            candleInstrument: selectedInstrument
+          });
+        }
+      }
+    }, [isCandles, selectedTimeframe, selectedInstrument, timeOffsetExpr.candleTimeframe, timeOffsetExpr.candleInstrument]);
 
-   // Auto-select first timeframe/instrument if not set
-   const selectedTimeframe = timeOffsetExpr.candleTimeframe || (timeframes.length > 0 ? timeframes[0].value : '');
-   const selectedInstrument = timeOffsetExpr.candleInstrument || (instruments.length > 0 ? instruments[0].value : '');
+    if (expression.type !== 'time_offset') {
+      return null;
+    }
 
    const offsetTypeOptions = [
      { value: 'days', label: 'Days' },
