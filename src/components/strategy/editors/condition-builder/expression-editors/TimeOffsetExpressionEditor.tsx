@@ -25,10 +25,9 @@ const TimeOffsetExpressionEditor: React.FC<TimeOffsetExpressionEditorProps> = ({
   const strategyStore = useStrategyStore();
   const isCandles = expression.type === 'time_offset' && timeOffsetExpr.offsetType === 'candles';
 
-  const getAvailableTimeframesAndInstruments = () => {
+  const getAvailableInstruments = () => {
     const startNode = strategyStore.nodes.find(node => node.type === 'startNode');
     const data = startNode?.data as any;
-    const timeframes: { value: string; label: string }[] = [];
     const instruments: { value: string; label: string }[] = [];
 
     const tradingTimeframes = data?.tradingInstrumentConfig?.timeframes || [];
@@ -36,49 +35,57 @@ const TimeOffsetExpressionEditor: React.FC<TimeOffsetExpressionEditorProps> = ({
 
     if (tradingTimeframes.length > 0) {
       instruments.push({ value: 'TI', label: 'Trading Instrument' });
-      tradingTimeframes.forEach((tf: any) => {
-        const tfStr = tf.timeframe || tf.id || '';
-        if (tfStr && !timeframes.some(t => t.value === tfStr)) {
-          timeframes.push({ value: tfStr, label: tfStr });
-        }
-      });
     }
-
     if (data?.supportingInstrumentEnabled && supportingTimeframes.length > 0) {
       instruments.push({ value: 'SI', label: 'Supporting Instrument' });
-      supportingTimeframes.forEach((tf: any) => {
-        const tfStr = tf.timeframe || tf.id || '';
-        if (tfStr && !timeframes.some(t => t.value === tfStr)) {
-          timeframes.push({ value: tfStr, label: tfStr });
-        }
-      });
     }
-
     if (instruments.length === 0) {
       instruments.push({ value: 'TI', label: 'Trading Instrument' });
     }
+    return instruments;
+  };
+
+  const getTimeframesForInstrument = (instrument: string) => {
+    const startNode = strategyStore.nodes.find(node => node.type === 'startNode');
+    const data = startNode?.data as any;
+    const timeframes: { value: string; label: string }[] = [];
+
+    const source = instrument === 'SI'
+      ? data?.supportingInstrumentConfig?.timeframes
+      : data?.tradingInstrumentConfig?.timeframes;
+
+    (source || []).forEach((tf: any) => {
+      const tfStr = tf.timeframe || tf.id || '';
+      if (tfStr && !timeframes.some(t => t.value === tfStr)) {
+        timeframes.push({ value: tfStr, label: tfStr });
+      }
+    });
+
     if (timeframes.length === 0) {
       timeframes.push({ value: '1m', label: '1m' });
     }
-
-    return { timeframes, instruments };
+    return timeframes;
   };
 
-  const { timeframes, instruments } = isCandles ? getAvailableTimeframesAndInstruments() : { timeframes: [], instruments: [] };
-
-  const selectedTimeframe = timeOffsetExpr.candleTimeframe || (timeframes.length > 0 ? timeframes[0].value : '');
+  const instruments = isCandles ? getAvailableInstruments() : [];
   const selectedInstrument = timeOffsetExpr.candleInstrument || (instruments.length > 0 ? instruments[0].value : '');
+  const timeframes = isCandles ? getTimeframesForInstrument(selectedInstrument) : [];
+  const selectedTimeframe = timeOffsetExpr.candleTimeframe || (timeframes.length > 0 ? timeframes[0].value : '');
 
   // Auto-persist default timeframe/instrument when candles is selected
+  // Also reset timeframe if it's not valid for the current instrument
   React.useEffect(() => {
     if (isCandles) {
+      const validTimeframes = getTimeframesForInstrument(selectedInstrument);
+      const currentTfValid = validTimeframes.some(t => t.value === timeOffsetExpr.candleTimeframe);
       const needsUpdate =
         (!timeOffsetExpr.candleTimeframe && selectedTimeframe) ||
-        (!timeOffsetExpr.candleInstrument && selectedInstrument);
+        (!timeOffsetExpr.candleInstrument && selectedInstrument) ||
+        (timeOffsetExpr.candleTimeframe && !currentTfValid);
       if (needsUpdate) {
         updateExpression({
           ...timeOffsetExpr,
-          candleTimeframe: selectedTimeframe,
+          candleTimeframe: currentTfValid ? (timeOffsetExpr.candleTimeframe || selectedTimeframe) : validTimeframes[0]?.value || selectedTimeframe,
           candleInstrument: selectedInstrument
         });
       }
