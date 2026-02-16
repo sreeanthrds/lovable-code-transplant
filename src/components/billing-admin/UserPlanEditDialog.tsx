@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { getAuthenticatedTradelayoutClient } from '@/lib/supabase/tradelayout-client';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Clock } from 'lucide-react';
 
 interface UserPlan {
@@ -40,6 +41,9 @@ interface UserPlanEditDialogProps {
   onSuccess: () => void;
 }
 
+const PLAN_OPTIONS = ['FREE', 'LAUNCH', 'PRO', 'ENTERPRISE'] as const;
+const STATUS_OPTIONS = ['active', 'expired', 'cancelled', 'trial'] as const;
+
 type ValidityMode = 'date' | 'days';
 
 export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
@@ -54,6 +58,8 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
   const [daysFromToday, setDaysFromToday] = useState<number>(30);
   
   const [formData, setFormData] = useState({
+    plan: 'FREE',
+    status: 'active',
     backtests_used_today: 0,
     backtests_used: 0,
     paper_trading_used_today: 0,
@@ -85,6 +91,8 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
       }
       
       setFormData({
+        plan: plan.plan || 'FREE',
+        status: plan.status || 'active',
         backtests_used_today: plan.backtests_used_today || 0,
         backtests_used: plan.backtests_used || 0,
         paper_trading_used_today: plan.paper_trading_used_today || 0,
@@ -94,7 +102,6 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
         expires_at: expiresAtValue,
       });
       
-      // Reset validity mode
       setValidityMode('date');
       setDaysFromToday(30);
     }
@@ -125,6 +132,8 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
       
       // Prepare update data - only include admin_notes if it has content
       const updateData: Record<string, any> = {
+        plan: formData.plan,
+        status: formData.status,
         backtests_used_today: formData.backtests_used_today,
         backtests_used: formData.backtests_used,
         paper_trading_used_today: formData.paper_trading_used_today,
@@ -151,8 +160,8 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
           .from('user_plans')
           .upsert({
             user_id: plan.user_id,
-            plan: 'FREE',
-            status: 'active',
+            plan: formData.plan,
+            status: formData.status,
             ...updateData,
           }, { 
             onConflict: 'user_id',
@@ -222,13 +231,43 @@ export const UserPlanEditDialog: React.FC<UserPlanEditDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Edit Usage Counters</DialogTitle>
+          <DialogTitle>Edit User Plan</DialogTitle>
           <DialogDescription>
-            Adjust usage counters for {plan.user_email || plan.user_id}
+            Manage plan, status, and usage for {plan.user_email || plan.user_id}
           </DialogDescription>
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
+          {/* Plan & Status */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Plan</Label>
+              <Select value={formData.plan} onValueChange={(v) => setFormData(prev => ({ ...prev, plan: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PLAN_OPTIONS.map(p => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={formData.status} onValueChange={(v) => setFormData(prev => ({ ...prev, status: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map(s => (
+                    <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="backtests_used_today">Backtests Today</Label>
