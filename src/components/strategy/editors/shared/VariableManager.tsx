@@ -56,7 +56,7 @@ const VariableManager: React.FC<VariableManagerProps> = ({
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm">Node Variables</CardTitle>
+          <CardTitle className="text-sm">Snapshot Variables</CardTitle>
           <Button
             variant="default"
             size="sm"

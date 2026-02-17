@@ -266,12 +266,6 @@ const TabbedExpressionTypeSelector: React.FC<TabbedExpressionTypeSelectorProps> 
           icon: Clock
         },
         {
-          type: 'position_time',
-          label: 'Position Entry/Exit Time',
-          description: 'Entry or exit time of a position',
-          icon: Timer
-        },
-        {
           type: 'time_offset',
           label: 'Time Offset',
           description: 'Time +/- days/hours/minutes/candles',
@@ -311,8 +305,8 @@ const TabbedExpressionTypeSelector: React.FC<TabbedExpressionTypeSelectorProps> 
         },
         {
           type: 'node_variable',
-          label: 'Node Variables',
-          description: 'Variables from other nodes',
+          label: 'Snapshot Variables',
+          description: 'Captures a snapshot of market conditions when a node completes its task',
           icon: Database
         },
         {

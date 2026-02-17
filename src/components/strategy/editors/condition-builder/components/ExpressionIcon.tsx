@@ -36,7 +36,7 @@ const ExpressionIcon: React.FC<{ type: any; className?: string }> = ({ type, cla
       return <ExternalLink className={className} />;
     case 'expression':
       return <HelpCircle className={className} />;
-    case 'node_variable':
+    case 'node_variable': // Snapshot Variables
       return <Variable className={className} />;
     default:
       return <HelpCircle className={className} />;
