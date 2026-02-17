@@ -99,8 +99,8 @@ const NodeVariableExpressionEditor: React.FC<NodeVariableExpressionEditorProps> 
     <div className="space-y-3">
       <div>
         <div className="flex items-center gap-1 mb-1">
-          <Label className="text-xs">Node Variable</Label>
-          <FieldTooltip content="Select a variable from any node to use in your expression" />
+          <Label className="text-xs">Snapshot Variable</Label>
+          <FieldTooltip content="Select a snapshot variable that captures market conditions when a node completes its task" />
         </div>
         <Select 
           value={currentValue} 
@@ -110,7 +110,7 @@ const NodeVariableExpressionEditor: React.FC<NodeVariableExpressionEditorProps> 
             "h-8",
             required && !currentValue && "border-red-300 focus:ring-red-200"
           )}>
-            <SelectValue placeholder={allVariableOptions.length > 0 ? "Select node variable" : "No variables available"} />
+            <SelectValue placeholder={allVariableOptions.length > 0 ? "Select snapshot variable" : "No variables available"} />
           </SelectTrigger>
           <SelectContent>
             {allVariableOptions.map((option) => (
