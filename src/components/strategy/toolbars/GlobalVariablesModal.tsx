@@ -12,6 +12,7 @@ import { TrailingVariable } from '../nodes/action-node/types';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface GlobalVariablesModalProps {
   open: boolean;
@@ -50,6 +51,36 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
 
   const removeGlobalVariable = (id: string) => {
     setGlobalVariables(globalVariables.filter(v => v.id !== id));
+  };
+
+  // Check if a global variable is used in any node's conditions or assignments
+  const getVariableUsages = (varId: string): string[] => {
+    const usages: string[] = [];
+    nodes.forEach((node: any) => {
+      const nodeLabel = node.data?.label || node.id;
+      // Check conditions for global_variable expressions
+      const checkExpressions = (obj: any): boolean => {
+        if (!obj) return false;
+        if (obj.type === 'global_variable' && obj.globalVariableId === varId) return true;
+        if (Array.isArray(obj)) return obj.some(checkExpressions);
+        if (typeof obj === 'object') {
+          for (const val of Object.values(obj)) {
+            if (checkExpressions(val)) return true;
+          }
+        }
+        return false;
+      };
+      if (checkExpressions(node.data?.conditions)) {
+        usages.push(`Condition in "${nodeLabel}"`);
+      }
+      // Check globalVariableUpdates (post-execution assignments)
+      if (Array.isArray(node.data?.globalVariableUpdates)) {
+        if (node.data.globalVariableUpdates.some((u: any) => u.globalVariableId === varId)) {
+          usages.push(`Assignment in "${nodeLabel}"`);
+        }
+      }
+    });
+    return usages;
   };
 
   // Collect all snapshot and trailing variables grouped by node
@@ -132,22 +163,43 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
 
               {globalVariables.length > 0 ? (
                 <div className="space-y-1.5">
-                  {globalVariables.map(v => (
-                    <div key={v.id} className="flex items-center justify-between px-3 py-1.5 bg-muted/50 rounded-md border">
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-mono">{v.name}</span>
-                        <span className="text-xs text-muted-foreground">= {v.initialValue}</span>
+                  {globalVariables.map(v => {
+                    const usages = getVariableUsages(v.id);
+                    const isInUse = usages.length > 0;
+                    return (
+                      <div key={v.id} className="flex items-center justify-between px-3 py-1.5 bg-muted/50 rounded-md border">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-mono">{v.name}</span>
+                          <span className="text-xs text-muted-foreground">= {v.initialValue}</span>
+                        </div>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeGlobalVariable(v.id)}
+                                  disabled={isInUse}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {isInUse && (
+                              <TooltipContent side="left" className="max-w-[250px]">
+                                <p className="text-xs font-medium">Cannot delete — in use:</p>
+                                {usages.map((u, i) => (
+                                  <p key={i} className="text-xs">• {u}</p>
+                                ))}
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeGlobalVariable(v.id)}
-                        className="h-6 w-6 p-0"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground italic">No global variables defined.</p>
