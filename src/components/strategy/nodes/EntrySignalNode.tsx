@@ -81,7 +81,7 @@ const EntrySignalNode = ({ data, id, zIndex = 0 }: EntrySignalNodeProps) => {
       
       <div className="flex items-center mb-1.5">
         <TrendingUp className="h-4 w-4 mr-1.5" style={{ color: 'rgb(34, 197, 94)' }} />
-        <div className="font-medium text-xs" style={{ color: 'rgb(34, 197, 94)' }}>{data.label || "Entry Condition"}</div>
+        <div className="font-medium text-xs" style={{ color: 'rgb(34, 197, 94)' }}>{data.label || "Condition"}</div>
       </div>
       
       {hasEntryConditions && entryConditionDisplay ? (
