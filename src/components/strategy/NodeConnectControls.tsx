@@ -24,8 +24,7 @@ interface NodeConnectControlsProps {
 // Define node types with icons and labels
 const nodeTypeIcons = {
   startNode: { icon: Play, label: 'Start Node', color: 'rgb(72, 187, 178)' },
-  entrySignalNode: { icon: TrendingUp, label: 'Entry Condition Node', color: 'rgb(34, 197, 94)' },
-  exitSignalNode: { icon: TrendingDown, label: 'Exit Condition Node', color: 'rgb(255, 193, 7)' },
+  entrySignalNode: { icon: TrendingUp, label: 'Condition Node', color: 'rgb(34, 197, 94)' },
   reEntrySignalNode: { icon: RotateCcw, label: 'Re-Entry Condition Node', color: 'rgb(139, 92, 246)' },
   actionNode: { icon: SlidersHorizontal, label: 'Action Node', color: 'rgb(59, 130, 246)' },
   entryNode: { icon: ShoppingCart, label: 'Entry Node', color: 'rgb(6, 182, 212)' },
@@ -43,23 +42,19 @@ const NodeConnectControls = memo(({ showOn, onAddNode, parentNodeId }: NodeConne
   const nodeOptions = React.useMemo(() => {
     if (showOn === 'start') {
       return [
-        { value: 'entrySignalNode', label: 'Entry Condition Node' },
-        { value: 'exitSignalNode', label: 'Exit Condition Node' },
+        { value: 'entrySignalNode', label: 'Condition Node' },
         { value: 'reEntrySignalNode', label: 'Re-Entry Condition Node' },
         { value: 'entryNode', label: 'Entry Node' },
         { value: 'exitNode', label: 'Exit Node' },
         { value: 'squareOffNode', label: 'Square Off Node' }
-        // Removed alertNode, endNode, and forceEndNode
       ];
     } else {
       return [
-        { value: 'entrySignalNode', label: 'Entry Condition Node' },
-        { value: 'exitSignalNode', label: 'Exit Condition Node' },
+        { value: 'entrySignalNode', label: 'Condition Node' },
         { value: 'reEntrySignalNode', label: 'Re-Entry Condition Node' },
         { value: 'entryNode', label: 'Entry Node' },
         { value: 'exitNode', label: 'Exit Node' },
         { value: 'squareOffNode', label: 'Square Off Node' }
-        // Removed alertNode, endNode, and forceEndNode
       ];
     }
   }, [showOn]);

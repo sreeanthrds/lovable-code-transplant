@@ -9,7 +9,7 @@ export const getNodeTypePrefix = (type: string) => {
     case 'signalNode':
       return 'signal';
     case 'entrySignalNode':
-      return 'entry-condition';
+      return 'condition';
     case 'exitSignalNode':
       return 'exit-condition';
     case 'actionNode':

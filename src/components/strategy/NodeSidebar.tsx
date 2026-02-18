@@ -1,6 +1,6 @@
 
 import React, { useCallback, memo } from 'react';
-import { ShoppingCart, LogOut, StopCircle, AlertTriangle, Activity, Play, Edit, TrendingUp, TrendingDown, Square } from 'lucide-react';
+import { ShoppingCart, LogOut, StopCircle, AlertTriangle, Activity, Play, Edit, TrendingUp, Square } from 'lucide-react';
 import { 
   Tooltip,
   TooltipContent,
@@ -32,19 +32,11 @@ const nodeTypes: NodeTypeItem[] = [
   },
   {
     type: 'entrySignalNode',
-    label: 'Entry Signal',
-    description: 'Detect entry conditions',
+    label: 'Condition',
+    description: 'Define strategy conditions',
     icon: <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />,
     color: 'border-emerald-600 dark:border-emerald-400 bg-emerald-600/10 dark:bg-emerald-400/10',
     hoverColor: 'hover:bg-emerald-600/20 dark:hover:bg-emerald-400/20'
-  },
-  {
-    type: 'exitSignalNode',
-    label: 'Exit Signal',
-    description: 'Detect exit conditions',
-    icon: <TrendingDown className="h-5 w-5 text-amber-600 dark:text-amber-400" />,
-    color: 'border-amber-600 dark:border-amber-400 bg-amber-600/10 dark:bg-amber-400/10',
-    hoverColor: 'hover:bg-amber-600/20 dark:hover:bg-amber-400/20'
   },
   {
     type: 'entryNode',
