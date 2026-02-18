@@ -135,7 +135,7 @@ const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
             showFitView={false}
             position="bottom-center" 
           />
-          
+          <TopToolbar onAutoArrange={onAutoArrange} />
         </ReactFlow>
       </div>
     </div>
