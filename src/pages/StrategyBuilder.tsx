@@ -244,7 +244,7 @@ const StrategyBuilder = () => {
     } else if (isReadOnly) {
       console.log('📖 Read-only mode - Auto-save disabled');
     }
-  }, [nodes, edges, isLoaded, strategyId, strategyName, isReadOnly]);
+  }, [nodes, edges, globalVariables, isLoaded, strategyId, strategyName, isReadOnly]);
 
   console.log('🎨 StrategyBuilder render state:', { isLoaded, nodesCount: nodes.length });
 
