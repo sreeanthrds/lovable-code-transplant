@@ -26,7 +26,7 @@ export function useProKeyboardShortcuts(handlers: KeyboardShortcutHandlers) {
     const isInInputField = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.contentEditable === 'true';
 
     // Prevent default browser shortcuts when appropriate (but not in input fields)
-    if (!isInInputField && isCtrlOrCmd && ['d', 'a', 'z', 'y', 'c', 'v'].includes(event.key.toLowerCase())) {
+    if (!isInInputField && isCtrlOrCmd && ['d', 'a', 'z', 'y'].includes(event.key.toLowerCase())) {
       event.preventDefault();
     }
 
