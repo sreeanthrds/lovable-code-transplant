@@ -117,7 +117,8 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
       return node;
     });
 
-    setNodes(updatedNodes);
+    // Bypass optimized setNodes to ensure the update is applied immediately
+    useStrategyStore.setState({ nodes: updatedNodes });
     setEditingId(null);
   };
 
