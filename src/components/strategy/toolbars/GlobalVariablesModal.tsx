@@ -92,22 +92,22 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
 
       // Update conditions
       if (newData.conditions) {
-        const updated = updateNameInObj(newData.conditions);
-        if (JSON.stringify(updated) !== JSON.stringify(newData.conditions)) {
-          newData.conditions = updated;
-          changed = true;
-        }
+        newData.conditions = updateNameInObj(newData.conditions);
+        changed = true;
       }
 
-      // Update globalVariableUpdates
+      // Update globalVariableUpdates (top-level name + nested expressions)
       if (Array.isArray(newData.globalVariableUpdates)) {
-        const updated = newData.globalVariableUpdates.map((u: any) =>
-          u.globalVariableId === id ? { ...u, globalVariableName: trimmed } : u
-        );
-        if (JSON.stringify(updated) !== JSON.stringify(newData.globalVariableUpdates)) {
-          newData.globalVariableUpdates = updated;
-          changed = true;
-        }
+        const updated = newData.globalVariableUpdates.map((u: any) => {
+          let entry = u.globalVariableId === id ? { ...u, globalVariableName: trimmed } : { ...u };
+          // Also update any global_variable references inside the assignment expression
+          if (entry.expression) {
+            entry.expression = updateNameInObj(entry.expression);
+          }
+          return entry;
+        });
+        newData.globalVariableUpdates = updated;
+        changed = true;
       }
 
       return changed ? { ...node, data: newData } : node;
