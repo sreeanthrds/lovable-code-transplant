@@ -66,13 +66,15 @@ export function useProKeyboardShortcuts(handlers: KeyboardShortcutHandlers) {
         break;
       
       case 'c':
-        if (isCtrlOrCmd && selectedNodes.length > 0) {
+        if (isCtrlOrCmd && event.shiftKey && selectedNodes.length > 0) {
+          event.preventDefault();
           handlers.onCopy(selectedNodes);
         }
         break;
       
       case 'v':
-        if (isCtrlOrCmd) {
+        if (isCtrlOrCmd && event.shiftKey) {
+          event.preventDefault();
           handlers.onPaste();
         }
         break;
