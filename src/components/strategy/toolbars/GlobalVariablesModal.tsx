@@ -32,8 +32,12 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
   const [newVarName, setNewVarName] = useState('');
   const [newVarInitialValue, setNewVarInitialValue] = useState<number>(0);
 
+  const isDuplicate = globalVariables.some(
+    v => v.name.toLowerCase() === newVarName.trim().toLowerCase()
+  );
+
   const addGlobalVariable = () => {
-    if (!newVarName.trim()) return;
+    if (!newVarName.trim() || isDuplicate) return;
     const newVar: GlobalVariable = {
       id: `global-${Date.now()}`,
       name: newVarName.trim(),
@@ -114,13 +118,17 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
                 <Button
                   size="sm"
                   onClick={addGlobalVariable}
-                  disabled={!newVarName.trim()}
+                  disabled={!newVarName.trim() || isDuplicate}
                   className="h-8"
                 >
                   <Plus className="h-3 w-3 mr-1" />
                   Add
                 </Button>
               </div>
+
+              {isDuplicate && (
+                <p className="text-xs text-destructive">A variable with this name already exists.</p>
+              )}
 
               {globalVariables.length > 0 ? (
                 <div className="space-y-1.5">
