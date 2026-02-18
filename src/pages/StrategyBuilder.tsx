@@ -203,25 +203,7 @@ const StrategyBuilder = () => {
       const previousStateKey = `strategy_state_${strategyId}`;
       const previousStateHash = localStorage.getItem(previousStateKey);
       
-      // Only save if state has actually changed
       if (currentStateHash !== previousStateHash) {
-        // CRITICAL: Block auto-save if edges suddenly became empty but we previously had edges
-        // This prevents data loss from race conditions during initialization/operations
-        // But allow saving new strategies where nodes were never connected
-        const nonStartNodes = nodes.filter(n => n.type !== 'startNode' && !n.data?.isVirtual && !n.data?.isStrategyOverview);
-        let previouslyHadEdges = false;
-        try {
-          previouslyHadEdges = previousStateHash ? JSON.parse(previousStateHash)?.edges?.length > 0 : false;
-        } catch { /* ignore parse errors */ }
-        if (edges.length === 0 && nonStartNodes.length > 0 && previouslyHadEdges) {
-          console.warn('🚫 Auto-save BLOCKED: Edges array is empty but previously had edges!', {
-            nodeCount: nodes.length,
-            nonStartNodeCount: nonStartNodes.length,
-            edgeCount: edges.length
-          });
-          // Don't save - wait for edges to be properly loaded
-          return;
-        }
         
         console.log('🔍 Auto-save check - State changed, saving:', {
           storeNodesCount: nodes.length,
