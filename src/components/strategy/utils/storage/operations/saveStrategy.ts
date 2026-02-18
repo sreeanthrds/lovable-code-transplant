@@ -1,5 +1,6 @@
 
 import { Node, Edge } from '@xyflow/react';
+import { GlobalVariable } from '@/hooks/strategy-store/types';
 import { sanitizeForStorage } from '../utils/sanitizeUtils';
 import { createStrategyObject, StrategyData } from '../utils/strategyModel';
 import { v4 as uuidv4 } from 'uuid';
@@ -43,7 +44,8 @@ export const saveStrategyToLocalStorage = async (
   nodes: Node[], 
   edges: Edge[], 
   strategyId?: string, 
-  strategyName?: string
+  strategyName?: string,
+  globalVariables?: GlobalVariable[]
 ) => {
   // Get current user ID - required for user-specific storage
   const userId = getCurrentUserId();
@@ -73,7 +75,7 @@ export const saveStrategyToLocalStorage = async (
   // If a save is already in progress, defer this save
   if (saveInProgress) {
     saveTimeout = window.setTimeout(() => {
-      saveStrategyToLocalStorage(nodes, edges, finalStrategyId, finalStrategyName);
+      saveStrategyToLocalStorage(nodes, edges, finalStrategyId, finalStrategyName, globalVariables);
     }, 1000);
     return;
   }
@@ -92,12 +94,12 @@ export const saveStrategyToLocalStorage = async (
       }
       
       // Save only to local storage with user-specific key
-      saveLocalOnly(nodes, edges, finalStrategyId, finalStrategyName, userId);
+      saveLocalOnly(nodes, edges, finalStrategyId, finalStrategyName, userId, globalVariables);
       
     } catch (error) {
       console.error('Failed to save strategy:', error);
       // Still try to save locally as fallback
-      saveLocalOnly(nodes, edges, finalStrategyId, finalStrategyName, userId);
+      saveLocalOnly(nodes, edges, finalStrategyId, finalStrategyName, userId, globalVariables);
     } finally {
       saveInProgress = false;
       saveTimeout = null;
@@ -113,7 +115,8 @@ const saveLocalOnly = (
   edges: Edge[], 
   strategyId: string, 
   strategyName: string,
-  userId: string
+  userId: string,
+  globalVariables?: GlobalVariable[]
 ) => {
   try {
     // Deep clone to avoid reference issues
@@ -133,7 +136,8 @@ const saveLocalOnly = (
       sanitizedEdges, 
       strategyId, 
       strategyName,
-      existingCreationDate
+      existingCreationDate,
+      globalVariables
     );
 
     // Enrich with metadata for compatibility

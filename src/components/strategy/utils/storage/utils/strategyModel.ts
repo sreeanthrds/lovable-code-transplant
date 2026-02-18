@@ -1,5 +1,6 @@
 
 import { Node, Edge } from '@xyflow/react';
+import { GlobalVariable } from '@/hooks/strategy-store/types';
 
 /**
  * Type definitions for strategy data structures
@@ -16,6 +17,7 @@ export interface StrategyMetadata {
 export interface StrategyData extends StrategyMetadata {
   nodes: Node[];
   edges: Edge[];
+  globalVariables?: GlobalVariable[];
   userId?: string | null;
   strategyId?: string;
 }
@@ -28,13 +30,15 @@ export const createStrategyObject = (
   edges: Edge[], 
   strategyId: string, 
   strategyName: string,
-  existingCreationDate?: string
+  existingCreationDate?: string,
+  globalVariables?: GlobalVariable[]
 ): StrategyData => {
   const now = new Date().toISOString();
   
   return {
     nodes,
     edges,
+    globalVariables: globalVariables || [],
     id: strategyId,
     name: strategyName,
     lastModified: now,

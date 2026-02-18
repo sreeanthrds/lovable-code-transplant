@@ -52,6 +52,9 @@ export function useInitialLocalStorageLoad({
             // Update store with combined nodes
             strategyStore.setNodes(nodesWithOverview);
             strategyStore.setEdges(loadedStrategy.edges || []);
+            if (loadedStrategy.globalVariables) {
+              strategyStore.setGlobalVariables(loadedStrategy.globalVariables);
+            }
             
             // Reset history and add initial state (only clean nodes, no overview nodes in history)
             strategyStore.resetHistory();

@@ -6,17 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, X, Variable, Camera, TrendingUp } from 'lucide-react';
 import { useStrategyStore } from '@/hooks/use-strategy-store';
+import { GlobalVariable } from '@/hooks/strategy-store/types';
 import { NodeVariable } from '../utils/conditions';
 import { TrailingVariable } from '../nodes/action-node/types';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-interface GlobalVariable {
-  id: string;
-  name: string;
-  initialValue: number;
-}
 
 interface GlobalVariablesModalProps {
   open: boolean;
@@ -32,15 +27,8 @@ interface NodeVariableGroup {
 }
 
 const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpenChange }) => {
-  const strategyStore = useStrategyStore();
-  const nodes = strategyStore.nodes;
+  const { nodes, globalVariables, setGlobalVariables } = useStrategyStore();
 
-  // Global variables state - stored in strategy store's metadata or local for now
-  const [globalVariables, setGlobalVariables] = useState<GlobalVariable[]>(() => {
-    // Try to load from strategy store metadata
-    const startNode = nodes.find(n => n.type === 'startNode');
-    return (startNode?.data as any)?.globalVariables || [];
-  });
   const [newVarName, setNewVarName] = useState('');
   const [newVarInitialValue, setNewVarInitialValue] = useState<number>(0);
 
@@ -51,32 +39,13 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
       name: newVarName.trim(),
       initialValue: newVarInitialValue
     };
-    const updated = [...globalVariables, newVar];
-    setGlobalVariables(updated);
+    setGlobalVariables([...globalVariables, newVar]);
     setNewVarName('');
     setNewVarInitialValue(0);
-    
-    // Persist to start node data
-    const startNode = nodes.find(n => n.type === 'startNode');
-    if (startNode) {
-      const updatedNodes = nodes.map((n: any) => 
-        n.id === startNode.id ? { ...n, data: { ...n.data, globalVariables: updated } } : n
-      );
-      strategyStore.setNodes(updatedNodes);
-    }
   };
 
   const removeGlobalVariable = (id: string) => {
-    const updated = globalVariables.filter(v => v.id !== id);
-    setGlobalVariables(updated);
-    
-    const startNode = nodes.find(n => n.type === 'startNode');
-    if (startNode) {
-      const updatedNodes = nodes.map((n: any) => 
-        n.id === startNode.id ? { ...n, data: { ...n.data, globalVariables: updated } } : n
-      );
-      strategyStore.setNodes(updatedNodes);
-    }
+    setGlobalVariables(globalVariables.filter(v => v.id !== id));
   };
 
   // Collect all snapshot and trailing variables grouped by node
@@ -87,10 +56,7 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
       const nodeData = node.data || {};
       const snapshotVars: NodeVariable[] = Array.isArray(nodeData.variables) ? nodeData.variables : [];
       const trailingVars: TrailingVariable[] = Array.isArray(nodeData.trailingVariables) ? nodeData.trailingVariables : [];
-      
-      // Also check positionVariables (used in entry nodes)
       const positionVars: NodeVariable[] = Array.isArray(nodeData.positionVariables) ? nodeData.positionVariables : [];
-      
       const allSnapshotVars = [...snapshotVars, ...positionVars];
 
       if (allSnapshotVars.length > 0 || trailingVars.length > 0) {
@@ -127,7 +93,7 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
                 <Label className="text-sm font-semibold">Global Variables</Label>
               </div>
               <p className="text-xs text-muted-foreground">
-                Define global variables that can be used throughout the strategy.
+                Define global variables that can be read and updated by any node in the strategy.
               </p>
               
               <div className="flex gap-2">

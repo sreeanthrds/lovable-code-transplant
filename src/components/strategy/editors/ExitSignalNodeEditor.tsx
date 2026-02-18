@@ -37,7 +37,7 @@ const ExitSignalNodeEditor = ({ node, updateNodeData }: ExitSignalNodeEditorProp
         <Tabs defaultValue="signals" className="w-full">
           <TabsList className="grid grid-cols-2 mb-4">
             <TabsTrigger value="signals">Conditions</TabsTrigger>
-            <TabsTrigger value="post-execution">Node Variables</TabsTrigger>
+            <TabsTrigger value="post-execution">Post-Execution</TabsTrigger>
           </TabsList>
           
           <TabsContent value="signals">

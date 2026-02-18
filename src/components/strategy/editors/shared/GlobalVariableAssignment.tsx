@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Node } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -31,13 +31,7 @@ const GlobalVariableAssignment: React.FC<GlobalVariableAssignmentProps> = ({
   node,
   updateNodeData
 }) => {
-  const nodes = useStrategyStore(state => state.nodes);
-  
-  // Get global variables from start node
-  const globalVariables = useMemo(() => {
-    const startNode = nodes.find(n => n.type === 'startNode');
-    return (startNode?.data as any)?.globalVariables || [];
-  }, [nodes]);
+  const globalVariables = useStrategyStore(state => state.globalVariables);
 
   // Get current assignments from node data
   const assignments: GlobalVariableUpdate[] = Array.isArray(node.data?.globalVariableUpdates) 

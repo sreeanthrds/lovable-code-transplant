@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Expression } from '../../../utils/conditions';
 import { useStrategyStore } from '@/hooks/use-strategy-store';
 import {
@@ -21,12 +21,7 @@ const GlobalVariableExpressionEditor: React.FC<GlobalVariableExpressionEditorPro
   expression,
   updateExpression
 }) => {
-  const nodes = useStrategyStore(state => state.nodes);
-  
-  const globalVariables = useMemo(() => {
-    const startNode = nodes.find(n => n.type === 'startNode');
-    return (startNode?.data as any)?.globalVariables || [];
-  }, [nodes]);
+  const globalVariables = useStrategyStore(state => state.globalVariables);
 
   const selectedId = (expression as any).globalVariableId || '';
 

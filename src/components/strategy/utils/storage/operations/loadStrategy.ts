@@ -100,7 +100,7 @@ export const loadStrategyFromLocalStorage = (strategyId: string): StrategyData |
 /**
  * Loads a specific strategy by ID with user verification
  */
-export const loadStrategyById = (strategyId: string): { nodes: Node[], edges: Edge[], name: string } | null => {
+export const loadStrategyById = (strategyId: string): { nodes: Node[], edges: Edge[], name: string, globalVariables?: any[] } | null => {
   try {
     if (!strategyId) {
       console.warn('No strategy ID provided to loadStrategyById');
@@ -138,7 +138,8 @@ export const loadStrategyById = (strategyId: string): { nodes: Node[], edges: Ed
       return {
         nodes: migrated.nodes,
         edges: migrated.edges,
-        name: migrated.name
+        name: migrated.name,
+        globalVariables: migrated.globalVariables || []
       };
     } else {
       console.warn('Invalid strategy structure in localStorage');

@@ -37,6 +37,7 @@ const createStrategyOverviewNode = (): Node => ({
 export const useStrategyStore = create<StrategyStore>((set, get) => ({
   nodes: [],
   edges: [],
+  globalVariables: [],
   history: [],
   historyIndex: -1,
   selectedNode: null,
@@ -45,6 +46,7 @@ export const useStrategyStore = create<StrategyStore>((set, get) => ({
   // State setters with optimization
   setNodes: createSetNodesFunction(set, get),
   setEdges: createSetEdgesFunction(set, get),
+  setGlobalVariables: (vars) => set({ globalVariables: vars }),
   
   // Panel management
   setSelectedNode: (node: Node | null) => {
@@ -117,6 +119,7 @@ export const useStrategyStore = create<StrategyStore>((set, get) => ({
     set({
       nodes: [],
       edges: [],
+      globalVariables: [],
       selectedNode: null,
       isPanelOpen: false
     });

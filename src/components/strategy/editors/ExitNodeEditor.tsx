@@ -47,7 +47,7 @@ const ExitNodeEditor = ({ node, updateNodeData }: ExitNodeEditorProps) => {
         <Tabs defaultValue="order-settings" className="w-full">
           <TabsList className="grid grid-cols-2 mb-4">
             <TabsTrigger value="order-settings">Order Settings</TabsTrigger>
-            <TabsTrigger value="post-execution">Node Variables</TabsTrigger>
+            <TabsTrigger value="post-execution">Post-Execution</TabsTrigger>
           </TabsList>
           
           <TabsContent value="order-settings">
