@@ -68,7 +68,8 @@ export const saveStrategy = async (
   nodes: Node[],
   edges: Edge[],
   strategyId: string,
-  strategyName: string
+  strategyName: string,
+  globalVariables?: any[]
 ) => {
   // Check authentication first
   if (!isAuthenticated()) {
@@ -127,6 +128,7 @@ export const saveStrategy = async (
       name: strategyName,
       nodes,
       edges,
+      globalVariables: globalVariables || [],
       created: new Date().toISOString(),
       lastModified: new Date().toISOString(),
       description: generateStrategyDescription(nodes)
@@ -218,6 +220,7 @@ export const loadStrategy = async (strategyId: string) => {
       const result = {
         nodes: strategyData?.nodes || [],
         edges: strategyData?.edges || [],
+        globalVariables: strategyData?.globalVariables || [],
         name: supabaseStrategy.name
       };
       

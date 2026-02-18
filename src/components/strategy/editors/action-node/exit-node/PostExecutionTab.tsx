@@ -34,13 +34,13 @@ const PostExecutionTab: React.FC<PostExecutionTabProps> = ({
   };
 
   return (
-    <Tabs defaultValue="post-execution" className="w-full">
+    <Tabs defaultValue="snapshot-variables" className="w-full">
       <TabsList className="grid grid-cols-2 mb-2">
-        <TabsTrigger value="post-execution" className="text-xs">Post-Execution</TabsTrigger>
+        <TabsTrigger value="snapshot-variables" className="text-xs">Snapshot Variables</TabsTrigger>
         <TabsTrigger value="global-variables" className="text-xs">Global Variables</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="post-execution" className="mt-0">
+      <TabsContent value="snapshot-variables" className="mt-0">
         <div className="space-y-4">
           <AlertToggle
             enabled={alertNotification?.enabled || false}

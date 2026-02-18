@@ -6,6 +6,7 @@ export interface StrategyData {
   description?: string;
   nodes: any[];
   edges: any[];
+  globalVariables?: any[];
   created: string;
   lastModified: string;
 }
@@ -29,6 +30,7 @@ export const strategyService = {
         strategy: {
           nodes: strategyData.nodes || [],
           edges: strategyData.edges || [],
+          globalVariables: strategyData.globalVariables || [],
           metadata: {
             created: strategyData.created,
             lastModified: strategyData.lastModified

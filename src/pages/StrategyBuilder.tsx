@@ -77,7 +77,7 @@ const StrategyBuilder = () => {
   });
   
   const navigate = useNavigate();
-  const { nodes, edges, resetNodes, handleAutoArrange } = useStrategyStore();
+  const { nodes, edges, globalVariables, resetNodes, handleAutoArrange } = useStrategyStore();
   const { toast } = useToast();
   
 
@@ -197,7 +197,7 @@ const StrategyBuilder = () => {
   useEffect(() => {
     if (isLoaded && nodes.length > 0 && !isReadOnly) {
       // Create a hash of current state to detect changes
-      const currentStateHash = JSON.stringify({ nodes, edges });
+      const currentStateHash = JSON.stringify({ nodes, edges, globalVariables });
       
       // Get previous state hash from ref or localStorage
       const previousStateKey = `strategy_state_${strategyId}`;
@@ -226,7 +226,7 @@ const StrategyBuilder = () => {
         
         const autoSaveTimer = setTimeout(async () => {
           try {
-            const saved = await saveStrategy(nodes, edges, strategyId, strategyName);
+            const saved = await saveStrategy(nodes, edges, strategyId, strategyName, globalVariables);
             if (saved) {
               // Store current state hash after successful save
               localStorage.setItem(previousStateKey, currentStateHash);
