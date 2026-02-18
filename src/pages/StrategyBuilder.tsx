@@ -4,7 +4,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import StrategyFlow from '@/components/strategy/StrategyFlow';
 import AppLayout from '@/layouts/AppLayout';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Menu, Layers, Copy, Grid3X3, Download, Upload, Play, Edit2 } from 'lucide-react';
+import { ArrowLeft, Menu, Layers, Copy, Grid3X3, Download, Upload, Variable, Edit2 } from 'lucide-react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { saveStrategy } from '@/hooks/strategy-store/supabase-persistence';
@@ -356,15 +356,13 @@ const StrategyBuilder = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                title="Run Backtest"
-                className="w-8 h-8 p-0 hover:bg-green-50 dark:hover:bg-green-900/20"
+                title="Strategy Variables"
+                className="w-8 h-8 p-0 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                 onClick={() => {
-                  const params = new URLSearchParams();
-                  params.set('strategyId', strategyId);
-                  navigate(`/app/backtesting?${params.toString()}`);
+                  window.dispatchEvent(new CustomEvent('openGlobalVariables'));
                 }}
               >
-                <Play className="h-3 w-3 text-green-600 dark:text-green-400" />
+                <Variable className="h-3 w-3 text-blue-600 dark:text-blue-400" />
               </Button>
             </div>
           </div>
@@ -387,53 +385,30 @@ const StrategyBuilder = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  title="Run Backtest"
+                  title="Strategy Variables"
                   className="flex items-center justify-center w-10 h-10 hover:bg-blue-50/20 dark:hover:bg-blue-900/20 hover:border-blue-300/30 dark:hover:border-blue-400/30 transition-all duration-300"
                   onClick={() => {
-                    const params = new URLSearchParams();
-                    params.set('strategyId', strategyId);
-                    navigate(`/app/backtesting?${params.toString()}`);
+                    window.dispatchEvent(new CustomEvent('openGlobalVariables'));
                   }}
                 >
-                  <Play className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <Variable className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </Button>
               </div>
               
               <div className="bg-white/10 dark:bg-gray-800/10 backdrop-blur-xl border border-white/20 dark:border-gray-600/20 rounded-xl shadow-lg">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      title="Strategy Tools"
-                      className="flex items-center justify-center w-10 h-10 hover:bg-green-50/20 dark:hover:bg-green-900/20 hover:border-green-300/30 dark:hover:border-green-400/30 transition-all duration-300"
-                    >
-                      <Menu className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48">
-                    <DropdownMenuItem 
-                      onClick={() => {
-                        console.log('🌳 Auto-arrange layout clicked');
-                        window.dispatchEvent(new CustomEvent('globalAutoArrange', { 
-                          detail: { layoutType: 'symmetricTree' }
-                        }));
-                      }}
-                    >
-                      <Grid3X3 className="h-4 w-4 mr-2" />
-                      Auto-Arrange
-                    </DropdownMenuItem>
-                    
-                    <DropdownMenuSeparator />
-                    
-                    <DropdownMenuItem asChild>
-                      <div className="w-full">
-                        <ExportButton />
-                      </div>
-                    </DropdownMenuItem>
-                    
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  title="Auto-Arrange"
+                  className="flex items-center justify-center w-10 h-10 hover:bg-green-50/20 dark:hover:bg-green-900/20 hover:border-green-300/30 dark:hover:border-green-400/30 transition-all duration-300"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('globalAutoArrange', { 
+                      detail: { layoutType: 'symmetricTree' }
+                    }));
+                  }}
+                >
+                  <Grid3X3 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </Button>
               </div>
             </div>
 
