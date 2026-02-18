@@ -9,6 +9,7 @@ import { CompactReEntrySettings } from './re-entry-node/CompactReEntrySettings';
 import { useSignalNodeForm } from './signal-node/useSignalNodeForm';
 import SignalNodeContent from './signal-node/SignalNodeContent';
 import VariableManager from './shared/VariableManager';
+import GlobalVariableAssignment from './shared/GlobalVariableAssignment';
 import { NodeVariable } from '../utils/conditions';
 import { useStrategyStore } from '@/hooks/use-strategy-store';
 
@@ -108,13 +109,26 @@ const ReEntryNodeEditor: React.FC<ReEntryNodeEditorProps> = ({ node, updateNodeD
         </TabsContent>
 
         <TabsContent value="post-execution" className="space-y-4">
-          <div className="space-y-4 bg-accent/5 rounded-md p-3">
-            <VariableManager
-              nodeId={node.id}
-              variables={variables}
-              onVariablesChange={handleVariablesChange}
-            />
-          </div>
+          <Tabs defaultValue="snapshot-variables" className="w-full">
+            <TabsList className="grid grid-cols-2 mb-2">
+              <TabsTrigger value="snapshot-variables" className="text-xs">Snapshot Variables</TabsTrigger>
+              <TabsTrigger value="global-variables" className="text-xs">Global Variables</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="snapshot-variables" className="mt-0">
+              <div className="space-y-4 bg-accent/5 rounded-md p-3">
+                <VariableManager
+                  nodeId={node.id}
+                  variables={variables}
+                  onVariablesChange={handleVariablesChange}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="global-variables" className="mt-0">
+              <GlobalVariableAssignment node={node} updateNodeData={updateNodeData} />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
     </div>
