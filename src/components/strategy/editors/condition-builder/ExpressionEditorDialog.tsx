@@ -37,6 +37,7 @@ const ExpressionEditorDialog: React.FC<ExpressionEditorDialogProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [localExpression, setLocalExpression] = useState<Expression>(expression);
   const strategyStore = useStrategyStore();
+  const globalVariables = strategyStore.globalVariables;
   
   // Initialize TimeframeResolver to ensure timeframes are loaded
   useTimeframeMigration();
@@ -88,8 +89,11 @@ const ExpressionEditorDialog: React.FC<ExpressionEditorDialogProps> = ({
           return `Complex: ${expr.operation || 'No operation'}`;
         case 'node_variable':
           return `Variable: ${expr.variableName || 'None selected'}`;
-        case 'global_variable':
-          return `Global: ${(expr as any).globalVariableName || 'None selected'}`;
+        case 'global_variable': {
+          const gvId = (expr as any).globalVariableId;
+          const gvName = globalVariables.find((v: any) => v.id === gvId)?.name || (expr as any).globalVariableName || 'None selected';
+          return `Global: ${gvName}`;
+        }
         case 'pnl_data':
           return `P&L: ${expr.pnlType || 'unrealized'} (${expr.scope || 'overall'})`;
         default:

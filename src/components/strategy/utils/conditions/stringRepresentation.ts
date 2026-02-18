@@ -239,7 +239,7 @@ export const expressionToString = (expression: Expression, nodeData?: any): stri
         return formatNodeVariableReference(expression.nodeId, expression.variableName);
         
       case 'global_variable':
-        return `Global(${(expression as any).globalVariableName || 'undefined'})`;
+        return `Global(${(expression as any).globalVariableName || (expression as any).globalVariableId || 'undefined'})`;
         
       case 'pnl_data':
         const pnlTypeLabel = expression.pnlType === 'realized' ? 'Realized' : 

@@ -126,10 +126,13 @@ const GlobalVariableAssignment: React.FC<GlobalVariableAssignmentProps> = ({
             {assignments.length === 0 ? (
               <p className="text-xs text-muted-foreground">No global variable updates configured.</p>
             ) : (
-              assignments.map(assignment => (
+              assignments.map(assignment => {
+                // Derive name from store (single source of truth) with fallback
+                const resolvedName = globalVariables.find((gv: any) => gv.id === assignment.globalVariableId)?.name || assignment.globalVariableName;
+                return (
                 <div key={assignment.id} className="space-y-2 p-2 border rounded">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-mono font-medium">{assignment.globalVariableName}</span>
+                    <span className="text-sm font-mono font-medium">{resolvedName}</span>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -148,7 +151,8 @@ const GlobalVariableAssignment: React.FC<GlobalVariableAssignmentProps> = ({
                     />
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
           </>
         )}
