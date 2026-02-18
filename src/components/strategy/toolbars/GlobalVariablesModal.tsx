@@ -110,7 +110,11 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
         changed = true;
       }
 
-      return changed ? { ...node, data: newData } : node;
+      if (changed) {
+        newData._lastUpdated = Date.now();
+        return { ...node, data: newData };
+      }
+      return node;
     });
 
     setNodes(updatedNodes);
