@@ -25,6 +25,7 @@ import PnLExpressionEditor from './expression-editors/PnLExpressionEditor';
 import UnderlyingPnLExpressionEditor from './expression-editors/UnderlyingPnLExpressionEditor';
 import CurrentTimeExpressionEditor from './expression-editors/CurrentTimeExpressionEditor';
 import TrailingVariableExpressionEditor from './expression-editors/TrailingVariableExpressionEditor';
+import GlobalVariableExpressionEditor from './expression-editors/GlobalVariableExpressionEditor';
 
 interface ExpressionEditorProps {
   expression: Expression;
@@ -153,6 +154,13 @@ const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
               updateExpression={updateExpression}
               currentNodeId={currentNodeId}
               currentVariableId={currentVariableId}
+            />
+          );
+        case 'global_variable':
+          return (
+            <GlobalVariableExpressionEditor
+              expression={expression}
+              updateExpression={updateExpression}
             />
           );
         case 'pnl_data':

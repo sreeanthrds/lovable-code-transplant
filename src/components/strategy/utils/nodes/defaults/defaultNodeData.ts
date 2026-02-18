@@ -33,7 +33,7 @@ export const createDefaultNodeData = (nodeType: string, nodeId: string) => {
       
     case 'entrySignalNode':
       return {
-        label: `Entry ${nodeNumber}`,
+        label: `Condition ${nodeNumber}`,
         _lastUpdated: timestamp,
         conditions: [{
           id: 'root',

@@ -112,7 +112,7 @@ const EntryNodeEditor = ({ node, updateNodeData }: EntryNodeEditorProps) => {
       <Tabs defaultValue="position" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid grid-cols-2 mb-2">
           <TabsTrigger value="position">Position</TabsTrigger>
-          <TabsTrigger value="post-execution">Post-Execution</TabsTrigger>
+          <TabsTrigger value="post-execution">Node Variables</TabsTrigger>
         </TabsList>
         
         <TabsContent value="position" className="mt-0">

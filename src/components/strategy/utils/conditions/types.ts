@@ -111,6 +111,12 @@ export interface NodeVariableExpression extends BaseExpression {
   variableName: string;
 }
 
+export interface GlobalVariableExpression extends BaseExpression {
+  type: 'global_variable';
+  globalVariableId: string;
+  globalVariableName: string;
+}
+
 export interface PnLExpression extends BaseExpression {
   type: 'pnl_data';
   pnlType: 'realized' | 'unrealized' | 'total';
@@ -151,6 +157,7 @@ export type Expression =
   | TrailingVariableExpression
   | ExternalTriggerExpression
   | NodeVariableExpression
+  | GlobalVariableExpression
   | PnLExpression
   | UnderlyingPnLExpression
   | MathExpression

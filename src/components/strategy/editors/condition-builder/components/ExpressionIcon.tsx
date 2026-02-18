@@ -38,6 +38,8 @@ const ExpressionIcon: React.FC<{ type: any; className?: string }> = ({ type, cla
       return <HelpCircle className={className} />;
     case 'node_variable': // Snapshot Variables
       return <Variable className={className} />;
+    case 'global_variable':
+      return <Variable className={className} />;
     default:
       return <HelpCircle className={className} />;
   }

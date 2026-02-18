@@ -1,10 +1,12 @@
 
 import React from 'react';
 import { Node } from '@xyflow/react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import VariableManager from '../../shared/VariableManager';
 import PositionVariableManager from '../../shared/PositionVariableManager';
 import TrailingVariableManager from '../../shared/TrailingVariableManager';
 import AlertToggle from '../../shared/AlertToggle';
+import GlobalVariableAssignment from '../../shared/GlobalVariableAssignment';
 import { NodeVariable } from '../../../utils/conditions';
 import { TrailingVariable } from '../../../nodes/action-node/types';
 
@@ -17,7 +19,7 @@ const PostExecutionTab: React.FC<PostExecutionTabProps> = ({
   node,
   updateNodeData
 }) => {
-  // Handle variables - fix initialization
+  // Handle variables
   const variables: NodeVariable[] = Array.isArray(node.data?.variables) ? node.data.variables : [];
   
   const handleVariablesChange = (newVariables: NodeVariable[]) => {
@@ -27,7 +29,7 @@ const PostExecutionTab: React.FC<PostExecutionTabProps> = ({
     });
   };
 
-  // Handle alert toggle - properly type the alertNotification
+  // Handle alert toggle
   const alertNotification = node.data?.alertNotification as { enabled?: boolean } | undefined;
   const handleAlertToggle = (enabled: boolean) => {
     updateNodeData(node.id, {
@@ -57,45 +59,55 @@ const PostExecutionTab: React.FC<PostExecutionTabProps> = ({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Alert Toggle */}
-      <AlertToggle
-        enabled={alertNotification?.enabled || false}
-        onToggle={handleAlertToggle}
-        description="Send alert notification when this entry action is executed"
-      />
+    <Tabs defaultValue="post-execution" className="w-full">
+      <TabsList className="grid grid-cols-2 mb-2">
+        <TabsTrigger value="post-execution" className="text-xs">Post-Execution</TabsTrigger>
+        <TabsTrigger value="global-variables" className="text-xs">Global Variables</TabsTrigger>
+      </TabsList>
 
-      {/* Variables Section */}
-      <div className="space-y-4 bg-accent/5 rounded-md p-3">
-        {node.type === 'entryNode' ? (
-          <PositionVariableManager
-            nodeId={node.id}
-            positions={positions}
-            variables={variables}
-            onVariablesChange={handleVariablesChange}
+      <TabsContent value="post-execution" className="mt-0">
+        <div className="space-y-4">
+          <AlertToggle
+            enabled={alertNotification?.enabled || false}
+            onToggle={handleAlertToggle}
+            description="Send alert notification when this entry action is executed"
           />
-        ) : (
-          <VariableManager
-            nodeId={node.id}
-            variables={variables}
-            onVariablesChange={handleVariablesChange}
-          />
-        )}
-      </div>
 
-      {/* Trailing Variables Section - Only for Entry Nodes */}
-      {node.type === 'entryNode' && (
-        <div className="space-y-4 bg-accent/5 rounded-md p-3">
-          <TrailingVariableManager
-            nodeId={node.id}
-            positions={positions}
-            trailingVariables={trailingVariables}
-            onTrailingVariablesChange={handleTrailingVariablesChange}
-            onPositionsChange={handlePositionsChange}
-          />
+          <div className="space-y-4 bg-accent/5 rounded-md p-3">
+            {node.type === 'entryNode' ? (
+              <PositionVariableManager
+                nodeId={node.id}
+                positions={positions}
+                variables={variables}
+                onVariablesChange={handleVariablesChange}
+              />
+            ) : (
+              <VariableManager
+                nodeId={node.id}
+                variables={variables}
+                onVariablesChange={handleVariablesChange}
+              />
+            )}
+          </div>
+
+          {node.type === 'entryNode' && (
+            <div className="space-y-4 bg-accent/5 rounded-md p-3">
+              <TrailingVariableManager
+                nodeId={node.id}
+                positions={positions}
+                trailingVariables={trailingVariables}
+                onTrailingVariablesChange={handleTrailingVariablesChange}
+                onPositionsChange={handlePositionsChange}
+              />
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </TabsContent>
+
+      <TabsContent value="global-variables" className="mt-0">
+        <GlobalVariableAssignment node={node} updateNodeData={updateNodeData} />
+      </TabsContent>
+    </Tabs>
   );
 };
 

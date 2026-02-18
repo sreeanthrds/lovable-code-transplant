@@ -20,6 +20,7 @@ export {
   createPositionDataExpression,
   createExternalTriggerExpression,
   createNodeVariableExpression,
+  createGlobalVariableExpression,
   createPnLExpression,
   createDefaultExpression,
   expressionFactoryMap,
