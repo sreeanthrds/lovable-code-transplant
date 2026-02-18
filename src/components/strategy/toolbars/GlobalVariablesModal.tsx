@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, X, Variable, Camera, TrendingUp } from 'lucide-react';
+import { Plus, X, Variable, Camera, TrendingUp, Pencil, Check } from 'lucide-react';
 import { useStrategyStore } from '@/hooks/use-strategy-store';
 import { GlobalVariable } from '@/hooks/strategy-store/types';
 import { NodeVariable } from '../utils/conditions';
@@ -28,10 +28,12 @@ interface NodeVariableGroup {
 }
 
 const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpenChange }) => {
-  const { nodes, globalVariables, setGlobalVariables } = useStrategyStore();
+  const { nodes, setNodes, globalVariables, setGlobalVariables } = useStrategyStore();
 
   const [newVarName, setNewVarName] = useState('');
   const [newVarInitialValue, setNewVarInitialValue] = useState<number>(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
 
   const isDuplicate = globalVariables.some(
     v => v.name.toLowerCase() === newVarName.trim().toLowerCase()
@@ -51,6 +53,68 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
 
   const removeGlobalVariable = (id: string) => {
     setGlobalVariables(globalVariables.filter(v => v.id !== id));
+  };
+
+  // Rename a global variable and propagate the new name to all node references
+  const renameGlobalVariable = (id: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    // Check duplicate (excluding self)
+    const isDup = globalVariables.some(
+      v => v.id !== id && v.name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (isDup) return;
+
+    // Update the global variable
+    setGlobalVariables(globalVariables.map(v => v.id === id ? { ...v, name: trimmed } : v));
+
+    // Propagate name change to all node references
+    const updateNameInObj = (obj: any): any => {
+      if (!obj) return obj;
+      if (Array.isArray(obj)) return obj.map(updateNameInObj);
+      if (typeof obj === 'object') {
+        const updated: any = {};
+        for (const [key, val] of Object.entries(obj)) {
+          updated[key] = updateNameInObj(val);
+        }
+        // Update globalVariableName where globalVariableId matches
+        if (updated.type === 'global_variable' && updated.globalVariableId === id) {
+          updated.globalVariableName = trimmed;
+        }
+        return updated;
+      }
+      return obj;
+    };
+
+    const updatedNodes = nodes.map((node: any) => {
+      let changed = false;
+      let newData = { ...node.data };
+
+      // Update conditions
+      if (newData.conditions) {
+        const updated = updateNameInObj(newData.conditions);
+        if (JSON.stringify(updated) !== JSON.stringify(newData.conditions)) {
+          newData.conditions = updated;
+          changed = true;
+        }
+      }
+
+      // Update globalVariableUpdates
+      if (Array.isArray(newData.globalVariableUpdates)) {
+        const updated = newData.globalVariableUpdates.map((u: any) =>
+          u.globalVariableId === id ? { ...u, globalVariableName: trimmed } : u
+        );
+        if (JSON.stringify(updated) !== JSON.stringify(newData.globalVariableUpdates)) {
+          newData.globalVariableUpdates = updated;
+          changed = true;
+        }
+      }
+
+      return changed ? { ...node, data: newData } : node;
+    });
+
+    setNodes(updatedNodes);
+    setEditingId(null);
   };
 
   // Check if a global variable is used in any node's conditions or assignments
@@ -166,37 +230,72 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
                   {globalVariables.map(v => {
                     const usages = getVariableUsages(v.id);
                     const isInUse = usages.length > 0;
+                    const isEditing = editingId === v.id;
                     return (
                       <div key={v.id} className="flex items-center justify-between px-3 py-1.5 bg-muted/50 rounded-md border">
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-mono">{v.name}</span>
+                          {isEditing ? (
+                            <Input
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') renameGlobalVariable(v.id, editingName);
+                                if (e.key === 'Escape') setEditingId(null);
+                              }}
+                              className="h-6 text-sm font-mono w-32"
+                              autoFocus
+                            />
+                          ) : (
+                            <span className="text-sm font-mono">{v.name}</span>
+                          )}
                           <span className="text-xs text-muted-foreground">= {v.initialValue}</span>
                         </div>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeGlobalVariable(v.id)}
-                                  disabled={isInUse}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </span>
-                            </TooltipTrigger>
-                            {isInUse && (
-                              <TooltipContent side="left" className="max-w-[250px]">
-                                <p className="text-xs font-medium">Cannot delete — in use:</p>
-                                {usages.map((u, i) => (
-                                  <p key={i} className="text-xs">• {u}</p>
-                                ))}
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                        </TooltipProvider>
+                        <div className="flex items-center gap-1">
+                          {isEditing ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => renameGlobalVariable(v.id, editingName)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Check className="h-3 w-3" />
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => { setEditingId(v.id); setEditingName(v.name); }}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeGlobalVariable(v.id)}
+                                    disabled={isInUse}
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              {isInUse && (
+                                <TooltipContent side="left" className="max-w-[250px]">
+                                  <p className="text-xs font-medium">Cannot delete — in use:</p>
+                                  {usages.map((u, i) => (
+                                    <p key={i} className="text-xs">• {u}</p>
+                                  ))}
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </div>
                     );
                   })}
