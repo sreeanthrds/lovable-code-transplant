@@ -30,16 +30,37 @@ const ExpressionEditorDialogTrigger: React.FC<ExpressionEditorDialogTriggerProps
   restrictToConstant = false
 }) => {
   const strategyStore = useStrategyStore();
+  const globalVariables = strategyStore.globalVariables;
+
+  // Recursively resolve globalVariableName from the store (single source of truth)
+  const resolveGlobalVarNames = (expr: any): any => {
+    if (!expr) return expr;
+    const obj = { ...expr };
+    if (obj.type === 'global_variable' && obj.globalVariableId) {
+      const gv = globalVariables.find((v: any) => v.id === obj.globalVariableId);
+      if (gv) obj.globalVariableName = gv.name;
+    }
+    if (Array.isArray(obj.items)) {
+      obj.items = obj.items.map((item: any) => ({
+        ...item,
+        expression: item.expression ? resolveGlobalVarNames(item.expression) : item.expression
+      }));
+    }
+    if (Array.isArray(obj.expressions)) {
+      obj.expressions = obj.expressions.map((e: any) => resolveGlobalVarNames(e));
+    }
+    return obj;
+  };
 
   const getExpressionSummary = (expr: Expression) => {
     if (!expr || !expr.type) {
       return required ? 'Click to add expression (Required)' : 'Click to add expression';
     }
     
-    // Use the same string representation logic that's used in conditions
     try {
       const startNode = strategyStore.nodes.find(node => node.type === 'startNode');
-      const displayText = expressionToString(expr, startNode?.data);
+      const resolved = resolveGlobalVarNames(expr);
+      const displayText = expressionToString(resolved, startNode?.data);
       
       // Return the display text for better preview
       return displayText || `${expr.type} expression`;
@@ -52,9 +73,9 @@ const ExpressionEditorDialogTrigger: React.FC<ExpressionEditorDialogTriggerProps
   // Get detailed expression preview using the string representation utility
   const getDetailedExpressionPreview = (expr: Expression) => {
     try {
-      // Find the start node to get indicator parameters for better formatting
       const startNode = strategyStore.nodes.find(node => node.type === 'startNode');
-      return expressionToString(expr, startNode?.data);
+      const resolved = resolveGlobalVarNames(expr);
+      return expressionToString(resolved, startNode?.data);
     } catch (error) {
       console.error('Error formatting expression:', error);
       return getExpressionSummary(expr);
