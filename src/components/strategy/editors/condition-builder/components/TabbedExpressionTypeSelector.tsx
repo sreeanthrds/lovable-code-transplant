@@ -26,7 +26,8 @@ import {
   Edit3,
   Timer,
   BarChart3,
-  List
+  List,
+  Variable
 } from 'lucide-react';
 
 interface TabbedExpressionTypeSelectorProps {
@@ -129,6 +130,11 @@ const TabbedExpressionTypeSelector: React.FC<TabbedExpressionTypeSelectorProps> 
         type: 'node_variable',
         nodeId: '',
         variableName: ''
+      },
+      global_variable: {
+        type: 'global_variable',
+        globalVariableId: '',
+        globalVariableName: ''
       },
       pnl_data: {
         type: 'pnl_data',
@@ -308,6 +314,12 @@ const TabbedExpressionTypeSelector: React.FC<TabbedExpressionTypeSelectorProps> 
           label: 'Snapshot Variables',
           description: 'Captures a snapshot of market conditions when a node completes its task',
           icon: Database
+        },
+        {
+          type: 'global_variable',
+          label: 'Global Variable',
+          description: 'Reference a globally defined strategy variable',
+          icon: Variable
         },
         {
           type: 'list',

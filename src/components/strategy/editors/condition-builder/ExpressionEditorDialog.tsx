@@ -88,6 +88,8 @@ const ExpressionEditorDialog: React.FC<ExpressionEditorDialogProps> = ({
           return `Complex: ${expr.operation || 'No operation'}`;
         case 'node_variable':
           return `Variable: ${expr.variableName || 'None selected'}`;
+        case 'global_variable':
+          return `Global: ${(expr as any).globalVariableName || 'None selected'}`;
         case 'pnl_data':
           return `P&L: ${expr.pnlType || 'unrealized'} (${expr.scope || 'overall'})`;
         default:

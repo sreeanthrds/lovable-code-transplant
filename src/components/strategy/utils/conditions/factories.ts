@@ -11,6 +11,7 @@ import {
   PositionDataExpression,
   ExternalTriggerExpression,
   NodeVariableExpression,
+  GlobalVariableExpression,
   PnLExpression,
   UnderlyingPnLExpression,
   Condition,
@@ -141,6 +142,15 @@ export const createNodeVariableExpression = (
   type: 'node_variable',
   nodeId,
   variableName
+});
+
+export const createGlobalVariableExpression = (
+  globalVariableId: string = '',
+  globalVariableName: string = ''
+): GlobalVariableExpression => ({
+  type: 'global_variable',
+  globalVariableId,
+  globalVariableName
 });
 
 export const createPnLExpression = (
@@ -340,6 +350,7 @@ export const expressionFactoryMap: Record<string, () => Expression> = {
   position_data: () => createPositionDataExpression(),
   external_trigger: () => createExternalTriggerExpression(),
   node_variable: () => createNodeVariableExpression(),
+  global_variable: () => createGlobalVariableExpression(),
   pnl_data: () => createPnLExpression(),
   underlying_pnl: () => createUnderlyingPnLExpression(),
   math_expression: () => createMathExpression(),

@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 interface GlobalVariable {
   id: string;
   name: string;
+  initialValue: number;
 }
 
 interface GlobalVariablesModalProps {
@@ -41,16 +42,19 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
     return (startNode?.data as any)?.globalVariables || [];
   });
   const [newVarName, setNewVarName] = useState('');
+  const [newVarInitialValue, setNewVarInitialValue] = useState<number>(0);
 
   const addGlobalVariable = () => {
     if (!newVarName.trim()) return;
     const newVar: GlobalVariable = {
       id: `global-${Date.now()}`,
-      name: newVarName.trim()
+      name: newVarName.trim(),
+      initialValue: newVarInitialValue
     };
     const updated = [...globalVariables, newVar];
     setGlobalVariables(updated);
     setNewVarName('');
+    setNewVarInitialValue(0);
     
     // Persist to start node data
     const startNode = nodes.find(n => n.type === 'startNode');
@@ -131,8 +135,15 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
                   value={newVarName}
                   onChange={(e) => setNewVarName(e.target.value)}
                   placeholder="Variable name"
-                  className="h-8 text-sm"
+                  className="h-8 text-sm flex-1"
                   onKeyDown={(e) => e.key === 'Enter' && addGlobalVariable()}
+                />
+                <Input
+                  type="number"
+                  value={newVarInitialValue}
+                  onChange={(e) => setNewVarInitialValue(Number(e.target.value))}
+                  placeholder="Initial value"
+                  className="h-8 text-sm w-24"
                 />
                 <Button
                   size="sm"
@@ -149,7 +160,10 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
                 <div className="space-y-1.5">
                   {globalVariables.map(v => (
                     <div key={v.id} className="flex items-center justify-between px-3 py-1.5 bg-muted/50 rounded-md border">
-                      <span className="text-sm font-mono">{v.name}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-mono">{v.name}</span>
+                        <span className="text-xs text-muted-foreground">= {v.initialValue}</span>
+                      </div>
                       <Button
                         variant="ghost"
                         size="sm"
