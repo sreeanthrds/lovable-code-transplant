@@ -171,10 +171,8 @@ export const ExitOrderForm: React.FC<ExitOrderFormProps> = ({ node, updateNodeDa
               <SelectContent>
                 {allPositions.map((position: Position) => (
                   <SelectItem key={position.vpi} value={position.vpi}>
-                    <div className="flex items-center justify-between w-full">
-                      <span className="font-medium">{position.vpi}</span>
-                      <span className="text-muted-foreground text-xs ml-2">({position.sourceNodeId || 'Node ID'})</span>
-                    </div>
+                    <span className="font-medium">{position.vpi}</span>
+                    <span className="text-muted-foreground text-xs ml-2">({position.sourceNodeId || 'Node ID'})</span>
                   </SelectItem>
                 ))}
               </SelectContent>
