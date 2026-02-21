@@ -11,7 +11,7 @@ import {
   useExitNodeInitialization,
   useOrderSettings,
 } from './hooks';
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 
 interface UseExitOrderFormProps {
   node: Node;
@@ -46,104 +46,112 @@ export const useExitOrderForm = ({ node, updateNodeData }: UseExitOrderFormProps
     setLimitPrice,
     defaultExitNodeData
   });
+
+  // Local state for immediate UI feedback (avoids stale closure / deferred updateNodeData issues)
+  const currentExitNodeData = (nodeData?.exitNodeData as ExitNodeData) || defaultExitNodeData;
+  const currentOrderConfig = currentExitNodeData?.orderConfig || defaultExitNodeData.orderConfig;
+
+  const [localTargetPositionVpi, setLocalTargetPositionVpi] = useState<string | undefined>(
+    currentOrderConfig.targetPositionVpi
+  );
+  const [localQuantity, setLocalQuantity] = useState<string>(currentOrderConfig.quantity || 'all');
+  const [localPartialQuantityPercentage, setLocalPartialQuantityPercentage] = useState<number>(
+    currentOrderConfig.partialQuantityPercentage || 50
+  );
+  const [localSpecificQuantity, setLocalSpecificQuantity] = useState<number>(
+    currentOrderConfig.specificQuantity || 1
+  );
+
+  // Sync local state from node data when it changes externally
+  useEffect(() => {
+    const exitData = (node.data?.exitNodeData as ExitNodeData | undefined);
+    const orderCfg = exitData?.orderConfig;
+    if (orderCfg?.targetPositionVpi !== undefined) {
+      setLocalTargetPositionVpi(orderCfg.targetPositionVpi);
+    }
+    if (orderCfg?.quantity) {
+      setLocalQuantity(orderCfg.quantity);
+    }
+    if (orderCfg?.partialQuantityPercentage !== undefined) {
+      setLocalPartialQuantityPercentage(orderCfg.partialQuantityPercentage);
+    }
+    if (orderCfg?.specificQuantity !== undefined) {
+      setLocalSpecificQuantity(orderCfg.specificQuantity);
+    }
+  }, [node.data]);
   
   // Handle target position selection
   const handleTargetPositionChange = useCallback((positionVpi: string) => {
-    const currentExitNodeData = (node.data?.exitNodeData as ExitNodeData) || defaultExitNodeData;
-    
-    // Update order config with target position
-    const updatedOrderConfig = {
-      ...currentExitNodeData.orderConfig,
-      targetPositionVpi: positionVpi === '_any' ? undefined : positionVpi
-    };
-    
-    // Update node data
+    const resolvedVpi = positionVpi === '_any' ? undefined : positionVpi;
+    setLocalTargetPositionVpi(resolvedVpi);
+
+    const exitData = (node.data?.exitNodeData as ExitNodeData) || defaultExitNodeData;
     updateNodeData(node.id, {
-      ...node.data,
       exitNodeData: {
-        ...currentExitNodeData,
-        orderConfig: updatedOrderConfig
+        ...exitData,
+        orderConfig: {
+          ...exitData.orderConfig,
+          targetPositionVpi: resolvedVpi
+        }
       }
     });
-  }, [node, updateNodeData, defaultExitNodeData]);
+  }, [node.id, node.data, updateNodeData, defaultExitNodeData]);
   
   // Handle quantity type selection
   const handleQuantityTypeChange = useCallback((quantityType: string) => {
-    const currentExitNodeData = (node.data?.exitNodeData as ExitNodeData) || defaultExitNodeData;
-    
-    // Update order config with quantity type
-    const updatedOrderConfig = {
-      ...currentExitNodeData.orderConfig,
-      quantity: quantityType as QuantityType
-    };
-    
-    // Update node data
+    setLocalQuantity(quantityType);
+
+    const exitData = (node.data?.exitNodeData as ExitNodeData) || defaultExitNodeData;
     updateNodeData(node.id, {
-      ...node.data,
       exitNodeData: {
-        ...currentExitNodeData,
-        orderConfig: updatedOrderConfig
+        ...exitData,
+        orderConfig: {
+          ...exitData.orderConfig,
+          quantity: quantityType as QuantityType
+        }
       }
     });
-  }, [node, updateNodeData, defaultExitNodeData]);
+  }, [node.id, node.data, updateNodeData, defaultExitNodeData]);
   
   // Handle partial quantity percentage change
   const handlePartialQuantityChange = useCallback((percentage: number) => {
-    const currentExitNodeData = (node.data?.exitNodeData as ExitNodeData) || defaultExitNodeData;
-    
-    // Update order config with partial quantity percentage
-    const updatedOrderConfig = {
-      ...currentExitNodeData.orderConfig,
-      partialQuantityPercentage: percentage
-    };
-    
-    // Update node data
+    setLocalPartialQuantityPercentage(percentage);
+
+    const exitData = (node.data?.exitNodeData as ExitNodeData) || defaultExitNodeData;
     updateNodeData(node.id, {
-      ...node.data,
       exitNodeData: {
-        ...currentExitNodeData,
-        orderConfig: updatedOrderConfig
+        ...exitData,
+        orderConfig: {
+          ...exitData.orderConfig,
+          partialQuantityPercentage: percentage
+        }
       }
     });
-  }, [node, updateNodeData, defaultExitNodeData]);
+  }, [node.id, node.data, updateNodeData, defaultExitNodeData]);
 
   // Handle specific quantity change
   const handleSpecificQuantityChange = useCallback((quantity: number) => {
-    const currentExitNodeData = (node.data?.exitNodeData as ExitNodeData) || defaultExitNodeData;
-    
-    // Update order config with specific quantity
-    const updatedOrderConfig = {
-      ...currentExitNodeData.orderConfig,
-      specificQuantity: quantity
-    };
-    
-    // Update node data
+    setLocalSpecificQuantity(quantity);
+
+    const exitData = (node.data?.exitNodeData as ExitNodeData) || defaultExitNodeData;
     updateNodeData(node.id, {
-      ...node.data,
       exitNodeData: {
-        ...currentExitNodeData,
-        orderConfig: updatedOrderConfig
+        ...exitData,
+        orderConfig: {
+          ...exitData.orderConfig,
+          specificQuantity: quantity
+        }
       }
     });
-  }, [node, updateNodeData, defaultExitNodeData]);
-
-  // Get current values from node data with proper type checking
-  const currentExitNodeData = nodeData?.exitNodeData as ExitNodeData | undefined;
-  const currentOrderConfig = currentExitNodeData?.orderConfig || defaultExitNodeData.orderConfig;
-  
-  // Now safely extract properties from the typed object
-  const targetPositionVpi = currentOrderConfig.targetPositionVpi;
-  const quantity = currentOrderConfig.quantity || 'all';
-  const partialQuantityPercentage = currentOrderConfig.partialQuantityPercentage || 50;
-  const specificQuantity = currentOrderConfig.specificQuantity || 1;
+  }, [node.id, node.data, updateNodeData, defaultExitNodeData]);
   
   return {
     orderType,
     limitPrice,
-    targetPositionVpi,
-    quantity,
-    partialQuantityPercentage,
-    specificQuantity,
+    targetPositionVpi: localTargetPositionVpi,
+    quantity: localQuantity,
+    partialQuantityPercentage: localPartialQuantityPercentage,
+    specificQuantity: localSpecificQuantity,
     handleOrderTypeChange,
     handleLimitPriceChange,
     handleTargetPositionChange,
