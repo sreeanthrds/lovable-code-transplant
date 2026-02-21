@@ -47,10 +47,8 @@ const PositionSelector: React.FC<PositionSelectorProps> = ({
           <SelectLabel>Available positions</SelectLabel>
           {positions.map((position) => (
             <SelectItem key={position.vpi} value={position.vpi}>
-              <div className="flex items-center justify-between w-full">
-                <span>{position.vpi} - {position.positionType?.toUpperCase()} - {position.orderType}</span>
-                <span className="text-muted-foreground text-xs ml-2">({position.sourceNodeId || 'Node ID'})</span>
-              </div>
+              <span>{position.vpi} - {position.positionType?.toUpperCase()} - {position.orderType}</span>
+              <span className="text-muted-foreground text-xs ml-2">({position.sourceNodeId || 'Node ID'})</span>
             </SelectItem>
           ))}
         </SelectGroup>

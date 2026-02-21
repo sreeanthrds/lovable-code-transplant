@@ -34,13 +34,11 @@ const PositionBinding: React.FC<PositionBindingProps> = ({
             <SelectItem value="none">No binding</SelectItem>
             {positions.map(position => (
               <SelectItem key={position.vpi} value={position.vpi}>
-                <div className="flex items-center justify-between w-full">
-                  <span>
-                    {position.vpi} ({position.positionType})
-                    {position.optionDetails && ` - ${position.optionDetails.optionType} ${position.optionDetails.strikeType}`}
-                  </span>
-                  <span className="text-muted-foreground text-xs ml-2">({position.sourceNodeId || 'Node ID'})</span>
-                </div>
+                <span>
+                  {position.vpi} ({position.positionType})
+                  {position.optionDetails && ` - ${position.optionDetails.optionType} ${position.optionDetails.strikeType}`}
+                </span>
+                <span className="text-muted-foreground text-xs ml-2">({position.sourceNodeId || 'Node ID'})</span>
               </SelectItem>
             ))}
           </SelectContent>
