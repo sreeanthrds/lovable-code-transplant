@@ -29,7 +29,7 @@ export const ExitOrderForm: React.FC<ExitOrderFormProps> = ({ node, updateNodeDa
   const allPositions = nodes.flatMap(n => {
     const positions = n.data?.positions;
     if (Array.isArray(positions)) {
-      return positions as Position[];
+      return (positions as Position[]).map(p => ({ ...p, sourceNodeId: p.sourceNodeId || n.id }));
     }
     return [];
   });
