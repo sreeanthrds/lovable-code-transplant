@@ -159,7 +159,7 @@ export const ExitOrderForm: React.FC<ExitOrderFormProps> = ({ node, updateNodeDa
           
           {allPositions.length > 0 ? (
             <Select
-              value={targetPositionVpi || ''}
+              value={targetPositionVpi && targetPositionVpi !== '' ? targetPositionVpi : undefined}
               onValueChange={handleTargetPositionChange}
             >
               <SelectTrigger className={cn(
@@ -171,8 +171,7 @@ export const ExitOrderForm: React.FC<ExitOrderFormProps> = ({ node, updateNodeDa
               <SelectContent>
                 {allPositions.map((position: Position) => (
                   <SelectItem key={position.vpi} value={position.vpi}>
-                    <span className="font-medium">{position.vpi}</span>
-                    <span className="text-muted-foreground text-xs ml-2">({position.sourceNodeId || 'Node ID'})</span>
+                    {position.vpi} ({position.sourceNodeId || 'Node ID'})
                   </SelectItem>
                 ))}
               </SelectContent>
