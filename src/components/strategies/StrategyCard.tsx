@@ -74,6 +74,7 @@ console.log('🔍 StrategyCard render:', { id, name, isInLiveTrading });
         return {
           nodes: strategyData.nodes || [],
           edges: strategyData.edges || [],
+          globalVariables: strategyData.globalVariables || [],
           name: supabaseStrategy.name
         };
       }
@@ -224,7 +225,8 @@ try {
         originalStrategy.nodes,
         originalStrategy.edges,
         newId,
-        newName
+        newName,
+        originalStrategy.globalVariables
       );
       console.log('Strategy saved successfully:', success);
 
