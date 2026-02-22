@@ -84,12 +84,32 @@ const GlobalVariableAssignment: React.FC<GlobalVariableAssignmentProps> = ({
 
   const handlePaste = () => {
     const pasted = pasteAssignments();
-    if (!pasted) return;
-    // Only paste assignments for variables that exist and aren't already assigned
-    const newAssignments = pasted.filter(
-      p => globalVariables.some((gv: any) => gv.id === p.globalVariableId) &&
-           !assignments.some(a => a.globalVariableId === p.globalVariableId)
-    );
+    console.log('[GVA Paste] pasted:', JSON.stringify(pasted));
+    console.log('[GVA Paste] current assignments:', JSON.stringify(assignments.map(a => a.globalVariableId)));
+    console.log('[GVA Paste] globalVariables:', JSON.stringify(globalVariables.map((g: any) => ({ id: g.id, name: g.name }))));
+    if (!pasted || pasted.length === 0) return;
+
+    const newAssignments: GlobalVariableUpdate[] = [];
+    for (const p of pasted) {
+      // Try match by ID first, then by name
+      let matchedGV = globalVariables.find((gv: any) => gv.id === p.globalVariableId);
+      if (!matchedGV) {
+        matchedGV = globalVariables.find((gv: any) => gv.name === p.globalVariableName);
+      }
+      if (!matchedGV) continue;
+      // Skip if already assigned in current or incoming list
+      if (assignments.some(a => a.globalVariableId === matchedGV.id)) continue;
+      if (newAssignments.some(a => a.globalVariableId === matchedGV.id)) continue;
+
+      newAssignments.push({
+        ...p,
+        id: `gva-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        globalVariableId: matchedGV.id,
+        globalVariableName: matchedGV.name,
+      });
+    }
+
+    console.log('[GVA Paste] newAssignments to add:', newAssignments.length);
     if (newAssignments.length > 0) {
       updateAssignments([...assignments, ...newAssignments]);
     }
