@@ -34,6 +34,7 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
   const [newVarInitialValue, setNewVarInitialValue] = useState<number>(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [editingInitialValue, setEditingInitialValue] = useState<number>(0);
 
   const isDuplicate = globalVariables.some(
     v => v.name.toLowerCase() === newVarName.trim().toLowerCase()
@@ -66,7 +67,7 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
     if (isDup) return;
 
     // Update the global variable
-    setGlobalVariables(globalVariables.map(v => v.id === id ? { ...v, name: trimmed } : v));
+    setGlobalVariables(globalVariables.map(v => v.id === id ? { ...v, name: trimmed, initialValue: editingInitialValue } : v));
 
     // Propagate name change to all node references
     const updateNameInObj = (obj: any): any => {
@@ -253,7 +254,20 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
                           ) : (
                             <span className="text-sm font-mono">{v.name}</span>
                           )}
-                          <span className="text-xs text-muted-foreground">= {v.initialValue}</span>
+                          {isEditing ? (
+                            <Input
+                              type="number"
+                              value={editingInitialValue}
+                              onChange={(e) => setEditingInitialValue(Number(e.target.value))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') renameGlobalVariable(v.id, editingName);
+                                if (e.key === 'Escape') setEditingId(null);
+                              }}
+                              className="h-6 text-xs font-mono w-20"
+                            />
+                          ) : (
+                            <span className="text-xs text-muted-foreground">= {v.initialValue}</span>
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
                           {isEditing ? (
@@ -269,7 +283,7 @@ const GlobalVariablesModal: React.FC<GlobalVariablesModalProps> = ({ open, onOpe
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => { setEditingId(v.id); setEditingName(v.name); }}
+                              onClick={() => { setEditingId(v.id); setEditingName(v.name); setEditingInitialValue(v.initialValue); }}
                               className="h-6 w-6 p-0"
                             >
                               <Pencil className="h-3 w-3" />
