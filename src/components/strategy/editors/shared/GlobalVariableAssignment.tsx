@@ -3,7 +3,7 @@ import { Node } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { X, Plus, Variable } from 'lucide-react';
+import { X, Plus, Variable, Copy, ClipboardPaste } from 'lucide-react';
 import { Expression, createDefaultExpression } from '../../utils/conditions';
 import ExpressionEditorDialogTrigger from '../condition-builder/ExpressionEditorDialogTrigger';
 import { useStrategyStore } from '@/hooks/use-strategy-store';
@@ -14,6 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useGlobalVarAssignmentClipboard } from './hooks/useGlobalVarAssignmentClipboard';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface GlobalVariableUpdate {
   id: string;
@@ -32,6 +34,7 @@ const GlobalVariableAssignment: React.FC<GlobalVariableAssignmentProps> = ({
   updateNodeData
 }) => {
   const globalVariables = useStrategyStore(state => state.globalVariables);
+  const { copyAssignments, pasteAssignments, hasClipboardData } = useGlobalVarAssignmentClipboard();
 
   // Get current assignments from node data
   const assignments: GlobalVariableUpdate[] = Array.isArray(node.data?.globalVariableUpdates) 
@@ -75,6 +78,23 @@ const GlobalVariableAssignment: React.FC<GlobalVariableAssignmentProps> = ({
     );
   };
 
+  const handleCopy = () => {
+    if (assignments.length > 0) copyAssignments(assignments);
+  };
+
+  const handlePaste = () => {
+    const pasted = pasteAssignments();
+    if (!pasted) return;
+    // Only paste assignments for variables that exist and aren't already assigned
+    const newAssignments = pasted.filter(
+      p => globalVariables.some((gv: any) => gv.id === p.globalVariableId) &&
+           !assignments.some(a => a.globalVariableId === p.globalVariableId)
+    );
+    if (newAssignments.length > 0) {
+      updateAssignments([...assignments, ...newAssignments]);
+    }
+  };
+
   // Filter out already-assigned variables
   const availableVars = globalVariables.filter(
     (gv: any) => !assignments.some(a => a.globalVariableId === gv.id)
@@ -83,9 +103,41 @@ const GlobalVariableAssignment: React.FC<GlobalVariableAssignmentProps> = ({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <Variable className="h-4 w-4" />
-          Update Global Variables
+        <CardTitle className="text-sm flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <Variable className="h-4 w-4" />
+            Update Global Variables
+          </span>
+          <span className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopy}
+                  disabled={assignments.length === 0}
+                  className="h-6 w-6 p-0"
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Copy assignments</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePaste}
+                  disabled={!hasClipboardData}
+                  className="h-6 w-6 p-0"
+                >
+                  <ClipboardPaste className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Paste assignments</TooltipContent>
+            </Tooltip>
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">

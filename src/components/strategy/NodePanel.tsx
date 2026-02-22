@@ -24,6 +24,7 @@ import ModifyNodeEditor from './editors/ModifyNodeEditor';
 import ReEntryNodeEditor from './editors/ReEntryNodeEditor';
 import ReEntrySignalNodeEditor from './editors/ReEntrySignalNodeEditor';
 import { ConditionClipboardProvider } from './editors/condition-builder/providers/ConditionClipboardProvider';
+import { GVAClipboardProvider } from './editors/shared/providers/GVAClipboardProvider';
 
 interface NodePanelProps {
   node: Node | null;
@@ -130,6 +131,7 @@ const NodePanel: React.FC<NodePanelProps> = ({ node, updateNodeData, onClose, is
   };
 
   return (
+    <GVAClipboardProvider>
     <ConditionClipboardProvider>
       <div className="h-full flex flex-col node-panel-background border-l-2 border-teal-400/40 dark:border-teal-500/30 shadow-[inset_0_0_20px_rgba(20,184,166,0.1),0_4px_24px_rgba(0,0,0,0.6)] backdrop-blur-[2px]">
         {/* Compact Professional Header */}
@@ -187,6 +189,7 @@ const NodePanel: React.FC<NodePanelProps> = ({ node, updateNodeData, onClose, is
         </div>
       </div>
     </ConditionClipboardProvider>
+    </GVAClipboardProvider>
   );
 };
 
