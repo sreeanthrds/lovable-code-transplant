@@ -1,34 +1,51 @@
-import React, { useState, useCallback, ReactNode } from 'react';
+import React, { useState, useCallback, useEffect, ReactNode } from 'react';
 import { GVAClipboardContext, GlobalVariableUpdate } from '../hooks/useGlobalVarAssignmentClipboard';
+
+// Module-level clipboard storage so it persists across remounts
+let moduleClipboard: { assignments: GlobalVariableUpdate[]; timestamp: number } | null = null;
+let listeners: Set<() => void> = new Set();
+
+function notifyListeners() {
+  listeners.forEach(fn => fn());
+}
 
 interface GVAClipboardProviderProps {
   children: ReactNode;
 }
 
 export function GVAClipboardProvider({ children }: GVAClipboardProviderProps) {
-  const [clipboardData, setClipboardData] = useState<{ assignments: GlobalVariableUpdate[]; timestamp: number } | null>(null);
+  const [, forceUpdate] = useState(0);
+
+  useEffect(() => {
+    const listener = () => forceUpdate(c => c + 1);
+    listeners.add(listener);
+    return () => { listeners.delete(listener); };
+  }, []);
 
   const copyAssignments = useCallback((assignments: GlobalVariableUpdate[]) => {
-    const cloned = assignments.map(a => ({
-      ...a,
-      id: `gva-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      expression: JSON.parse(JSON.stringify(a.expression))
-    }));
-    setClipboardData({ assignments: cloned, timestamp: Date.now() });
+    moduleClipboard = {
+      assignments: assignments.map(a => ({
+        ...a,
+        id: `gva-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        expression: JSON.parse(JSON.stringify(a.expression))
+      })),
+      timestamp: Date.now()
+    };
+    notifyListeners();
   }, []);
 
   const pasteAssignments = useCallback(() => {
-    if (!clipboardData) return null;
-    return clipboardData.assignments.map(a => ({
+    if (!moduleClipboard) return null;
+    return moduleClipboard.assignments.map(a => ({
       ...a,
       id: `gva-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
     }));
-  }, [clipboardData]);
+  }, []);
 
-  const hasClipboardData = clipboardData !== null;
+  const hasClipboardData = moduleClipboard !== null;
 
   return (
-    <GVAClipboardContext.Provider value={{ clipboardData, copyAssignments, pasteAssignments, hasClipboardData }}>
+    <GVAClipboardContext.Provider value={{ clipboardData: moduleClipboard, copyAssignments, pasteAssignments, hasClipboardData }}>
       {children}
     </GVAClipboardContext.Provider>
   );
