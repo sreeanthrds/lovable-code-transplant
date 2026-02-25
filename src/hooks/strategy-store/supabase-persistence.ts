@@ -271,8 +271,8 @@ export const deleteStrategy = async (strategyId: string) => {
   }
 };
 
-// Load all strategies from Supabase (requires authentication)
-export const loadAllStrategies = async () => {
+// Load all strategies from Supabase (requires authentication) with retry
+export const loadAllStrategies = async (retryCount = 0): Promise<any[]> => {
   // Check authentication first
   if (!isAuthenticated()) {
     console.warn('User not authenticated, redirecting to home');
@@ -281,21 +281,23 @@ export const loadAllStrategies = async () => {
   }
 
   try {
-    console.log('Loading all strategies from database');
+    console.log('📚 Loading all strategies from database, attempt:', retryCount + 1);
     
     // Get current user ID
     const userId = getCurrentUserId();
     
     if (!userId) {
-      console.error('No user ID available');
+      console.error('❌ No user ID available');
       return [];
     }
+    
+    console.log('📚 Loading strategies for userId:', userId);
     
     // Load from Supabase only
     const supabaseStrategies = await strategyService.getStrategies(userId);
     
     if (supabaseStrategies && supabaseStrategies.length > 0) {
-      console.log('Loaded strategies from database:', supabaseStrategies.length);
+      console.log('✅ Loaded strategies from database:', supabaseStrategies.length);
       
       // Transform Supabase format to expected format
       return supabaseStrategies.map((strategy: any) => {
@@ -313,7 +315,6 @@ export const loadAllStrategies = async () => {
           }
         } catch (e) {
           console.error('Error parsing strategy for description:', e);
-          // Fallback to existing description if parsing fails
           description = strategy.description || 'Strategy';
         }
         
@@ -327,10 +328,16 @@ export const loadAllStrategies = async () => {
       });
     }
     
-    console.log('No strategies found in database');
+    console.log('⚠️ No strategies found in database for user:', userId);
     return [];
-  } catch (error) {
-    console.error('Error loading all strategies:', error);
+  } catch (error: any) {
+    console.error('💥 Error loading all strategies:', error);
+    // Retry on network errors
+    if (retryCount < 3 && (error?.message?.includes('fetch') || error?.message?.includes('Failed') || error?.message?.includes('network'))) {
+      console.log(`🔄 Retrying strategy load in ${(retryCount + 1) * 2}s...`);
+      await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
+      return loadAllStrategies(retryCount + 1);
+    }
     return [];
   }
 };

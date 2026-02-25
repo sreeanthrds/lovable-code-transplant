@@ -142,7 +142,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Fetch admin role once when userId changes (cached)
   useEffect(() => {
-    const checkAdminStatus = async () => {
+    const checkAdminStatus = async (retryCount = 0) => {
       if (!userId) {
         setIsAdmin(false);
         setIsAdminLoading(false);
@@ -150,8 +150,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
-      // Skip if we already checked for this user
-      if (adminCheckRef.current === userId) {
+      // Skip if we already checked for this user and got a result
+      if (adminCheckRef.current === userId && !isAdminLoading) {
         return;
       }
 
@@ -159,19 +159,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       adminCheckRef.current = userId;
 
       try {
+        console.log('🔐 Checking admin status for user:', userId, 'attempt:', retryCount + 1);
         const { data, error } = await supabase.rpc('has_role', { 
           _user_id: userId, 
           _role: 'admin' 
         });
 
         if (error) {
-          console.error('Error checking admin status:', error);
+          console.error('❌ Error checking admin status:', error);
+          // Retry on network errors (up to 3 times)
+          if (retryCount < 3 && (error.message?.includes('fetch') || error.message?.includes('network') || error.code === 'PGRST000')) {
+            console.log(`🔄 Retrying admin check in ${(retryCount + 1) * 2}s...`);
+            setTimeout(() => {
+              adminCheckRef.current = null; // Allow retry
+              checkAdminStatus(retryCount + 1);
+            }, (retryCount + 1) * 2000);
+            return;
+          }
           setIsAdmin(false);
         } else {
+          console.log('✅ Admin check result:', data);
           setIsAdmin(data || false);
         }
-      } catch (error) {
-        console.error('Error calling has_role function:', error);
+      } catch (error: any) {
+        console.error('💥 Error calling has_role function:', error);
+        // Retry on network errors
+        if (retryCount < 3 && (error?.message?.includes('fetch') || error?.message?.includes('Failed'))) {
+          console.log(`🔄 Retrying admin check in ${(retryCount + 1) * 2}s...`);
+          setTimeout(() => {
+            adminCheckRef.current = null;
+            checkAdminStatus(retryCount + 1);
+          }, (retryCount + 1) * 2000);
+          return;
+        }
         setIsAdmin(false);
       } finally {
         setIsAdminLoading(false);
