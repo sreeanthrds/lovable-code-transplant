@@ -24,6 +24,8 @@ interface AuthContextType {
   isMockAuth: boolean;
   isAdmin: boolean;
   isAdminLoading: boolean;
+  adminCheckFailed: boolean;
+  retryAdminCheck: () => void;
   signOut: () => void;
 }
 
@@ -52,6 +54,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Cached admin role state
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAdminLoading, setIsAdminLoading] = useState(true);
+  const [adminCheckFailed, setAdminCheckFailed] = useState(false);
   const adminCheckRef = useRef<string | null>(null);
 
   // Try to get Clerk state from window.Clerk
@@ -140,66 +143,72 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const userId = user?.id || null;
 
-  // Fetch admin role once when userId changes (cached)
-  useEffect(() => {
-    const checkAdminStatus = async (retryCount = 0) => {
-      if (!userId) {
-        setIsAdmin(false);
-        setIsAdminLoading(false);
-        adminCheckRef.current = null;
-        return;
-      }
+  const checkAdminStatus = useCallback(async (uid: string, retryCount = 0) => {
+    if (!uid) {
+      setIsAdmin(false);
+      setIsAdminLoading(false);
+      setAdminCheckFailed(false);
+      adminCheckRef.current = null;
+      return;
+    }
 
-      // Skip if we already checked for this user and got a result
-      if (adminCheckRef.current === userId && !isAdminLoading) {
-        return;
-      }
+    setIsAdminLoading(true);
+    setAdminCheckFailed(false);
+    adminCheckRef.current = uid;
 
-      setIsAdminLoading(true);
-      adminCheckRef.current = userId;
+    try {
+      console.log('🔐 Checking admin status for user:', uid, 'attempt:', retryCount + 1);
+      const { data, error } = await supabase.rpc('has_role', { 
+        _user_id: uid, 
+        _role: 'admin' 
+      });
 
-      try {
-        console.log('🔐 Checking admin status for user:', userId, 'attempt:', retryCount + 1);
-        const { data, error } = await supabase.rpc('has_role', { 
-          _user_id: userId, 
-          _role: 'admin' 
-        });
-
-        if (error) {
-          console.error('❌ Error checking admin status:', error);
-          // Retry on network errors (up to 3 times)
-          if (retryCount < 3 && (error.message?.includes('fetch') || error.message?.includes('network') || error.code === 'PGRST000')) {
-            console.log(`🔄 Retrying admin check in ${(retryCount + 1) * 2}s...`);
-            setTimeout(() => {
-              adminCheckRef.current = null; // Allow retry
-              checkAdminStatus(retryCount + 1);
-            }, (retryCount + 1) * 2000);
-            return;
-          }
-          setIsAdmin(false);
-        } else {
-          console.log('✅ Admin check result:', data);
-          setIsAdmin(data || false);
-        }
-      } catch (error: any) {
-        console.error('💥 Error calling has_role function:', error);
-        // Retry on network errors
-        if (retryCount < 3 && (error?.message?.includes('fetch') || error?.message?.includes('Failed'))) {
+      if (error) {
+        console.error('❌ Error checking admin status:', error);
+        if (retryCount < 3 && (error.message?.includes('fetch') || error.message?.includes('network') || error.code === 'PGRST000')) {
           console.log(`🔄 Retrying admin check in ${(retryCount + 1) * 2}s...`);
-          setTimeout(() => {
-            adminCheckRef.current = null;
-            checkAdminStatus(retryCount + 1);
-          }, (retryCount + 1) * 2000);
+          setTimeout(() => checkAdminStatus(uid, retryCount + 1), (retryCount + 1) * 2000);
           return;
         }
         setIsAdmin(false);
-      } finally {
-        setIsAdminLoading(false);
+        setAdminCheckFailed(true);
+      } else {
+        console.log('✅ Admin check result:', data);
+        setIsAdmin(data || false);
+        setAdminCheckFailed(false);
       }
-    };
+    } catch (error: any) {
+      console.error('💥 Error calling has_role function:', error);
+      if (retryCount < 3 && (error?.message?.includes('fetch') || error?.message?.includes('Failed'))) {
+        console.log(`🔄 Retrying admin check in ${(retryCount + 1) * 2}s...`);
+        setTimeout(() => checkAdminStatus(uid, retryCount + 1), (retryCount + 1) * 2000);
+        return;
+      }
+      setIsAdmin(false);
+      setAdminCheckFailed(true);
+    } finally {
+      setIsAdminLoading(false);
+    }
+  }, []);
 
-    checkAdminStatus();
-  }, [userId]);
+  // Fetch admin role once when userId changes
+  useEffect(() => {
+    if (userId) {
+      checkAdminStatus(userId);
+    } else {
+      setIsAdmin(false);
+      setIsAdminLoading(false);
+      setAdminCheckFailed(false);
+      adminCheckRef.current = null;
+    }
+  }, [userId, checkAdminStatus]);
+
+  const retryAdminCheck = useCallback(() => {
+    if (userId) {
+      adminCheckRef.current = null;
+      checkAdminStatus(userId);
+    }
+  }, [userId, checkAdminStatus]);
 
   const signOut = useCallback(() => {
     if (useMockAuth) {
@@ -228,6 +237,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       isMockAuth,
       isAdmin,
       isAdminLoading,
+      adminCheckFailed,
+      retryAdminCheck,
       signOut,
     }}>
       {children}

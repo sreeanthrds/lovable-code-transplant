@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Users, Key, AlertTriangle, Settings, Database, Wallet, FileText } from 'lucide-react';
+import { Shield, Users, Key, AlertTriangle, Settings, Database, Wallet, FileText, RefreshCw, WifiOff } from 'lucide-react';
 import AppLayout from '@/layouts/AppLayout';
 import JsonToTlsTab from '@/components/admin/decryption/JsonToTlsTab';
 import JwtTestPanel from '@/components/admin/JwtTestPanel';
@@ -21,7 +21,7 @@ import AdminBillingDashboard from '@/components/admin/AdminBillingDashboard';
 
 const Admin = () => {
   const { user } = useClerkUser();
-  const { isAdmin, loading } = useAdminRole();
+  const { isAdmin, loading, adminCheckFailed, retryAdminCheck } = useAdminRole();
   const [encryptionManagerOpen, setEncryptionManagerOpen] = useState(false);
 
   if (!user) {
@@ -58,11 +58,25 @@ const Admin = () => {
         <div className="container mx-auto py-8">
           <Card>
             <CardHeader className="flex flex-row items-center gap-2">
-              <AlertTriangle className="h-6 w-6 text-destructive" />
-              <CardTitle>Access Denied</CardTitle>
+              {adminCheckFailed ? (
+                <WifiOff className="h-6 w-6 text-yellow-500" />
+              ) : (
+                <AlertTriangle className="h-6 w-6 text-destructive" />
+              )}
+              <CardTitle>{adminCheckFailed ? 'Connection Error' : 'Access Denied'}</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">You do not have admin privileges to access this page.</p>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                {adminCheckFailed 
+                  ? 'Unable to verify admin permissions due to a network error. The database may be temporarily unreachable.'
+                  : 'You do not have admin privileges to access this page.'}
+              </p>
+              {adminCheckFailed && (
+                <Button onClick={retryAdminCheck} variant="outline" className="gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Retry Connection
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
